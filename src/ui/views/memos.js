@@ -30,9 +30,9 @@ export async function saveMemo(app, { title, memoType, channel, tags, body, from
   if (to) item.to = to;
   const tg = String(tags || '').split(/[,、\s]+/).map((x) => x.trim()).filter(Boolean);
   if (tg.length) item.tags = tg;
-  const r = store.applyLocal([{ op: 'add', item }], 'local');
+  const r = store.applyLocal([{ op: 'add', tempId: 'new:memo', item }], 'local');
   if (!r.ok) { toast(r.errors.join(' / ')); return { ok: false }; }
-  const id = Object.values(r.idMap || {})[0] || null;
+  const id = r.idMap.get('new:memo') || null;
   toast('メモにしました（取り消し可）');
   return { ok: true, id };
 }

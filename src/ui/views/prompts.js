@@ -1,10 +1,11 @@
 // 指示文画面: 目的を選ぶ → 指示文を作る → コピーして Gemini / NotebookLM に貼る
 
 import { PURPOSES, buildPrompt, memoMaterial, MEMO_PROMPT_MAX } from '../../core/prompts.js';
+import { KINDS, enumLabel } from '../../core/schema.js';
 import { h, toast, copyText, todayStr } from '../dom.js';
 import { store } from '../store.js';
 
-const promptState = { purpose: 'minutes', freeText: '', meetingId: '', changeId: '', reportText: '', targetIds: [], memoIds: [] };
+const promptState = { purpose: 'minutes', freeText: '', meetingId: '', changeId: '', reportText: '', targetIds: [], memoIds: [], flowId: '' };
 
 const GUIDE = {
   notebooklm: 'NotebookLM に資料を入れたうえで、この文を質問欄に貼ります。返ってきた箇条書きは、「資料からの追加」の指示文と一緒に Gemini に貼ってください（指示文の末尾の「ここから資料」の下に貼ります）。',
@@ -21,10 +22,12 @@ export function renderPrompts(root, app, opts) {
     if (opts.changeId) promptState.changeId = opts.changeId;
     if (Array.isArray(opts.targetIds)) promptState.targetIds = opts.targetIds;
     if (Array.isArray(opts.memoIds)) promptState.memoIds = opts.memoIds;
+    if (opts.flowId !== undefined) promptState.flowId = opts.flowId;
     if (opts.reportText !== undefined) promptState.reportText = opts.reportText;
     app.viewOpts = {};
   }
   if (promptState.meetingId && !ledger.items.some((it) => it.id === promptState.meetingId)) promptState.meetingId = '';
+  if (promptState.flowId && !ledger.items.some((it) => it.id === promptState.flowId && it.kind === 'bizflow')) promptState.flowId = '';
   root.appendChild(h('h2', { text: '指示文' }));
 
   const list = h('div', { class: 'purpose-list', role: 'group', 'aria-label': '指示文の目的' });
@@ -38,11 +41,12 @@ export function renderPrompts(root, app, opts) {
   }
 
   const right = h('div', { class: 'stack' });
-  const guide = promptState.purpose === 'report-polish' ? '返ってきた文面をそのままメールや Chat に使います。差分ではないので「取込」には貼りません。' : promptState.purpose === 'notebooklm' ? GUIDE.notebooklm : promptState.purpose.startsWith('review-') ? GUIDE.review : GUIDE.default;
+  const isJudge = ['judge-flow', 'table-def', 'judge-master', 'judge-cases'].includes(promptState.purpose);
+  const guide = isJudge ? 'Gemini に要件定義書などを添付した会話で、この文を送ります。返ってきた囲み（flow か markdown）は「判断・データ」の画面の欄に貼ります。差分ではないので「取込」には貼りません。' : promptState.purpose === 'report-polish' ? '返ってきた文面をそのままメールや Chat に使います。差分ではないので「取込」には貼りません。' : promptState.purpose === 'notebooklm' ? GUIDE.notebooklm : promptState.purpose.startsWith('review-') ? GUIDE.review : GUIDE.default;
   right.appendChild(h('p', { class: 'notice', text: guide }));
 
   const preview = h('textarea', { class: 'prompt-preview', id: 'prompt-text', readonly: true, 'aria-label': '生成された指示文', rows: '24' });
-  const refresh = () => { preview.value = buildPrompt(promptState.purpose, ledger, { today: todayStr(), freeText: promptState.freeText, meetingId: promptState.purpose === 'minutes' ? promptState.meetingId : '', changeId: promptState.changeId, reportText: promptState.reportText, targetIds: promptState.targetIds, memoIds: promptState.memoIds }); };
+  const refresh = () => { preview.value = buildPrompt(promptState.purpose, ledger, { today: todayStr(), freeText: promptState.freeText, meetingId: promptState.purpose === 'minutes' ? promptState.meetingId : '', changeId: promptState.changeId, reportText: promptState.reportText, targetIds: promptState.targetIds, memoIds: promptState.memoIds, flowId: promptState.flowId }); };
 
   if (promptState.purpose === 'minutes') {
     const ms = ledger.items.filter((it) => it.kind === 'meeting').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -51,6 +55,15 @@ export function renderPrompts(root, app, opts) {
       ms.map((m) => h('option', { value: m.id, selected: m.id === promptState.meetingId, text: `${m.date}　${m.title}` })));
     sel.addEventListener('change', () => { promptState.meetingId = sel.value; refresh(); });
     right.appendChild(h('label', { class: 'field' }, 'どの会議の議事録か（指定すると、出席者とヒヤリングシートの質問が指示文に入ります）', sel));
+  }
+  if (promptState.purpose === 'bizflow') {
+    const fs = ledger.items.filter((it) => it.kind === 'bizflow');
+    const phases = KINDS.bizflow.fields.phase.values;
+    const sel = h('select', { id: 'prompt-flow', 'aria-label': 'どのフローを直すか' },
+      h('option', { value: '', text: '新しいフローを作らせる' }),
+      fs.map((f) => h('option', { value: f.id, selected: f.id === promptState.flowId, text: `${f.id} ${f.title}（${enumLabel(phases, f.phase)}）` })));
+    sel.addEventListener('change', () => { promptState.flowId = sel.value; refresh(); });
+    right.appendChild(h('label', { class: 'field' }, 'どのフローを直すか（選ぶと、そのフローの記法が全文入ります）', sel));
   }
   if (promptState.purpose === 'change-review') {
     const crs = ledger.items.filter((it) => it.kind === 'change');
@@ -109,7 +122,7 @@ export function renderPrompts(root, app, opts) {
     } }, '指示文をコピー'),
     h('span', { class: 'muted small', text: `${preview.value.length.toLocaleString()} 文字 ／ 台帳 rev ${ledger.revision}` }),
     promptState.purpose === 'notebooklm' ? h('button', { class: 'btn', type: 'button', onclick: () => { promptState.purpose = 'material'; app.refresh(); } }, '「資料からの追加」へ') : null,
-    promptState.purpose !== 'notebooklm' && promptState.purpose !== 'report-polish' ? h('button', { class: 'btn', type: 'button', onclick: () => app.go('import') }, '取込へ') : null));
+    isJudge ? h('button', { class: 'btn', type: 'button', onclick: () => app.go('judge') }, '判断・データへ') : promptState.purpose !== 'notebooklm' && promptState.purpose !== 'report-polish' ? h('button', { class: 'btn', type: 'button', onclick: () => app.go('import') }, '取込へ') : null));
   right.appendChild(preview);
 
   root.appendChild(h('div', { class: 'prompt-layout' }, list, right));

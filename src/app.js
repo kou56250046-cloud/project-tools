@@ -28,6 +28,8 @@ import { renderChanges } from './ui/views/changes.js';
 import { renderMeetingReport } from './ui/views/meeting-report.js';
 import { renderData } from './ui/views/data.js';
 import { renderFunctions } from './ui/views/functions.js';
+import { renderArch } from './ui/views/arch.js';
+import { renderJudge, clearJudgeState } from './ui/views/judge.js';
 import { renderCrud } from './ui/views/crud.js';
 import { renderEstimate } from './ui/views/estimate.js';
 import { renderMaster, clearMasterState } from './ui/views/master.js';
@@ -39,14 +41,18 @@ import { renderConvert, clearConvertState } from './ui/views/convert.js';
 import { renderMemos, clearMemosState } from './ui/views/memos.js';
 import { renderPreprocess, clearPreprocessState } from './ui/views/preprocess.js';
 import { renderMask, clearMaskState } from './ui/views/mask.js';
+import { renderKpiTree } from './ui/views/kpi-tree.js';
+import { renderBizflow, clearBizflowState } from './ui/views/bizflow.js';
+import { renderRisks } from './ui/views/risks.js';
+import { renderOrg } from './ui/views/org.js';
 import { GROUPS, SCREENS, NO_LEDGER_OK, hiddenScreenInPresentation } from './core/screens.js';
 
 // 画面の描画関数（画面の id → 関数）。分類と画面の一覧は core/screens.js が正
 const RENDERERS = {
-  cross: renderCross, memos: renderMemos, overview: renderOverview, graph: renderGraph, list: renderList, decisions: renderDecisions, health: renderHealth,
-  hearing: renderHearing, issues: renderIssues, nfr: renderNfr, scope: renderScope,
-  wbs: renderWbs, gantt: renderGantt, progress: renderProgress, changes: renderChanges, 'meeting-report': renderMeetingReport,
-  data: renderData, functions: renderFunctions, crud: renderCrud, estimate: renderEstimate, master: renderMaster,
+  cross: renderCross, memos: renderMemos, org: renderOrg, overview: renderOverview, graph: renderGraph, list: renderList, decisions: renderDecisions, health: renderHealth,
+  hearing: renderHearing, issues: renderIssues, nfr: renderNfr, scope: renderScope, 'kpi-tree': renderKpiTree, bizflow: renderBizflow,
+  wbs: renderWbs, gantt: renderGantt, progress: renderProgress, changes: renderChanges, risks: renderRisks, 'meeting-report': renderMeetingReport,
+  data: renderData, functions: renderFunctions, arch: renderArch, judge: renderJudge, crud: renderCrud, estimate: renderEstimate, master: renderMaster,
   trace: renderTrace, tests: renderTests,
   prompts: renderPrompts, import: renderImport, convert: renderConvert, preprocess: renderPreprocess, mask: renderMask, settings: renderSettings,
   guide: renderGuide,
@@ -306,13 +312,13 @@ function boot() {
   store.subscribe((reason) => {
     if (reason === 'select') {
       // 選んだ項目を画面の中でも強調する画面は、描き直す
-      if (['graph', 'list', 'data', 'gantt', 'wbs', 'issues', 'scope', 'changes', 'functions', 'tests'].includes(app.view)) app.refresh();
+      if (['graph', 'list', 'data', 'gantt', 'wbs', 'issues', 'scope', 'changes', 'functions', 'tests', 'arch'].includes(app.view)) app.refresh();
       else renderDetail(document.getElementById('detail'), app);
       return;
     }
     if (reason === 'save-error') { renderTopbar(); return; }
-    if (reason === 'lock') { clearConvertState(); clearMemosState(); clearPreprocessState(); clearMaskState(); return; }   // ロックのときだけ、資料の変換の結果を消す（続く vault の通知で描き直す）
-    if (reason === 'vault') clearMasterState();
+    if (reason === 'lock') { clearConvertState(); clearMemosState(); clearPreprocessState(); clearMaskState(); clearBizflowState(); clearJudgeState(); return; }   // ロックのときだけ、資料の変換の結果を消す（続く vault の通知で描き直す）
+    if (reason === 'vault') { clearMasterState(); clearJudgeState(); }   // 案件の切り替えでも判断・データの入力を消す
     if (reason === 'presentation' && hiddenInPresentation(app.view)) { app.go('overview'); return; }
     app.refresh();
   });

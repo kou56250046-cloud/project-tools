@@ -161,8 +161,17 @@ function card(p, plan, rerender, app) {
     msgs.length ? h('ul', { class: 'msgs' }, msgs) : null);
 }
 
-export function renderImport(root, app) {
+// ほかの画面（判断・データ）から差分の文を渡すとき、置き換える前に下書きがあるかを確かめるのに使う
+export function importDraftText() { return draft.text; }
+
+export function renderImport(root, app, opts) {
   const ledger = store.ledger;
+  // ほかの画面から渡された文（app.go('import', { text })）。呼ぶ側が下書きの置き換えを確かめてから渡す
+  if (opts && typeof opts.text === 'string') {
+    clearDraft(false);
+    runExtract(opts.text);
+    app.viewOpts = {};
+  }
   // 台帳が置き換わっていたら下書きを捨てる。同じ台帳が変わっただけなら検証し直す
   if (draft.validated && draft.token !== store.token) clearDraft(true);
   else if (draft.validated && draft.gen !== store.gen) revalidate(false);

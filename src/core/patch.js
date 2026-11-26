@@ -392,7 +392,7 @@ export function removedElements(ledger, op) {
   const target = ledger.items.find((it) => it.id === op.id);
   if (!target || !op.set) return [];
   const out = [];
-  const keyOf = { columns: (e) => e && e.name, fields: (e) => e && e.name, crud: (e) => e && e.entity };
+  const keyOf = { columns: (e) => e && e.name, fields: (e) => e && e.name, crud: (e) => e && e.entity, raci: (e) => e && e.who };
   for (const f of Object.keys(keyOf)) {
     if (!Array.isArray(op.set[f]) || !Array.isArray(target[f])) continue;
     const after = new Set(op.set[f].map(keyOf[f]));

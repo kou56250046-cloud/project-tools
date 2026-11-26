@@ -4,6 +4,8 @@ import { KINDS, LEDGER_KINDS, CONFIDENCE, SOURCE_TYPES, SCHEMA_VERSION, kindLabe
 import { runHealth } from './health.js';
 import { NFR, nfrStatus, NFR_STATES } from './nfr.js';
 import { impactOf } from './impact.js';
+import { flowFormatText } from './flow-format.js';
+import { judgePrompt, JUDGE_PURPOSE_IDS } from './judge-prompts.js';
 
 export const MATERIAL_MARK = '--- ここから資料 ---';
 
@@ -13,13 +15,21 @@ export const PURPOSES = [
   { id: 'memo', group: '作る', label: 'メモからの取込', desc: '選んだメモ（チャット・文字起こし）から、決定・課題・質問を足し、既存の質問の回答や課題の状態を更新する（メモを選ぶ）' },
   { id: 'material', group: '作る', label: '資料からの追加', desc: '資料や NotebookLM の要点整理から、台帳に無い項目を足す' },
   { id: 'hearing-questions', group: '要件定義', label: 'ヒヤリング質問の生成', desc: '未確定・空欄・矛盾から、次のヒヤリングで聞くべき質問を作らせる', kinds: ['stakeholder', 'request', 'constraint', 'requirement', 'decision', 'question', 'meeting'] },
+  { id: 'org', group: '要件定義', label: '体制の整理', desc: '関係者の上長・体制上の役割と、作業・決定・課題の RACI（実行・承認・相談・報告）を整理させる', kinds: ['stakeholder', 'task', 'decision', 'issue'] },
+  { id: 'kpi', group: '要件定義', label: '目的と KPI の整理', desc: '案件の目的・ゴールから KPI（指標・現状値・目標値・測り方）を作り、要望と KPI を関連でつながせる', kinds: ['kpi', 'request', 'requirement'] },
+  { id: 'bizflow', group: '要件定義', label: '業務フローの作成', desc: '資料から現行・導入後の業務フローを記法で書かせる。フローを選ぶと、その記法を直させる', kinds: ['bizflow', 'request', 'requirement', 'stakeholder', 'system'] },
   { id: 'nfr', group: '要件定義', label: '非機能の洗い出し', desc: 'IPA 非機能要求グレードの 6 大項目に沿って、非機能要件の案と確認すべき質問を作らせる', kinds: ['requirement', 'question', 'constraint', 'system'] },
   { id: 'wbs', group: '計画・進捗', label: 'WBS の作成', desc: '要件・決定・制約から作業を洗い出し、要件とつないだ WBS を作らせる', kinds: ['requirement', 'decision', 'constraint', 'task', 'stakeholder'] },
   { id: 'progress', group: '計画・進捗', label: '進捗の更新', desc: '週次の報告文やメモから、作業の進捗・実績・状態の更新を作らせる', kinds: ['task', 'stakeholder'] },
+  { id: 'risks', group: '計画・進捗', label: 'リスクの洗い出し', desc: '課題・制約・決定と資料から、まだ起きていないリスク（見込み・影響・対策）を洗い出させる', kinds: ['risk', 'issue', 'constraint', 'decision', 'stakeholder'] },
   { id: 'change-review', group: '計画・進捗', label: '変更の影響レビュー', desc: '変更要求と影響範囲から、見落としと追加工数の見立てを返させる（変更要求を選ぶ）', kinds: [] },
   { id: 'report-polish', group: '計画・進捗', label: '週報の清書', desc: '定例会資料から作った週報の文面を、Gemini に読みやすく整えさせる（差分は返させない）', plain: true },
   { id: 'data-design', group: '設計', label: 'データ設計', desc: '要件・決定からテーブルと列（主キー・外部キー・型・桁）を作らせる', kinds: ['requirement', 'decision', 'constraint', 'entity', 'system'] },
   { id: 'functions', group: '設計', label: '画面・連携の洗い出し', desc: '要件から画面・連携・バッチと、それぞれがどのテーブルを作成・参照・更新・削除するか（CRUD）を作らせる', kinds: ['requirement', 'entity', 'system', 'screen', 'interface', 'batch'] },
+  { id: 'judge-flow', group: '設計', label: '判断フロー図', desc: '導入後の業務の流れを、判断（分岐 JDG）とデータの登録（TBL）が分かるフロー記法で書かせる。返事は「判断・データ」の画面のフローに貼る', plain: true },
+  { id: 'table-def', group: '設計', label: 'テーブル定義', desc: 'フロー図の TBL ごとに、列・型・選択肢・範囲・根拠を書かせる。返事は「判断・データ」の画面のテーブル定義に貼る', plain: true },
+  { id: 'judge-master', group: '設計', label: '判断マスタ', desc: 'フロー図の JDG ごとに、区分（ルール・AI・人・外部）に合わせた判定表・基準・連絡先を書かせる', plain: true },
+  { id: 'judge-cases', group: '設計', label: '判断のデモのケース', desc: '判断マスタを確かめるダミーの入力（正常・境界・止まるもの）を作らせる', plain: true },
   { id: 'test-viewpoints', group: 'テスト', label: 'テスト観点の生成', desc: '選んだ要件・画面の詳細から、正常・境界値・異常系・権限などの観点でテストを作らせる（対象を選ぶ）', kinds: [] },
   { id: 'review-eng', group: 'レビュー（作る側）', label: 'レビュー: エンジニア', desc: '技術的に実現できるか、非機能・連携・移行・テストの前提に抜けがないかを指摘させる' },
   { id: 'review-pl', group: 'レビュー（作る側）', label: 'レビュー: PL', desc: '設計や作業指示に落とせるだけ要件が細かいか、矛盾や抜け、作業の分け方を指摘させる' },
@@ -69,7 +79,7 @@ export function schemaText() {
   lines.push(`- sources: 出典の配列。各要素は { "type": 種類, "ref": 会議名や資料名, "date": "YYYY-MM-DD", "speaker": 発言した関係者のID, "note": 補足 }。type は ${enumText(SOURCE_TYPES)}`);
   lines.push('- links: 関係する項目の ID の配列（例: 要件 → もとになった要望、課題 → 関係する要件）');
   lines.push('- tags: 文字列の配列（任意）');
-  lines.push('- internal: true にすると社内のみの項目になり、顧客に見せる表示で隠れる（任意。社内向けのメモやリスクに使う）');
+  lines.push('- internal: true にすると社内のみの項目になり、顧客に見せる表示で隠れる（任意。社内向けの課題などに使う。リスク（risk）は指定しなければ社内のみになる）');
   lines.push('');
   lines.push('### 種別（kind）ごとの項目。* は必須');
   for (const k of LEDGER_KINDS) {
@@ -88,11 +98,12 @@ export function schemaText() {
     lines.push(`- ${k}（${d.label}。ID は ${d.prefix}-001 の形）状態: ${enumText(d.statuses)}` + (fields.length ? `。項目: ${fields.join(', ')}` : ''));
   }
   lines.push('');
-  lines.push('### 配列の項目の書き方（テーブル・画面・連携・バッチ）');
+  lines.push('### 配列の項目の書き方（テーブル・画面・連携・バッチ・RACI）');
   lines.push(`- columns（列）: [{ "name": 物理名, "logical": 論理名, "type": ${LOGICAL_TYPES.map((t) => t.v).join(' / ')}, "length": 桁数, "scale": 小数の桁数, "pk": true, "required": true, "fk": { "entity": テーブルの ID か tempId, "column": 参照先の列名 }, "pattern": コードの形の正規表現, "note": 補足 }]`);
   lines.push('- fields（画面・連携の項目）: [{ "name": 項目名, "type": 論理型, "required": true, "source": { "entity": テーブルの ID, "column": 列名 } }]');
   lines.push('- crud: [{ "entity": テーブルの ID か tempId, "ops": "C" "R" "U" "D" の組み合わせ（例 "CRU"） }]');
-  lines.push('- 配列は update で丸ごと置き換わる。テーブルを更新するときは、変えない列も含めて columns を全部返す（fields・crud も同じ）');
+  lines.push('- raci（作業・決定・課題の RACI）: [{ "who": 関係者の ID か tempId, "role": "R"（実行）/ "A"（承認）/ "C"（相談）/ "I"（報告） }]。1 人に 1 つの役。A は 1 人にする');
+  lines.push('- 配列は update で丸ごと置き換わる。テーブルを更新するときは、変えない列も含めて columns を全部返す（fields・crud・raci も同じ）');
   return lines.join('\n');
 }
 
@@ -146,6 +157,11 @@ function projectText(ledger) {
   return lines.join('\n');
 }
 
+// 配列の項目を 1 行の文にする（オブジェクトの配列を [object Object] にしない）
+function arrayText(name, v) {
+  if (name === 'raci') return v.map((e) => `${e.who}:${e.role}`).join(', ');
+  return v.map((e) => (e && typeof e === 'object' ? (e.name || e.entity || JSON.stringify(e)) : String(e))).join(',');
+}
 const oneLine = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 
 // 今の項目一覧。detailed なら本文や主要な項目も含める（レビュー用）。kinds を渡すとその種別だけ載せる
@@ -162,7 +178,8 @@ export function itemsText(ledger, detailed, kinds, ids) {
       for (const name of Object.keys(KINDS[it.kind].fields)) {
         const v = it[name];
         if (v === undefined || v === null || (Array.isArray(v) && !v.length)) continue;
-        extra.push(`${KINDS[it.kind].fields[name].label}: ${Array.isArray(v) ? v.join(',') : oneLine(v)}`);
+        if (name === 'notation') continue;   // 業務フローの記法は長いので、一覧には出さない（目的「業務フローの作成」で選んだものだけ全文を載せる）
+        extra.push(`${KINDS[it.kind].fields[name].label}: ${Array.isArray(v) ? arrayText(name, v) : oneLine(v)}`);
       }
       extra.push(`確度: ${it.confidence}`);
       if (it.links && it.links.length) extra.push(`関連: ${it.links.join(',')}`);
@@ -200,7 +217,9 @@ function meetingText(ledger, meetingId) {
 // ヒヤリング質問の生成に入れる、未確定・空欄の一覧
 function gapsText(ledger, today) {
   const open = ledger.items.filter((it) => it.kind === 'question' && it.status === 'open');
-  const gaps = runHealth(ledger, today).filter((f) => ['no-owner', 'no-source', 'must-guess', 'stale-guess', 'nfr-missing', 'scope-undecided'].includes(f.code));
+  // リスク・KPI の指摘は顧客への質問の材料にしない（社内のもの）
+  const kindOf = new Map(ledger.items.map((it) => [it.id, it.kind]));
+  const gaps = runHealth(ledger, today).filter((f) => ['no-owner', 'no-source', 'must-guess', 'stale-guess', 'nfr-missing', 'scope-undecided'].includes(f.code) && !['risk', 'kpi'].includes(kindOf.get(f.itemId)));
   return [
     '## 未回答の質問（重複して作らない）',
     ...(open.length ? open.map((q) => `- ${q.id} ${oneLine(q.title)}`) : ['- （なし）']),
@@ -235,12 +254,20 @@ function taskText(purpose, opts) {
       return 'あなたは SIer のベテラン PM です。下の変更要求と、台帳から機械的に求めた影響範囲を読み、(1) 影響範囲の見落とし（影響を受けるのに一覧に無い作業・設計・関係者）を課題（issue）か質問（question）の add で、(2) 追加工数の見立てを変更要求の update（extraEstimate に人日、body に根拠）で返してください。指摘の対象の ID は links に入れてください。confidence は "guess" にしてください。\n\n' + (opts.change || '');
     case 'hearing-questions':
       return 'あなたは SIer のベテラン PM です。下の台帳と「空欄・未確定」の一覧を読み、次のヒヤリングで聞くべき質問を作ってください。質問は question の add で返し、askTo に聞く相手の関係者、links に質問の元になった項目の ID を入れてください。1問は1つのことだけを聞く形にし、Yes/No で終わらない聞き方にしてください。未回答の質問と同じことは作らないでください。重要なものから最大 15 問にしてください。\n\n' + (opts.gaps || '');
+    case 'org':
+      return 'あなたは SIer の PM です。台帳の関係者と資料から、体制を整理してください。関係者の update で reportsTo（上長の関係者の ID）と teamRole（owner 責任者・pm・pl・member 担当・approver 承認者・window 窓口・other）を入れてください。作業・決定・課題の update で raci（[{"who": 関係者の ID, "role": "R" | "A" | "C" | "I"}]）を入れてください。R は実行する人、A は承認する人（1 人だけ）、C は相談する人、I は報告を受ける人です。raci は丸ごと置き換わるので、一覧に今の RACI があれば、変えない人も含めて全部返してください。根拠の無い役は付けないでください。';
+    case 'kpi':
+      return 'あなたは SIer の PM です。案件情報の目的とゴール、台帳の要望・要件を読み、ゴールごとに達成を測る KPI（kind "kpi"）を返してください。KPI には metric（指標）・baseline（現状値。分からなければ空）・target（目標値）・unit（単位）・measure（測り方）・goal（対応するゴール。案件情報のゴールの文をそのまま書く）を入れ、細かい KPI は parent で親の KPI につないでください。資料に根拠が無い値は confidence を "guess" にしてください。一覧の要望がどの KPI に効くかを、要望の update の addLinks で KPI の ID（新しく足す KPI は仮 ID）につないでください。どの KPI にもつながらない要望は、そのままにしてください。';
+    case 'risks':
+      return 'あなたは SIer の経験豊富な PM です。台帳の課題・制約・決定・関係者と資料を読み、この案件のリスク（kind "risk"。まだ起きていないが起きると困ること）を返してください。リスクには prob（起きる見込み 1〜5 の整数）・impact（影響 1〜5 の整数）・strategy（avoid 回避・mitigate 軽減・transfer 移転・accept 受容）・response（対策）・trigger（起きそうな兆し）を入れ、担当が分かれば owner に関係者の ID を入れてください。既に起きていることはリスクではなく課題（issue）にしてください。リスクは社内のみ（internal）が既定です。顧客と共有してよいものだけ internal を false にしてください。';
     case 'nfr':
       return 'あなたは非機能要件に詳しい SIer のアーキテクトです。IPA 非機能要求グレードの 6 大項目ごとに、下の確認点を参考に、この案件で決めるべき非機能要件の案（requirement。category は "nonfunctional"、nfrCategory に大項目の ID、confidence は "guess"）と、顧客に確認すべき質問（question。nfrCategory に大項目の ID）を返してください。すでに定義のある大項目は、抜けている確認点だけを足してください。数値で決める要件（応答時間・停止許容時間など）は、数値の案を書き、確認する質問も添えてください。\n\n## 6 大項目と確認点\n' + (opts.nfr || '');
     case 'initial':
       return 'あなたは SIer のベテラン PM です。下の資料（提案依頼書・メモなど）を読み、案件台帳の最初の項目を洗い出してください。関係者（顧客・自社・協力会社）、システム、要望、制約、決まっていること（決定）、課題、確認すべきこと（質問）を、資料に根拠があるものから足してください。関係者とシステムの関係（relate）も足してください。案件名・目的・期間が分かれば project で設定してください。';
     case 'minutes':
       return 'あなたは SIer の PM の補佐役です。下の議事録・文字起こしを読み、次を差分にしてください: (1) 新たに決まったこと（decision。理由・検討した他の案・決めた人を入れる。以前の決定を覆したときは supersedes に古い決定の ID） (2) 新たな課題（issue。担当と期限が分かれば入れる） (3) 新たな確認事項（question） (4) 新たな要望・制約 (5) 一覧にある質問に回答が出たら update で status を answered にし answer に回答を書く (6) 一覧にある課題が片付いたら update で status を closed にする。発言者は出典の speaker に入れてください。';
+    case 'bizflow':
+      return 'あなたは業務分析に詳しい SIer の SE です。下の資料と台帳を読み、業務フローを下の「フロー記法」で書き、業務フロー（kind "bizflow"）の差分で返してください。phase は現行の業務なら "asis"、システム導入後の業務なら "tobe" にし、notation に記法を文字列で入れます（改行は \\n）。title は「受注処理（現行）」のように、業務の名前と現行・導入後が分かるものにしてください。現行と導入後の両方を作るときは、互いの links に相手の ID（新しく足すものは仮 ID）を入れ、導入後のフローには、それを実現する要件の ID を links に入れてください。資料に根拠の無い手順は書かず、分からない分岐は質問（question）として足してください。status は "draft" にしてください。\n\n' + (opts.flow || '（フローを選んでいません。新しいフローを add で作ってください）') + '\n\n' + flowFormatText();
     case 'memo':
       return 'あなたは SIer の PM の補佐役です。下の「メモ」（チャットのやりとりや会議の文字起こし。1 行が「日時 発言者｜本文」）を読み、次を差分にしてください: (1) 新たに決まったこと（decision。理由・決めた人を入れる。以前の決定を覆したときは supersedes に古い決定の ID） (2) 新たな課題（issue。担当と期限が分かれば入れる） (3) 新たな確認事項（question） (4) 新たな要望・制約 (5) 一覧にある質問に回答が出たら update で status を answered にし answer に回答を書く (6) 一覧にある課題が片付いたら update で status を closed にする。出典（sources）は type を "chat"、ref をメモの題名、date を発言の日にし、発言者は speaker に入れてください。メモの ID（MM-）は links に入れないでください。';
     case 'material':
@@ -270,6 +297,8 @@ function notebookPrompt(ledger) {
     '## 制約',
     '## 決定',
     '## 課題',
+    '## リスク',
+    '## KPI（目標の指標）',
     '## 未確定の点',
     '',
     '各行の形: `- 内容 ／ 発言者: 名前（所属） ／ 日付: YYYY-MM-DD ／ 出典: 資料名`',
@@ -370,17 +399,28 @@ export function memoMaterial(ledger, memoIds) {
   return { text, total, over: total > MEMO_PROMPT_MAX, count: memos.length };
 }
 
+// 目的「業務フローの作成」で選んだフロー（記法の全文）。選んでいなければ空
+export function bizflowTargetText(ledger, flowId) {
+  const f = flowId ? ledger.items.find((it) => it.id === flowId && it.kind === 'bizflow') : null;
+  if (!f) return '';
+  return [`## 直すフロー: ${f.id} ${f.title}（${enumLabel(KINDS.bizflow.fields.phase.values, f.phase)}）`,
+    `このフローを直すときは、${f.id} の update で notation を全文書き直して返してください（一部だけを返さない）。`,
+    '今の記法:', '```flow', String(f.notation || ''), '```'].join('\n');
+}
+
 export function buildPrompt(purpose, ledger, opts = {}) {
   const today = opts.today || new Date().toISOString().slice(0, 10);
   const memo = purpose === 'memo' ? memoMaterial(ledger, opts.memoIds) : null;
   if (purpose === 'notebooklm') return notebookPrompt(ledger);
   if (purpose === 'report-polish') return reportPolishPrompt(ledger, opts.reportText || '');
+  if (JUDGE_PURPOSE_IDS.includes(purpose)) return judgePrompt(purpose, ledger);
   if (!PURPOSES.some((p) => p.id === purpose)) throw new Error('不明な目的: ' + purpose);
-  const detailed = purpose.startsWith('review-');
+  const detailed = purpose.startsWith('review-') || purpose === 'org';   // 体制の整理では今の RACI を見せる（丸ごと置き換わるため）
   const def = PURPOSES.find((p) => p.id === purpose);
   const extra = { ...opts };
   if (purpose === 'hearing-questions') extra.gaps = gapsText(ledger, today);
   if (purpose === 'nfr') extra.nfr = nfrText(ledger);
+  if (purpose === 'bizflow') extra.flow = bizflowTargetText(ledger, opts.flowId);
   let ids = null;
   if (purpose === 'test-viewpoints') {
     const targetIds = Array.isArray(opts.targetIds) ? opts.targetIds : [];

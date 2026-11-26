@@ -34,6 +34,14 @@ const PAIRS = [
   ['--head-text', '--accent-strong'], ['#fff', '--accent-strong'], ['--accent', '#fff'], ['--accent', '--accent-soft'],
   // バッジ
   ['--high', '--high-soft'], ['--mid', '--mid-soft'], ['--ok', '--ok-soft'], ['--low', '--low-soft'], ['--accent', '--accent-soft'],
+  // リスクのヒートマップ（P7a）
+  ['--ink', '--heat-1'], ['--ink', '--heat-2'], ['--ink', '--heat-3'], ['--ink', '--heat-4'],
+  // 業務フロー・判断の図（P7c）: 区分名は白地とレーンの帯、分岐のラベルは白地、箱の文字は箱の面、印の記号は白
+  ['--role-ai', '#fff'], ['--role-rule', '#fff'], ['--role-human', '#fff'], ['--role-ext', '#fff'],
+  ['--role-ai', '--lane-a'], ['--role-rule', '--lane-a'], ['--role-human', '--lane-a'], ['--role-ext', '--lane-a'],
+  ['--fl-branch-yes', '#fff'], ['--fl-branch-no', '#fff'], ['--fl-branch-yes', '--lane-a'], ['--fl-branch-no', '--lane-a'],
+  ['--ink', '--lane-a'], ['--ink', '--lane-b'], ['--ink', '--lane-head'], ['--ink', '--mid-soft'], ['--ink-2', '--lane-a'],
+  ['#fff', '--ok'], ['#fff', '--mid'], ['#fff', '--high'], ['--mid', '--lane-a'],
   // dashboard スキルの部品（dash.css・dash.js）が文字に使う組み合わせ
   ['--d-text', '--d-card'], ['--d-label', '--d-card'], ['--d-label', '--d-bg'], ['--d-s1', '--d-card'], ['--d-neg-text', '--d-card'], ['--d-s1', '--d-hl'],
 ];

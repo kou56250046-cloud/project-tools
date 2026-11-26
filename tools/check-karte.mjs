@@ -29,6 +29,9 @@ function edge() {
   set('QA-002', { status: 'closed', answer: 'クローズ時の回答' });
   set('QA-003', { status: 'closed', answer: '' });
   for (const it of l.items) if (it.kind === 'requirement') delete it.confidence;
+  // P7a のリスク（社内のみと共有・発生）
+  l.items.push({ id: 'RK-001', kind: 'risk', title: '稼働が遅れる', status: 'open', prob: 5, impact: 4, internal: true, sources: [], links: [] });
+  l.items.push({ id: 'RK-002', kind: 'risk', title: '担当の退職', status: 'occurred', prob: 2, impact: 3, response: '引き継ぎ', internal: false, sources: [], links: [] });
   return l;
 }
 

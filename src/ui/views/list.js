@@ -1,6 +1,6 @@
 // 一覧画面: 全種別の項目を絞り込み・並べ替えして表で出す
 
-import { KINDS, KIND_IDS, LEDGER_KINDS, CONFIDENCE, kindLabel, statusLabel, isOpen, afterBaselineIds } from '../../core/schema.js';
+import { KINDS, KIND_IDS, LEDGER_KINDS, CONFIDENCE, kindLabel, statusLabel, isOpen, afterBaselineIds, riskScore } from '../../core/schema.js';
 import { h } from '../dom.js';
 import { store } from '../store.js';
 import { confBadge, statusBadge, itemTitle } from '../detail.js';
@@ -21,6 +21,7 @@ function personOf(it) {
 function dateOf(it) { return it.due || it.decidedAt || null; }
 
 function rankOf(it) {
+  if (it.kind === 'risk') return `点数 ${riskScore(it)}`;
   if (it.priority) return it.priority;
   if (it.severity) return '重要度 ' + SEVERITY_LABEL[it.severity];
   return null;

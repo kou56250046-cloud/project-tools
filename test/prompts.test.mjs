@@ -8,8 +8,8 @@ import { createLedger, STARTERS } from '../src/core/starter.js';
 const ledger = JSON.parse(readFileSync(new URL('../samples/sample-ledger.json', import.meta.url), 'utf8'));
 const opts = { today: '2026-11-25', freeText: '課題の重要度を見直して' };
 
-test('目的は20種（P6c でメモからの取込を足した）', () => {
-  assert.equal(PURPOSES.length, 20);
+test('目的は28種（P6c メモ・P7a KPI とリスク・P7b 体制・P7c 業務フローと判断・データ 4 つ）', () => {
+  assert.equal(PURPOSES.length, 28);
 });
 
 for (const p of PURPOSES.filter((x) => x.id !== 'notebooklm' && !x.kinds && !x.plain)) {

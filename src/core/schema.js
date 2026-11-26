@@ -51,6 +51,10 @@ const PRIORITY = [
 ];
 
 // フィールドの型: string（1行）/ text（複数行）/ date（YYYY-MM-DD）/ enum / ref（単一 ID）/ refs（ID 配列）/ strings（文字列配列）
+// 体制上の役割（P7b）と RACI の役
+export const TEAM_ROLES = [{ v: 'owner', label: '責任者' }, { v: 'pm', label: 'PM' }, { v: 'pl', label: 'PL' }, { v: 'member', label: '担当' }, { v: 'approver', label: '承認者' }, { v: 'window', label: '窓口' }, { v: 'other', label: 'その他' }];
+export const RACI_ROLES = [{ v: 'R', label: '実行' }, { v: 'A', label: '承認' }, { v: 'C', label: '相談' }, { v: 'I', label: '報告' }];
+
 const KINDS_RAW = {
   stakeholder: {
     prefix: 'SH', label: '関係者',
@@ -60,6 +64,8 @@ const KINDS_RAW = {
         { v: 'customer', label: '顧客' }, { v: 'own', label: '自社' }, { v: 'vendor', label: '協力会社' }] },
       org: { type: 'string', label: '所属' },
       role: { type: 'string', label: '役割' },
+      reportsTo: { type: 'ref', label: '上長（報告先）', kinds: ['stakeholder'] },
+      teamRole: { type: 'enum', label: '体制上の役割', values: TEAM_ROLES },
     },
   },
   system: {
@@ -109,6 +115,7 @@ const KINDS_RAW = {
       reason: { type: 'text', label: '理由' },
       alternatives: { type: 'strings', label: '検討した他の案' },
       supersedes: { type: 'ref', label: '置き換える決定', kinds: ['decision'] },
+      raci: { type: 'raci', label: 'RACI' },
     },
   },
   issue: {
@@ -117,6 +124,7 @@ const KINDS_RAW = {
     fields: {
       owner: { type: 'ref', label: '担当', kinds: ['stakeholder'] },
       due: { type: 'date', label: '期限' },
+      raci: { type: 'raci', label: 'RACI' },
       severity: { type: 'enum', label: '重要度', values: [
         { v: 'high', label: '高' }, { v: 'mid', label: '中' }, { v: 'low', label: '低' }] },
     },
@@ -157,6 +165,7 @@ const KINDS_RAW = {
       progress: { type: 'number', label: '進捗（%）', min: 0, max: 100, integer: true },
       dependsOn: { type: 'refs', label: '前の作業', kinds: ['task'] },
       milestone: { type: 'boolean', label: 'マイルストーン' },
+      raci: { type: 'raci', label: 'RACI' },
     },
   },
   change: {
@@ -218,6 +227,44 @@ const KINDS_RAW = {
       executedAt: { type: 'date', label: '実施日' },
     },
   },
+  // KPI（P7a）: 目的 → ゴール → KPI → 施策（要望）→ 要件。ゴールは案件情報の goals の文で指す
+  kpi: {
+    prefix: 'KP', label: 'KPI',
+    statuses: [{ v: 'active', label: '追跡中' }, { v: 'achieved', label: '達成' }, { v: 'dropped', label: '取り下げ' }],
+    fields: {
+      metric: { type: 'string', required: true, label: '指標' },
+      baseline: { type: 'string', label: '現状値' },
+      target: { type: 'string', label: '目標値' },
+      unit: { type: 'string', label: '単位' },
+      measure: { type: 'text', label: '測り方' },
+      due: { type: 'date', label: '期限' },
+      goal: { type: 'string', label: '対応するゴール（案件情報のゴールの文）' },
+      parent: { type: 'ref', label: '親の KPI', kinds: ['kpi'] },
+    },
+  },
+  // リスク（P7a）: 起きる前のもの。起きたら「課題へ移す」。既定で社内のみ（withDefaults）
+  risk: {
+    prefix: 'RK', label: 'リスク',
+    statuses: [{ v: 'open', label: '監視中' }, { v: 'mitigating', label: '対策中' }, { v: 'occurred', label: '発生' }, { v: 'closed', label: '解消' }],
+    fields: {
+      prob: { type: 'number', required: true, label: '起きる見込み（1〜5）', min: 1, max: 5, integer: true },
+      impact: { type: 'number', required: true, label: '影響（1〜5）', min: 1, max: 5, integer: true },
+      strategy: { type: 'enum', label: '対応の方針', values: [{ v: 'avoid', label: '回避' }, { v: 'mitigate', label: '軽減' }, { v: 'transfer', label: '移転' }, { v: 'accept', label: '受容' }] },
+      response: { type: 'text', label: '対策' },
+      trigger: { type: 'text', label: 'きっかけ（起きそうな兆し）' },
+      owner: { type: 'ref', label: '担当', kinds: ['stakeholder'] },
+      due: { type: 'date', label: '対策の期限' },
+    },
+  },
+  // 業務フロー（P7c）: 現行・導入後の流れを記法（core/flow.js）で持つ。図は実行時に描く
+  bizflow: {
+    prefix: 'BF', label: '業務フロー',
+    statuses: [{ v: 'draft', label: '案' }, { v: 'fixed', label: '確定' }],
+    fields: {
+      phase: { type: 'enum', required: true, label: '現行・導入後', values: [{ v: 'asis', label: '現行' }, { v: 'tobe', label: '導入後' }] },
+      notation: { type: 'text', required: true, label: 'フロー記法' },
+    },
+  },
   // メモ（P6c）: チャット・会議の文字起こしなどの保管。社内のものとして扱い、台帳の項目としては出さない（LEDGER_KINDS に入れない）
   memo: {
     prefix: 'MM', label: 'メモ',
@@ -239,15 +286,20 @@ export const LEDGER_KINDS = KIND_IDS.filter((k) => k !== 'memo');
 // メモの本文の上限（JS の文字列の長さ）と、案件ごとのメモの本文の合計の目安
 export const MEMO_BODY_MAX = 50000;
 export const MEMO_TOTAL_WARN = 300000;
+// 業務フローの記法の上限（1 つの図は 20 ノードまでの約束なので、十分に余る）
+export const BIZFLOW_NOTATION_MAX = 20000;
 export const RELATION_PREFIX = 'RL';
 export const RELATION_NODE_KINDS = ['stakeholder', 'system'];
 
 // 未完了とみなす状態
-export const OPEN_STATUSES = dict({ issue: ['open', 'in_progress'], question: ['open'], task: ['todo', 'doing'], change: ['proposed'] });
+export const OPEN_STATUSES = dict({ issue: ['open', 'in_progress'], question: ['open'], task: ['todo', 'doing'], change: ['proposed'], kpi: ['active'], risk: ['open', 'mitigating'] });
+// リスクの見込み・影響の言葉（表示だけに使う。値は 1〜5 の整数）
+export const RISK_SCALE = ['', 'とても低い', '低い', '中くらい', '高い', 'とても高い'];
+export const riskScore = (r) => (Number(r.prob) || 0) * (Number(r.impact) || 0);
 
 // 担当と期限のフィールドは種別ごとに名前が違う（健康診断・ボールはこの表を使う）
-export const OWNER_FIELD = dict({ issue: 'owner', question: 'askTo', task: 'assignee' });
-export const DUE_FIELD = dict({ issue: 'due', question: 'due', task: 'end' });
+export const OWNER_FIELD = dict({ issue: 'owner', question: 'askTo', task: 'assignee', risk: 'owner' });
+export const DUE_FIELD = dict({ issue: 'due', question: 'due', task: 'end', risk: 'due' });
 
 // 共通フィールド（項目の種別によらない）
 export const COMMON_FIELDS = dict({
@@ -266,13 +318,13 @@ export const COMMON_FIELDS = dict({
 export const REF_FIELDS = [
   { field: 'links', shape: 'many', kinds: ALL_KINDS, on: ALL_KINDS },
   { field: 'speaker', shape: 'source', kinds: ['stakeholder'], on: ALL_KINDS },
-  { field: 'owner', shape: 'one', kinds: ['stakeholder'], on: ['system', 'request', 'issue'] },
+  { field: 'owner', shape: 'one', kinds: ['stakeholder'], on: ['system', 'request', 'issue', 'risk'] },
   { field: 'askTo', shape: 'one', kinds: ['stakeholder'], on: ['question'] },
   { field: 'decidedBy', shape: 'many', kinds: ['stakeholder'], on: ['decision'] },
   { field: 'supersedes', shape: 'one', kinds: ['decision'], on: ['decision'] },
   { field: 'meeting', shape: 'one', kinds: ['meeting'], on: ['question'] },
   { field: 'attendees', shape: 'many', kinds: ['stakeholder'], on: ['meeting'] },
-  { field: 'parent', shape: 'one', kinds: ['task'], on: ['task'] },
+  { field: 'parent', shape: 'one', kinds: ['task', 'kpi'], on: ['task', 'kpi'] },   // kpi の parent が kpi だけを指すことは KINDS.kpi.fields.parent.kinds で守る
   { field: 'assignee', shape: 'one', kinds: ['stakeholder'], on: ['task'] },
   { field: 'dependsOn', shape: 'many', kinds: ['task'], on: ['task'] },
   { field: 'requestedBy', shape: 'one', kinds: ['stakeholder'], on: ['change'] },
@@ -281,6 +333,8 @@ export const REF_FIELDS = [
   { field: 'columns', shape: 'nested', path: ['fk', 'entity'], kinds: ['entity'], on: ['entity'] },
   { field: 'fields', shape: 'nested', path: ['source', 'entity'], kinds: ['entity'], on: ['screen', 'interface'] },
   { field: 'crud', shape: 'nested', path: ['entity'], kinds: ['entity'], on: ['screen', 'interface', 'batch'], dropElement: true },
+  { field: 'raci', shape: 'nested', path: ['who'], kinds: ['stakeholder'], on: ['task', 'decision', 'issue'], dropElement: true },
+  { field: 'reportsTo', shape: 'one', kinds: ['stakeholder'], on: ['stakeholder'] },
 ];
 
 // 台帳ごとの設定（store.updateSettings で変える。Gemini には変えさせない）
@@ -429,6 +483,7 @@ function checkField(kind, name, spec, value, ctx, out) {
     case 'columns':
     case 'fields':
     case 'crud':
+    case 'raci':
       checkNested(spec.type, value, where, ctx, out);
       break;
     case 'strings':
@@ -467,6 +522,7 @@ const NESTED_KEYS = {
   columns: ['name', 'logical', 'type', 'length', 'scale', 'pk', 'required', 'fk', 'pattern', 'note'],
   fields: ['name', 'type', 'required', 'source'],
   crud: ['entity', 'ops'],
+  raci: ['who', 'role'],
 };
 function checkNested(type, value, where, ctx, out) {
   if (!Array.isArray(value)) { out.push(`${where}: 配列で指定してください`); return; }
@@ -475,6 +531,12 @@ function checkNested(type, value, where, ctx, out) {
     const w = `${where}[${i}]`;
     if (!isObjLike(el)) { out.push(`${w}: オブジェクトで指定してください`); return; }
     for (const k of Object.keys(el)) if (!NESTED_KEYS[type].includes(k)) ctx.warnings.push(`${w}: 不明な項目「${k}」は無視します`);
+    if (type === 'raci') {
+      checkRef(el.who, { kinds: ['stakeholder'] }, `${w}.who`, ctx.resolve, out, ctx.allowDangling);
+      if (!RACI_ROLES.some((r) => r.v === el.role)) out.push(`${w}.role: R（実行）・A（承認）・C（相談）・I（報告）のどれかで指定してください。「${String(el.role)}」`);
+      if (value.slice(0, i).some((x) => isObjLike(x) && x.who === el.who)) out.push(`${w}.who: 同じ人（${String(el.who)}）が 2 回あります。1 人に 1 つの役にしてください`);
+      return;
+    }
     if (type === 'crud') {
       checkRef(el.entity, entitySpec, `${w}.entity`, ctx.resolve, out, ctx.allowDangling);
       if (typeof el.ops !== 'string' || !/^[CRUD]+$/.test(el.ops) || new Set(el.ops).size !== el.ops.length) out.push(`${w}.ops: C・R・U・D の組み合わせで、同じ文字を重ねずに指定してください（例: "CRU"）。「${String(el.ops)}」`);
@@ -544,6 +606,9 @@ export function validateFields(kind, obj, opts) {
   if (kind === 'memo' && typeof obj.body === 'string' && obj.body.length > MEMO_BODY_MAX) {
     errors.push(`メモの本文は ${MEMO_BODY_MAX.toLocaleString()} 字までです（${obj.body.length.toLocaleString()} 字）。期間を分けてください`);
   }
+  if (kind === 'bizflow' && typeof obj.notation === 'string' && obj.notation.length > BIZFLOW_NOTATION_MAX) {
+    errors.push(`業務フローの記法は ${BIZFLOW_NOTATION_MAX.toLocaleString()} 字までです（${obj.notation.length.toLocaleString()} 字）。図を分けてください`);
+  }
   return { errors, warnings, unknown };
 }
 
@@ -554,6 +619,7 @@ export function withDefaults(kind, obj) {
   if (out.confidence === undefined) out.confidence = 'guess';
   if (out.sources === undefined) out.sources = [];
   if (out.links === undefined) out.links = [];
+  if (kind === 'risk' && out.internal === undefined) out.internal = true;   // リスクは既定で社内のみ（外せる）
   return out;
 }
 
@@ -791,6 +857,20 @@ INTEGRITY_RULES.push((ledger, errors, warnings) => {
       }
     }
     if (cols.length && !cols.some((c) => c && c.pk)) warnings.push({ itemId: e.id, message: `テーブル「${e.title}」に主キーがありません` });
+  }
+});
+
+INTEGRITY_RULES.push((ledger, errors) => {
+  const people = new Map(ledger.items.filter((it) => it.kind === 'stakeholder').map((it) => [it.id, it]));
+  for (const id of findCycleNodes(people, (x) => (people.get(x).reportsTo ? [people.get(x).reportsTo] : []))) {
+    errors.push({ itemId: id, message: '上長をたどると自分に戻ります（上下関係が循環しています）' });
+  }
+});
+
+INTEGRITY_RULES.push((ledger, errors) => {
+  const kpis = new Map(ledger.items.filter((it) => it.kind === 'kpi').map((it) => [it.id, it]));
+  for (const id of findCycleNodes(kpis, (x) => (kpis.get(x).parent ? [kpis.get(x).parent] : []))) {
+    errors.push({ itemId: id, message: '親の KPI をたどると自分に戻ります（親子が循環しています）' });
   }
 });
 

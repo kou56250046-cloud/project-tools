@@ -1,8 +1,10 @@
 // 詳細パネルと、値の表示に使う共通の部品
 
-import { KINDS, CONFIDENCE, SOURCE_TYPES, SCOPE, kindLabel, statusLabel, enumLabel, fieldSpec, buildBackrefs, refFieldLabel, TEMP_ID_RE } from '../core/schema.js';
+import { KINDS, CONFIDENCE, SOURCE_TYPES, SCOPE, TEAM_ROLES, RACI_ROLES, kindLabel, statusLabel, enumLabel, fieldSpec, buildBackrefs, refFieldLabel, TEMP_ID_RE } from '../core/schema.js';
 import { h, clear, toast, fmtDateTime, copyText } from './dom.js';
 import { impactOf, changeRequestText } from '../core/impact.js';
+import { canMoveToIssue, riskToIssueOps } from '../core/risk.js';
+import { effectiveRaci } from '../core/raci.js';
 import { store } from './store.js';
 
 export function itemTitle(id, ledger) {
@@ -28,8 +30,8 @@ export function confBadge(conf) {
 }
 
 export function statusBadge(kind, status) {
-  const done = ['closed', 'answered', 'resolved', 'agreed', 'accepted', 'valid'].includes(status);
-  const off = ['rejected', 'dropped', 'superseded', 'inactive', 'retired', 'deferred'].includes(status);
+  const done = ['closed', 'answered', 'resolved', 'agreed', 'accepted', 'valid', 'achieved'].includes(status);
+  const off = ['rejected', 'dropped', 'superseded', 'inactive', 'retired', 'deferred', 'occurred'].includes(status);
   return h('span', { class: ['badge', done ? 'ok' : off ? '' : 'accent'], text: statusLabel(kind, status) });
 }
 
@@ -67,6 +69,8 @@ export function fieldValue(kind, name, value, app) {
     case 'boolean': return h('span', { text: value ? 'はい' : 'いいえ' });
     case 'crud':
       return h('div', { class: 'small' }, (Array.isArray(value) ? value : []).map((c) => h('div', null, idButton(c.entity, app, { withTitle: true }), ` … ${c.ops}`)));
+    case 'raci':
+      return h('div', { class: 'small' }, (Array.isArray(value) ? value : []).map((e) => h('div', null, `${e.role}（${enumLabel(RACI_ROLES, e.role)}） `, idButton(e.who, app, { withTitle: true }))));
     case 'columns':
     case 'fields':
       return h('div', { class: 'small nested-lines' }, (Array.isArray(value) ? value : []).map((el) => h('div', { text: nestedLine(spec.type, el) })));
@@ -102,6 +106,7 @@ export function valueText(kind, name, value, ledger) {
     case 'sources': return Array.isArray(value) && value.length ? value.map((sx) => sourceText(sx, ledger)).join('\n') : '（なし）';
     case 'boolean': return value ? 'はい' : 'いいえ';
     case 'crud': return Array.isArray(value) && value.length ? value.map((c) => `${ref(c.entity)} … ${c.ops}`).join('\n') : '（なし）';
+    case 'raci': return Array.isArray(value) && value.length ? value.map((e) => `${e.role}（${enumLabel(RACI_ROLES, e.role)}） ${ref(e.who)}`).join('\n') : '（なし）';
     case 'columns':
     case 'fields': return Array.isArray(value) && value.length ? value.map((el) => nestedLine(spec.type, el)).join('\n') : '（なし）';
     default: return String(value);
@@ -149,6 +154,25 @@ export function renderDetail(root, app) {
         toast(r.ok ? (e.target.checked ? '社内のみにしました（説明用の表示で隠れます）' : '社内のみを外しました') : r.errors.join(' / '));
       } }), '社内のみ')));
 
+  // 上長・体制上の役割（関係者のみ。P7b）。説明用の表示では出さない
+  if (it.kind === 'stakeholder' && !pres) {
+    const people = store.ledger.items.filter((x) => x.kind === 'stakeholder' && x.id !== it.id);
+    const boss = h('select', { id: 'detail-reports-to', 'aria-label': '上長' }, h('option', { value: '', text: '（なし）' }), people.map((p) => h('option', { value: p.id, selected: p.id === it.reportsTo, text: `${p.title}（${p.id}）` })));
+    const role = h('select', { id: 'detail-team-role', 'aria-label': '体制上の役割' }, h('option', { value: '', text: '（なし）' }), TEAM_ROLES.map((r) => h('option', { value: r.v, selected: r.v === it.teamRole, text: r.label })));
+    const save = (set, msg) => { const r = store.applyLocal([{ op: 'update', id: it.id, set }]); toast(r.ok ? msg : r.errors.join(' / ')); };
+    boss.addEventListener('change', () => save({ reportsTo: boss.value || null }, '上長を変えました（取り消し可）'));
+    role.addEventListener('change', () => save({ teamRole: role.value || null }, '体制上の役割を変えました（取り消し可）'));
+    const subs = store.ledger.items.filter((x) => x.kind === 'stakeholder' && x.reportsTo === it.id);
+    root.appendChild(h('div', { class: 'stack' },
+      h('div', { class: 'row small' }, h('label', { class: 'row' }, '上長', boss), h('label', { class: 'row' }, '体制上の役割', role)),
+      subs.length ? h('p', { class: 'small' }, '部下: ', subs.map((x, i) => [i ? '、' : null, idButton(x.id, app, { withTitle: true })])) : null));
+  }
+  // RACI（作業・決定・課題）: 補った役も薄く見せる
+  if (['task', 'decision', 'issue'].includes(it.kind)) {
+    const eff = effectiveRaci(it);
+    if (eff.length) root.appendChild(section('RACI', h('div', { class: 'small' }, eff.map((e) => h('div', { class: e.derived ? 'muted' : null }, `${e.role}（${enumLabel(RACI_ROLES, e.role)}）${e.derived ? '［担当・決めた人から補い］' : ''} `, idButton(e.who, app, { withTitle: true }))))));
+  }
+
   // 範囲の変更（要望・要件のみ。P2 AC-21）
   if (it.kind === 'request' || it.kind === 'requirement') {
     const scopeSel = h('select', { id: 'detail-scope', 'aria-label': '範囲' }, SCOPE.map((sc) => h('option', { value: sc.v, selected: sc.v === (it.scope || 'tbd'), text: sc.label })));
@@ -169,6 +193,7 @@ export function renderDetail(root, app) {
     if (it[name] === undefined) continue;
     // 説明用の表示では、課題の重要度と作業の実績を出さない
     if (pres && (name === 'severity' || name === 'actual')) continue;
+    if (name === 'raci') continue;   // RACI は上の「RACI」の節で補いも含めて出す
     kv.appendChild(h('dt', { text: spec.fields[name].label }));
     kv.appendChild(h('dd', null, fieldValue(it.kind, name, it[name], app)));
   }
@@ -181,6 +206,13 @@ export function renderDetail(root, app) {
   if (it.body) root.appendChild(section('内容', h('p', { class: 'body-text', text: it.body })));
 
   // 変更要求: 影響範囲と下書き（P3）
+  // リスク: 起きたら課題へ移す（監視中・対策中だけ。説明用の表示では出さない）
+  if (it.kind === 'risk' && !pres && canMoveToIssue(it)) {
+    root.appendChild(h('div', { class: 'row detail-actions' }, h('button', { class: 'btn', type: 'button', id: 'risk-to-issue', onclick: () => {
+      const r = store.applyLocal(riskToIssueOps(it));
+      toast(r.ok ? '課題を足し、リスクを「発生」にしました（取り消し可）' : r.errors.join(' / '));
+    } }, '課題へ移す')));
+  }
   if (it.kind === 'change') {
     const imp = impactOf(ledger, [it.id]);
     const groups = Object.entries(imp.byKind).filter(([, v]) => v.length);

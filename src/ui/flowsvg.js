@@ -1,0 +1,118 @@
+// 業務フロー・判断の図を SVG の DOM として組む（gemini-kit flow.js の toSVG を、文字列ではなく s() で写したもの）
+// 配置は core/flow.js の FLOWCHART.layout。色はすべて styles.css の変数（.fl-* のクラス）で決め、ここでは色を持たない
+// overlay（判断・データの画面）: { marks: {ID: 'ok'|'open'|'none'}, visited: [ID], taken: ['A>B'], current: ID, focus: ID（選んでいる箱）, titles: {ID: 文字}, onSelect(id) }
+
+import { FLOWCHART } from '../core/flow.js';
+import { s } from './dom.js';
+
+
+function flShape(n, attrs) {
+  const { x, y, w, h } = n;
+  switch (n.type) {
+    case 'start':
+    case 'end': return s('rect', { x, y, width: w, height: h, rx: h / 2, ...attrs });
+    case 'decision': return s('polygon', { points: `${n.cx},${y} ${x + w},${n.cy} ${n.cx},${y + h} ${x},${n.cy}`, ...attrs });
+    case 'data': { const k = 12; return s('polygon', { points: `${x + k},${y} ${x + w},${y} ${x + w - k},${y + h} ${x},${y + h}`, ...attrs }); }
+    case 'doc': { const b = y + h - 8; return s('path', { d: `M${x},${y} H${x + w} V${b} C${x + w * 0.75},${b - 10} ${x + w * 0.5},${b + 12} ${x + w * 0.25},${b + 4} S${x + 4},${b - 4} ${x},${b + 2} Z`, ...attrs }); }
+    default: return s('rect', { x, y, width: w, height: h, rx: 4, ...attrs });
+  }
+}
+
+// 分岐の出口の色は「はい」「いいえ」の 2 色だけ。ほかの出口は灰色の線（design.md の決めごと）
+const flTone = (e) => (e.tone === 'pos' || e.tone === 'neg' ? `tone-${e.tone}` : null);
+const flPath = (pts) => pts.map((p, k) => `${k ? 'L' : 'M'}${p[0]},${p[1]}`).join(' ');
+
+// 図ごとに矢じりの id を変える（同じ画面に 2 枚出しても衝突しない）
+let flSeq = 0;
+
+export function renderFlowSvg(geo, overlay) {
+  const ov = overlay || null;
+  const marks = (ov && ov.marks) || {};
+  const visited = new Set((ov && ov.visited) || []);
+  const taken = new Set((ov && ov.taken) || []);
+  const { ROLES, MARK, LANE_BAR, nodeLineW, roleLabel, roleLabelPos, textW } = FLOWCHART;
+  const uid = `fl${++flSeq}`;
+  const svg = s('svg', { class: 'fl-svg', viewBox: `0 0 ${geo.width} ${geo.height}`, width: geo.width, height: geo.height, role: ov ? 'group' : 'img', 'aria-label': geo.title || '業務フロー' });
+  const tones = ['plain', 'tone-pos', 'tone-neg'];
+  svg.appendChild(s('defs', null, tones.map((t) => s('marker', { id: `${uid}-${t}`, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 8, markerHeight: 8, orient: 'auto-start-reverse' }, s('path', { class: ['fl-arrowhead', t !== 'plain' && t], d: 'M0,1 L10,5 L0,9 z' })))));
+  svg.appendChild(s('rect', { class: 'fl-bg', x: 0, y: 0, width: geo.width, height: geo.height }));
+  if (geo.title) svg.appendChild(s('text', { class: 'fl-title', x: geo.left, y: geo.titleY }, geo.title));
+  geo.lanes.forEach((ln, i) => {
+    const alt = i % 2 ? 'is-b' : 'is-a';
+    svg.appendChild(s('rect', { class: ['fl-lane', alt], x: geo.left, y: ln.y, width: geo.right - geo.left, height: ln.h }));
+    svg.appendChild(s('rect', { class: 'fl-lane-head', x: geo.left, y: ln.y, width: geo.laneHeaderW, height: ln.h }));
+    svg.appendChild(s('rect', { class: 'fl-lane-bar', x: geo.left, y: ln.y, width: LANE_BAR, height: ln.h }));
+    const ty = ln.y + ln.h / 2 - ((ln.lines.length - 1) * 17) / 2 + 5;
+    ln.lines.forEach((l, k) => svg.appendChild(s('text', { class: 'fl-lane-name', x: geo.left + (geo.laneHeaderW + LANE_BAR) / 2, y: ty + k * 17 }, l)));
+  });
+  // 通った線は下に太い淡い線を敷く。線は白い縁取りの上に描き、分岐の色の線を灰色の線より後に描く
+  if (ov) for (const e of geo.edges) if (taken.has(`${e.from}>${e.to}`)) svg.appendChild(s('path', { class: 'fl-taken', d: flPath(e.points) }));
+  const order = geo.edges.map((e, i) => i).sort((a, b) => (flTone(geo.edges[a]) ? 1 : 0) - (flTone(geo.edges[b]) ? 1 : 0) || a - b);
+  for (const i of order) {
+    const e = geo.edges[i];
+    const t = flTone(e);
+    const d = flPath(e.points);
+    svg.appendChild(s('path', { class: 'fl-edge-under', d }));
+    svg.appendChild(s('path', { class: ['fl-edge', t, e.dashed && 'is-dashed'], d, 'marker-end': `url(#${uid}-${t || 'plain'})` }));
+  }
+  for (const n of geo.nodes) {
+    const role = n.role && ROLES[n.role] ? n.role : null;
+    const cls = ['fl-node', `type-${n.type}`, role && `role-${role}`];
+    svg.appendChild(flShape(n, { class: cls, 'stroke-width': nodeLineW(n) * 1.2 }));
+    if (n.type === 'sub') svg.appendChild(s('path', { class: ['fl-sub-line', role && `role-${role}`], d: `M${n.x + 9},${n.y} V${n.y + n.h} M${n.x + n.w - 9},${n.y} V${n.y + n.h}` }));
+    const lh = geo.lineH;
+    const ty = n.cy - ((n.lines.length - 1) * lh) / 2 + geo.fontSize * 0.36 - (n.type === 'doc' ? 4 : 0);
+    n.lines.forEach((l, k) => svg.appendChild(s('text', { class: ['fl-node-text', n.type === 'decision' && 'is-bold'], x: n.cx, y: ty + k * lh, 'font-size': geo.fontSize }, l)));
+    if (ov) {
+      const mk = marks[n.id];
+      if (MARK[mk] && mk !== 'ok') svg.appendChild(flShape(n, { class: ['fl-mark-frame', `mark-${mk}`] }));
+      if (ov.current === n.id) svg.appendChild(flShape(n, { class: 'fl-current' }));
+      else if (visited.has(n.id)) svg.appendChild(flShape(n, { class: 'fl-visited' }));
+    }
+    if (n.notes.length) svg.appendChild(s('text', { class: 'fl-note-no', x: n.x + n.w - (ov && MARK[marks[n.id]] ? 22 : 0), y: n.y - 3 }, n.notes.map((x) => '※' + x).join(' ')));
+    const rl = roleLabel(n);
+    if (rl) {
+      const p = roleLabelPos(n);
+      svg.appendChild(s('text', { class: ['fl-role-label', `role-${n.role}`], x: p.x, y: p.y }, rl));
+    }
+  }
+  for (const e of geo.edges) {
+    if (!e.label || !e.labelPos) continue;
+    svg.appendChild(s('text', { class: ['fl-edge-label', flTone(e)], x: e.labelPos.x, y: e.labelPos.y, 'text-anchor': e.labelPos.anchor, 'font-size': geo.labelSize }, e.label));
+  }
+  if (geo.roles && geo.roles.length) {
+    const yy = geo.roleY;
+    let lx = geo.left;
+    svg.appendChild(s('text', { class: 'fl-legend', x: lx, y: yy + 11 }, '区分：'));
+    lx += textW('区分：', 12) + 4;
+    for (const r of geo.roles) {
+      svg.appendChild(s('rect', { class: ['fl-legend-box', `role-${r.key}`], x: lx, y: yy, width: 14, height: 14, rx: 2 }));
+      svg.appendChild(s('text', { class: ['fl-legend-role', `role-${r.key}`], x: lx + 19, y: yy + 11 }, r.name));
+      lx += 19 + textW(r.name, 12) + 18;
+    }
+  }
+  let ly = geo.legendY;
+  for (const nt of geo.notes) for (const l of nt.text) { ly += 17; svg.appendChild(s('text', { class: 'fl-legend', x: geo.left, y: ly }, l)); }
+  if (ov) {
+    // 状態の印（色だけに頼らず記号でも区別する）
+    for (const n of geo.nodes) {
+      const mk = MARK[marks[n.id]];
+      if (!mk) continue;
+      const cx = n.type === 'decision' ? n.x + n.w * 0.75 + 4 : n.x + n.w - 6, cy = n.type === 'decision' ? n.y + n.h * 0.25 - 4 : n.y + 2;
+      svg.appendChild(s('circle', { class: ['fl-mark', `mark-${marks[n.id]}`], cx, cy, r: 9 }));
+      svg.appendChild(s('text', { class: 'fl-mark-sym', x: cx, y: cy + 4.5 }, mk.sym));
+    }
+    // 当たり判定は箱と同じ形。どの箱にも Tab で止まり、Enter・Space で選ぶ
+    for (const n of geo.nodes) {
+      const t = (ov.titles && ov.titles[n.id]) || n.lines.join('');
+      const mk = MARK[marks[n.id]];
+      const el = flShape(n, { class: ['fl-hit', ov.focus === n.id && 'is-focus'], 'data-node': n.id, tabindex: 0, role: 'button', 'aria-pressed': ov.focus ? String(ov.focus === n.id) : null, 'aria-label': `${n.id} ${t}${mk ? '（' + mk.word + '）' : ''}` });
+      el.appendChild(s('title', null, `${n.id} ${t}${mk ? '：' + mk.word : ''}`));
+      const pick = () => { if (ov.onSelect) ov.onSelect(n.id); };
+      el.addEventListener('click', pick);
+      el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(); } });
+      svg.appendChild(el);
+    }
+  }
+  return svg;
+}

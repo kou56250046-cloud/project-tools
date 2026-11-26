@@ -1,7 +1,10 @@
 // 概要画面のダッシュボードの集計。DOM に触れない。描画は ui/views/overview.js（dash.js）。
 // 分類・系列の名前は schema.js・ball.js の表から引く。ここだけが持つ文言は下の DASH_TEXT に置く。
 
-import { KINDS, CONFIDENCE, NFR_CATEGORIES, visibleLedger, isOpen, dayNumber, settingOf, latestBaseline, statusLabel } from './schema.js';
+import { KINDS, CONFIDENCE, NFR_CATEGORIES, DUE_FIELD, visibleLedger, isOpen, dayNumber, settingOf, latestBaseline, statusLabel } from './schema.js';
+
+// 期限を持つ種別（課題・質問・作業・リスク）。DUE_FIELD から作る（種別を足しても決め打ちの直し漏れで落ちないように）
+const DUE_KINDS = Object.keys(DUE_FIELD);
 import { BALL, ballOf, waitDays, notAskedYet } from './ball.js';
 import { computeEvm } from './evm.js';
 import { dueTargets } from './health.js';
@@ -38,7 +41,7 @@ export function dashboardData(ledger, { today, presentation = false } = {}) {
   const hasTargets = e.targets > 0;
   const kpi = {
     customerWait: { count: customer.length, maxDays: days.length ? Math.max(...days) : null },
-    overdue: { count: overdueList.length, byKind: { issue: 0, question: 0, task: 0 } },
+    overdue: { count: overdueList.length, byKind: Object.fromEntries(DUE_KINDS.map((k) => [k, 0])) },
     agreement: { rate: ratio(agreed, reqs.length), agreed, total: reqs.length, baselineRate: bl && blReqs.length ? ratio(blReqs.filter((x) => x.status === 'agreed').length, blReqs.length) : null },
     spi: { value: hasTargets ? e.spi : null, hasTasks, hasTargets, pv: e.pv },
   };
@@ -93,7 +96,7 @@ export function dashboardData(ledger, { today, presentation = false } = {}) {
   // ---- 期限の分布（週は月曜始まり。1970-01-01 は木曜なので (d + 3) % 7 が 0 の日が月曜） ----
   const weekEnd = t + (6 - (((t + 3) % 7) + 7) % 7);
   const dueBucket = (d) => (d < t ? 0 : d <= weekEnd ? 1 : d <= weekEnd + 7 ? 2 : 3);
-  const dueKinds = ['issue', 'question', 'task'];
+  const dueKinds = DUE_KINDS;
   const dueVals = dueKinds.map(() => [0, 0, 0, 0]);
   for (const d of dues) dueVals[dueKinds.indexOf(d.item.kind)][dueBucket(dayNumber(d.due))]++;
   const due = {

@@ -70,16 +70,17 @@ export function changeRequestText(ledger, cr, imp) {
   L.push(`■ 状態: ${statusLabel('change', cr.status)}`);
   if (cr.body) L.push('', '■ 内容', cr.body);
   L.push('', '■ 対象');
-  const targets = (cr.links || []).filter((id) => { const it = ledger.items.find((x) => x.id === id); return !it || it.kind !== 'memo'; });
+  const targets = (cr.links || []).filter((id) => { const it = ledger.items.find((x) => x.id === id); return !it || (it.kind !== 'memo' && !it.internal); });
   for (const id of targets) L.push(`・${name(id)}`);
   if (!targets.length) L.push('・（未指定）');
   L.push('', '■ 影響範囲（台帳から機械的に求めたもの）');
   for (const [k, list] of Object.entries(imp.byKind)) {
-    if (!list.length || k === 'stakeholder' || k === 'system') continue;
+    const shown = list.filter((it) => !it.internal);   // 社内のみの項目は変更要求書の文面に出さない
+    if (!shown.length || k === 'stakeholder' || k === 'system') continue;
     L.push(`【${kindLabel(k)}】`);
-    for (const it of list) L.push(`・${it.title}（${it.id}${it.kind === 'task' && typeof it.estimate === 'number' ? `・見積 ${it.estimate} 人日` : ''}）`);
+    for (const it of shown) L.push(`・${it.title}（${it.id}${it.kind === 'task' && typeof it.estimate === 'number' ? `・見積 ${it.estimate} 人日` : ''}）`);
   }
-  const people = [...(imp.byKind.stakeholder || []), ...(imp.byKind.system || [])];
+  const people = [...(imp.byKind.stakeholder || []), ...(imp.byKind.system || [])].filter((it) => !it.internal);
   if (people.length) L.push('【関係者・システム】', ...people.map((it) => `・${it.title}（${it.id}）`));
   L.push('', `■ 影響する作業の見積の合計: ${imp.taskEstimate} 人日`);
   L.push(`■ 追加工数の見込み: ${typeof cr.extraEstimate === 'number' ? cr.extraEstimate + ' 人日' : '未見積'}`);

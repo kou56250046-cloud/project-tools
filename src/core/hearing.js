@@ -25,7 +25,8 @@ export function hearingCandidates(ledger, today) {
   for (const f of runHealth(ledger, today)) {
     if (!GAP_CODES[f.code] || !f.itemId || seen.has(f.itemId)) continue;
     const it = byId.get(f.itemId);
-    if (!it || it.kind === 'question' || it.kind === 'meeting' || hasOpenQuestion(it.id)) continue;
+    // リスク・KPI は社内で扱うもの（顧客に聞く質問にしない）
+    if (!it || it.kind === 'question' || it.kind === 'meeting' || it.kind === 'risk' || it.kind === 'kpi' || hasOpenQuestion(it.id)) continue;
     seen.add(it.id);
     const text = `${kindLabel(it.kind)}「${it.title}」の${GAP_CODES[f.code]}を確認する`;
     out.push({

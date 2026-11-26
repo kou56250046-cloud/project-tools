@@ -1,4 +1,4 @@
-// 概要（ダッシュボード）: 案件情報・始め方・KPI 4 枚・グラフ（要件の状態・ボール・S カーブ・確度・期限）・次にやること・種別ごとの件数
+// 概要（ダッシュボード）: 案件情報・始め方・指標カード 4 枚・グラフ（要件の状態・ボール・S カーブ・確度・期限）・次にやること・種別ごとの件数
 // 集計は core/dashboard.js、描画は dashboard スキルの部品（src/vendor/dash.js の window.Dash。gemini-kit と同じ）
 
 import { LEDGER_KINDS, kindLabel, isOpen } from '../../core/schema.js';
@@ -49,7 +49,7 @@ function renderDashboard(root, app, ledger) {
     kpi('k-overdue', {
       title: '期限切れ', value: k.overdue.count, unit: '件',
       compare: [{ label: '目標 0 件との差', delta: k.overdue.count, unit: '件', better: 'down' }],
-      note: k.overdue.count ? `${kindLabel('issue')} ${bk.issue}・${kindLabel('question')} ${bk.question}・${kindLabel('task')} ${bk.task}` : '期限を過ぎたものはありません',
+      note: k.overdue.count ? Object.entries(bk).filter(([, n]) => n).map(([kd, n]) => `${kindLabel(kd)} ${n}`).join('・') : '期限を過ぎたものはありません',
     }, { label: '健康診断を開く', go: () => app.go('health') });
   }
   const a = k.agreement;

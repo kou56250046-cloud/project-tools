@@ -1,11 +1,13 @@
 // 健康診断。AIを使わない機械的な点検で、抜け漏れを重要度つきで返す。
 
-import { refsOf, isOpen, kindLabel, refFieldLabel, linkIndex, checkIntegrity, dayNumber, localDayNumber, settingOf, afterBaselineIds, OWNER_FIELD, DUE_FIELD, fieldSpec } from './schema.js';
+import { refsOf, isOpen, kindLabel, refFieldLabel, linkIndex, checkIntegrity, dayNumber, localDayNumber, settingOf, afterBaselineIds, OWNER_FIELD, DUE_FIELD, fieldSpec, riskScore } from './schema.js';
 import { nfrStatus } from './nfr.js';
 import { computeEvm, EVM_ALERT } from './evm.js';
 import { fpEstimate, FP_GAP_ALERT } from './fp.js';
 import { traceRows } from './trace.js';
 import { ballOf, waitDays } from './ball.js';
+import { effectiveRaci } from './raci.js';
+import { FLOWCHART } from './flow.js';
 
 export const SEVERITY = [
   { v: 'high', label: '高' },
@@ -14,6 +16,9 @@ export const SEVERITY = [
 ];
 const RANK = { high: 0, mid: 1, low: 2 };
 export const STALE_GUESS_DAYS = 7;
+// 出典なし・推測のままの点検をしない種別（PM が自分で起こすもの）
+const SELF_MADE = new Set(['risk', 'kpi']);
+export const RISK_HIGH = 15;
 
 const fieldLabelOf = (kind, f) => { const sp = fieldSpec(kind, f); return sp ? sp.label : f; };
 
@@ -72,8 +77,8 @@ export function runHealth(fullLedger, today) {
       if (!due) missing.push(fieldLabelOf(it.kind, dueField));
       if (missing.length) push('mid', 'no-owner', it, `${kindLabel(it.kind)}「${it.title}」に${missing.join('と')}がありません`);
     }
-    // 出典なし（中）
-    if (!it.sources || !it.sources.length) push('mid', 'no-source', it, `${kindLabel(it.kind)}「${it.title}」に出典がありません`);
+    // 出典なし（中）。PM が自分で起こすリスク・KPI は対象外
+    if (!SELF_MADE.has(it.kind) && (!it.sources || !it.sources.length)) push('mid', 'no-source', it, `${kindLabel(it.kind)}「${it.title}」に出典がありません`);
     // Must で推測（中）
     if ((it.kind === 'request' || it.kind === 'requirement') && it.priority === 'Must' && it.confidence === 'guess') {
       push('mid', 'must-guess', it, `優先度 Must の${kindLabel(it.kind)}「${it.title}」が推測のままです`);
@@ -84,9 +89,56 @@ export function runHealth(fullLedger, today) {
       if (w !== null && w >= settingOf(ledger, 'ballWaitDays')) push('mid', 'ball-wait', it, `${kindLabel(it.kind)}「${it.title}」が顧客の返事を${w}日待っています`);
     }
     // 推測のまま7日以上（低）。質問は対象外
-    if (it.kind !== 'question' && it.confidence === 'guess' && it.updatedAt && t - localDayNumber(it.updatedAt) >= STALE_GUESS_DAYS) {
+    if (it.kind !== 'question' && !SELF_MADE.has(it.kind) && it.confidence === 'guess' && it.updatedAt && t - localDayNumber(it.updatedAt) >= STALE_GUESS_DAYS) {
       push('low', 'stale-guess', it, `${kindLabel(it.kind)}「${it.title}」が推測のまま${t - localDayNumber(it.updatedAt)}日たっています`);
     }
+  }
+
+  // KPI（P7a）
+  const links = linkIndex(ledger);
+  const byIdK = new Map(ledger.items.map((it) => [it.id, it]));
+  const linked = (id, pred) => [...(links.get(id) || [])].map((x) => byIdK.get(x)).filter((x) => x && pred(x));
+  const liveKpi = (x) => x.kind === 'kpi' && x.status !== 'dropped';
+  const goals = new Set((ledger.project.goals || []).map((g) => String(g).trim()));
+  for (const k of ledger.items.filter((it) => it.kind === 'kpi' && it.status === 'active')) {
+    if (!String(k.measure || '').trim() || !String(k.target || '').trim()) push('mid', 'kpi-no-measure', k, `KPI「${k.title}」に${!String(k.measure || '').trim() ? '測り方' : '目標値'}がありません`);
+    if (!k.parent && !goals.has(String(k.goal || '').trim())) push('low', 'kpi-goal-unknown', k, `KPI「${k.title}」の対応するゴールが${k.goal ? `案件情報のゴールにありません（「${k.goal}」）` : '決まっていません'}`);
+  }
+  if (ledger.items.some(liveKpi)) {
+    for (const r of ledger.items.filter((it) => it.kind === 'requirement' && it.status !== 'dropped')) {
+      const reqs = linked(r.id, (x) => x.kind === 'request' && x.status !== 'rejected');
+      if (!reqs.length) continue;   // 要望とつながっていない要件は別の点検の範囲
+      const ok = linked(r.id, liveKpi).length || reqs.some((q) => linked(q.id, liveKpi).length);
+      if (!ok) push('low', 'req-no-kpi', r, `要件「${r.title}」が、どの KPI にもつながっていません（要望を通しても）`);
+    }
+  }
+  // リスク（P7a）: 点数が高いのに対策が無い
+  for (const r of ledger.items.filter((it) => it.kind === 'risk' && isOpen(it))) {
+    if (riskScore(r) >= RISK_HIGH && !String(r.response || '').trim()) push('mid', 'risk-high-no-response', r, `リスク「${r.title}」は点数 ${riskScore(r)}（見込み ${r.prob} × 影響 ${r.impact}）で、対策がありません`);
+  }
+
+  // 業務フロー（P7c）: 記法に誤りがある（誤りの行を外して描いているので、図が欠けている）
+  for (const f of ledger.items.filter((it) => it.kind === 'bizflow')) {
+    const errs = FLOWCHART.parse(String(f.notation || '')).errors;
+    if (errs.length) push('mid', 'flow-error', f, `業務フロー「${f.title}」の記法に誤りが ${errs.length} 件あります（${errs[0].line} 行目: ${errs[0].message}${errs.length > 1 ? ' ほか' : ''}）。誤りの行は図に出ていません`);
+  }
+
+  // 体制・RACI（P7b）
+  for (const p of ledger.items.filter((it) => it.kind === 'stakeholder' && it.status !== 'inactive' && it.reportsTo)) {
+    const boss = byIdK.get(p.reportsTo);
+    if (boss && boss.status === 'inactive') push('low', 'reports-to-inactive', p, `関係者「${p.title}」の上長「${boss.title}」が関与なしです`);
+  }
+  const hasChild = new Set(ledger.items.filter((it) => it.kind === 'task' && it.parent).map((it) => it.parent));
+  const hasA = (it) => effectiveRaci(it).some((e) => e.role === 'A');
+  for (const t of ledger.items.filter((it) => it.kind === 'task' && !it.parent && hasChild.has(it.id) && it.status !== 'done' && it.status !== 'cancelled')) {
+    if (!hasA(t)) push('low', 'task-no-a', t, `工程「${t.title}」に A（承認者）がいません`);
+  }
+  for (const i of ledger.items.filter((it) => it.kind === 'issue' && isOpen(it) && it.severity === 'high')) {
+    if (!hasA(i)) push('low', 'issue-no-a', i, `重要度が高の課題「${i.title}」に、決める人（A）がいません`);
+  }
+  for (const it of ledger.items.filter((x) => ['task', 'decision', 'issue'].includes(x.kind) && Array.isArray(x.raci))) {
+    const a = it.raci.filter((e) => e && e.role === 'A').length;
+    if (a >= 2) push('mid', 'multiple-a', it, `${kindLabel(it.kind)}「${it.title}」に A（承認者）が ${a} 人います（1 人にしてください）`);
   }
 
   // 範囲（中）: 範囲外なのに理由が無い / ベースライン後に追加されて範囲が未判断
@@ -189,5 +241,13 @@ export const HEALTH_CODES = {
   'must-guess': 'Must が推測のまま',
   'stale-guess': '推測のまま放置',
   'unlinked-request': '要件のない要望',
+  'req-no-kpi': 'KPI につながらない要件',
+  'kpi-no-measure': '測り方か目標の無い KPI',
+  'kpi-goal-unknown': 'ゴールの決まらない KPI',
+  'risk-high-no-response': '対策の無い高いリスク',
+  'multiple-a': 'A が 2 人以上',
+  'task-no-a': '承認者のいない工程',
+  'issue-no-a': '決める人のいない課題',
+  'reports-to-inactive': '上長が関与なし',
 };
 

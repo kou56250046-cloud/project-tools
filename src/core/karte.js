@@ -10,7 +10,10 @@ export const KARTE_SCHEMA = 'anken.v2';
 export const KARTE_VIEWPOINTS = ['機能', '性能・可用性', 'セキュリティ', '移行', '運用・保守', '予算・契約', '日程', '現行システム'];
 const FACT_BANDS = { requirement: 10000, request: 20000, constraint: 30000, answer: 40000 };
 const BAND_SIZE = 10000;
-const KARTE_KINDS = new Set(['requirement', 'request', 'constraint', 'question', 'decision', 'issue', 'task', 'stakeholder']);
+const KARTE_KINDS = new Set(['requirement', 'request', 'constraint', 'question', 'decision', 'issue', 'task', 'stakeholder', 'risk']);
+// リスクの見込み・影響（1〜5）→ gemini-kit の高・中・低
+const RISK_HML = (v) => (Number(v) >= 4 ? '高' : Number(v) === 3 ? '中' : Number(v) >= 1 ? '低' : '');
+const RISK_MARK = { occurred: '（発生）', closed: '（解消）' };
 
 const NFR_VIEWPOINT = { availability: '性能・可用性', performance: '性能・可用性', security: 'セキュリティ', migration: '移行', operability: '運用・保守', environment: '運用・保守' };
 const CONSTRAINT_VIEWPOINT = { budget: '予算・契約', legal: '予算・契約', schedule: '日程', technical: '現行システム', operation: '運用・保守' };
@@ -54,7 +57,8 @@ export function ledgerToKarte(ledger, { includeInternal = false, now, today } = 
   const decisionItems = items.filter((it) => it.kind === 'decision');
   const issueItems = items.filter((it) => it.kind === 'issue');
   const taskItems = items.filter((it) => it.kind === 'task');
-  const exported = [...factItems, ...questions, ...decisionItems, ...issueItems, ...taskItems];
+  const riskItems = items.filter((it) => it.kind === 'risk');
+  const exported = [...factItems, ...questions, ...decisionItems, ...issueItems, ...taskItems, ...riskItems];
 
   // 出典: 書き出す項目の最初の出典（案件の型を除く）を (type, ref, date) でまとめ、日付・名前の順に S を振る
   const srcKey = (s) => [s.type, s.ref, s.date || ''].join('\u0000');
@@ -137,13 +141,23 @@ export function ledgerToKarte(ledger, { includeInternal = false, now, today } = 
     idMap[id] = t.id;
   }
 
+  // リスク: 全状態を書き出し、発生・解消は文の後ろに印（消さずに状態で表す）
+  const risks = [];
+  for (const r of riskItems) {
+    const n = num(r);
+    if (n === null) continue;
+    const id = 'R-' + pad2(n);
+    risks.push({ id, text: r.title + (r.response ? `。対策: ${r.response}` : '') + (RISK_MARK[r.status] || ''), prob: RISK_HML(r.prob), impact: RISK_HML(r.impact), effect: '', wbId: r.id });
+    idMap[id] = r.id;
+  }
+
   const people = items.filter((it) => it.kind === 'stakeholder').map((p) => ({ name: p.title, org: p.org || '', role: p.side === 'own' ? '自社' : '', note: p.role || '' }));
 
   const karte = {
     schema: KARTE_SCHEMA,
     project: { name: ledger.project.name, client: ledger.project.customer || '', phase: '', updated: today || '', version: 0 },
     sources, facts, unknowns, decisions, pending, todos,
-    conflicts: [], issues: [], proposals: [], people, asis: [], risks: [], reviews: [],
+    conflicts: [], issues: [], proposals: [], people, asis: [], risks, reviews: [],
     workbench: { from: '案件ワークベンチ', project: ledger.project.name, revision: ledger.revision, exportedAt: now || '', includeInternal: !!includeInternal, idMap },
   };
 

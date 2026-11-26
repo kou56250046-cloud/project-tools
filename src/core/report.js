@@ -5,7 +5,7 @@ import { buildTree, dayToYmd } from './wbs.js';
 import { computeEvm } from './evm.js';
 import { ballOf, waitDays } from './ball.js';
 
-const DONE = new Set(['done', 'closed', 'answered', 'agreed', 'accepted', 'approved']);
+const DONE = new Set(['done', 'closed', 'answered', 'agreed', 'accepted', 'approved', 'achieved']);
 export const NEXT_DAYS = 14;
 
 // 前回の会議: 開催済みの定例のうち、今日より前で最も新しいもの。無ければ 7 日前

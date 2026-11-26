@@ -1,0 +1,33 @@
+title 経費申請の承認（新・ダミー）
+lane 申請者 {人}
+lane AI エージェント {AI}
+lane Power Automate {ルール}
+lane 承認者 {人}
+
+start S @申請者 経費を申請する
+task A @[AI エージェント] 領収書を読み取る
+decision C @[AI エージェント] 領収書と申請が一致するか [JDG-001]
+task R @申請者 申請を直す
+data B @[Power Automate] 申請を登録 [TBL-001]
+decision D @[Power Automate] 承認ルートの判定 [JDG-002]
+task F @[Power Automate] 部長承認へ回す
+decision K @[Power Automate] 予算内か
+decision E @承認者 承認するか [JDG-003]
+data G @[Power Automate] 支払データを作る [TBL-003]
+end Z @申請者 支払われる
+end X @申請者 却下を知らせる
+
+S -> A -> C
+C -> B : 一致
+C -> R : 不一致
+R -> A
+B -> D
+D -> G : 自動承認
+D -> E : 課長
+D -> F : 部長
+F -> K
+K -> E : はい
+K -> X : いいえ
+E -> G : 承認
+E -> X : 却下
+G -> Z
