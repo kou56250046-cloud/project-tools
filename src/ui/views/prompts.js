@@ -1,10 +1,10 @@
 // 指示文画面: 目的を選ぶ → 指示文を作る → コピーして Gemini / NotebookLM に貼る
 
-import { PURPOSES, buildPrompt } from '../../core/prompts.js';
+import { PURPOSES, buildPrompt, memoMaterial, MEMO_PROMPT_MAX } from '../../core/prompts.js';
 import { h, toast, copyText, todayStr } from '../dom.js';
 import { store } from '../store.js';
 
-const promptState = { purpose: 'minutes', freeText: '', meetingId: '', changeId: '', reportText: '', targetIds: [] };
+const promptState = { purpose: 'minutes', freeText: '', meetingId: '', changeId: '', reportText: '', targetIds: [], memoIds: [] };
 
 const GUIDE = {
   notebooklm: 'NotebookLM に資料を入れたうえで、この文を質問欄に貼ります。返ってきた箇条書きは、「資料からの追加」の指示文と一緒に Gemini に貼ってください（指示文の末尾の「ここから資料」の下に貼ります）。',
@@ -20,6 +20,7 @@ export function renderPrompts(root, app, opts) {
     if (opts.meetingId) promptState.meetingId = opts.meetingId;
     if (opts.changeId) promptState.changeId = opts.changeId;
     if (Array.isArray(opts.targetIds)) promptState.targetIds = opts.targetIds;
+    if (Array.isArray(opts.memoIds)) promptState.memoIds = opts.memoIds;
     if (opts.reportText !== undefined) promptState.reportText = opts.reportText;
     app.viewOpts = {};
   }
@@ -41,7 +42,7 @@ export function renderPrompts(root, app, opts) {
   right.appendChild(h('p', { class: 'notice', text: guide }));
 
   const preview = h('textarea', { class: 'prompt-preview', id: 'prompt-text', readonly: true, 'aria-label': '生成された指示文', rows: '24' });
-  const refresh = () => { preview.value = buildPrompt(promptState.purpose, ledger, { today: todayStr(), freeText: promptState.freeText, meetingId: promptState.purpose === 'minutes' ? promptState.meetingId : '', changeId: promptState.changeId, reportText: promptState.reportText, targetIds: promptState.targetIds }); };
+  const refresh = () => { preview.value = buildPrompt(promptState.purpose, ledger, { today: todayStr(), freeText: promptState.freeText, meetingId: promptState.purpose === 'minutes' ? promptState.meetingId : '', changeId: promptState.changeId, reportText: promptState.reportText, targetIds: promptState.targetIds, memoIds: promptState.memoIds }); };
 
   if (promptState.purpose === 'minutes') {
     const ms = ledger.items.filter((it) => it.kind === 'meeting').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -70,6 +71,22 @@ export function renderPrompts(root, app, opts) {
       h('span', { class: 'mono', text: it.id }), it.title)));
     right.appendChild(h('div', { class: 'field' }, h('span', { text: `テストの対象（${promptState.targetIds.length}件選択中）` }), box));
   }
+  // メモからの取込: メモを選ぶ（本文の合計が上限を超えたら指示文を作らない）
+  let memoOver = false;
+  if (promptState.purpose === 'memo') {
+    promptState.memoIds = promptState.memoIds.filter((id) => ledger.items.some((it) => it.id === id && it.kind === 'memo'));
+    const memos = ledger.items.filter((it) => it.kind === 'memo');
+    const mm = memoMaterial(ledger, promptState.memoIds);
+    memoOver = mm.over;
+    const box = h('div', { class: 'target-list', id: 'prompt-memos', role: 'group', 'aria-label': '取り込むメモ' }, memos.length ? memos.map((it) => h('label', { class: 'row small' },
+      h('input', { type: 'checkbox', 'data-fk': 'memo-' + it.id, checked: promptState.memoIds.includes(it.id), onchange: (e) => {
+        promptState.memoIds = e.target.checked ? [...promptState.memoIds, it.id] : promptState.memoIds.filter((x) => x !== it.id);
+        app.refresh();
+      } }),
+      h('span', { class: 'mono', text: it.id }), `${it.title}（${String(it.body || '').length.toLocaleString()} 字）`)) : h('span', { class: 'small muted', text: 'メモがありません。「メモ」の画面でチャットを貼ってメモにしてください' }));
+    right.appendChild(h('div', { class: 'field' }, h('span', { text: `取り込むメモ（${promptState.memoIds.length} 件・${mm.total.toLocaleString()} 字選択中）` }), box));
+    if (memoOver) right.appendChild(h('p', { class: 'notice error small', role: 'alert', id: 'memo-over', text: `選んだメモの本文が合計 ${mm.total.toLocaleString()} 字で、上限の ${MEMO_PROMPT_MAX.toLocaleString()} 字を超えています。Gemini に一度に貼れる量の目安を超えるため、メモを減らして分けて取り込んでください` }));
+  }
   if (promptState.purpose === 'report-polish') {
     const ta = h('textarea', { rows: '6', id: 'prompt-report-text', 'aria-label': '週報の下書き', placeholder: '定例会資料の画面から開くと、週報の下書きが入ります。ここに直接貼ってもかまいません' });
     ta.value = promptState.reportText;
@@ -85,7 +102,7 @@ export function renderPrompts(root, app, opts) {
   refresh();
 
   right.appendChild(h('div', { class: 'row' },
-    h('button', { class: 'btn primary', type: 'button', id: 'prompt-copy', onclick: async () => {
+    h('button', { class: 'btn primary', type: 'button', id: 'prompt-copy', disabled: memoOver, title: memoOver ? '選んだメモが多すぎます' : '', onclick: async () => {
       const ok = await copyText(preview.value);
       if (ok) toast('コピーしました');
       else { preview.select(); toast('コピーできませんでした。選択した状態にしたので Ctrl+C でコピーしてください'); }

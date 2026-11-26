@@ -218,11 +218,27 @@ const KINDS_RAW = {
       executedAt: { type: 'date', label: '実施日' },
     },
   },
+  // メモ（P6c）: チャット・会議の文字起こしなどの保管。社内のものとして扱い、台帳の項目としては出さない（LEDGER_KINDS に入れない）
+  memo: {
+    prefix: 'MM', label: 'メモ',
+    statuses: [{ v: 'active', label: '使用中' }, { v: 'archived', label: '保管' }],
+    fields: {
+      memoType: { type: 'enum', required: true, label: '種類', values: [{ v: 'chat', label: 'チャット' }, { v: 'transcript', label: '会議の文字起こし' }, { v: 'other', label: 'その他' }] },
+      channel: { type: 'string', label: '場所（チャンネル名など）' },
+      from: { type: 'date', label: '期間の始め' },
+      to: { type: 'date', label: '期間の終わり' },
+    },
+  },
 };
 
 export const KINDS = dict(Object.fromEntries(Object.entries(KINDS_RAW).map(([k, d]) => [k, { ...d, fields: dict(d.fields) }])));
 export const KIND_IDS = Object.keys(KINDS);
 export const ALL_KINDS = KIND_IDS;
+// 台帳の項目として扱う種別（メモを除く）。指示文・一覧・件数・影響範囲・健康診断の項目ごとの点検はこれを使う
+export const LEDGER_KINDS = KIND_IDS.filter((k) => k !== 'memo');
+// メモの本文の上限（JS の文字列の長さ）と、案件ごとのメモの本文の合計の目安
+export const MEMO_BODY_MAX = 50000;
+export const MEMO_TOTAL_WARN = 300000;
 export const RELATION_PREFIX = 'RL';
 export const RELATION_NODE_KINDS = ['stakeholder', 'system'];
 
@@ -525,6 +541,9 @@ export function validateFields(kind, obj, opts) {
     }
     checkField(kind, name, spec, value, ctx, errors);
   }
+  if (kind === 'memo' && typeof obj.body === 'string' && obj.body.length > MEMO_BODY_MAX) {
+    errors.push(`メモの本文は ${MEMO_BODY_MAX.toLocaleString()} 字までです（${obj.body.length.toLocaleString()} 字）。期間を分けてください`);
+  }
   return { errors, warnings, unknown };
 }
 
@@ -701,7 +720,8 @@ export function afterBaselineIds(ledger) {
 // 説明用の表示（P3）: 社内のみの項目と、それにつながる関係を除いた台帳を返す。全画面の一覧・集計はこれを通す
 export function visibleLedger(ledger, presentation) {
   if (!presentation) return ledger;
-  const items = ledger.items.filter((it) => !it.internal);
+  // 説明用の表示では、社内のみの項目とメモを除く
+  const items = ledger.items.filter((it) => !it.internal && it.kind !== 'memo');
   const ids = new Set(items.map((it) => it.id));
   return { ...ledger, items, relations: ledger.relations.filter((r) => ids.has(r.from) && ids.has(r.to)) };
 }

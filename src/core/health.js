@@ -17,10 +17,21 @@ export const STALE_GUESS_DAYS = 7;
 
 const fieldLabelOf = (kind, f) => { const sp = fieldSpec(kind, f); return sp ? sp.label : f; };
 
+// 期限を点検する対象: 未完了・担当と期限を持つ種別・子を持つ作業（親）を除く・期限がある。
+// 健康診断の「期限切れ」と、概要の期限の分布の両方がこれを使う（件数をそろえるため）
+export function dueTargets(ledger) {
+  const parents = new Set(ledger.items.filter((it) => it.kind === 'task' && it.parent).map((it) => it.parent));
+  return ledger.items
+    .filter((it) => isOpen(it) && OWNER_FIELD[it.kind] && DUE_FIELD[it.kind] && it[DUE_FIELD[it.kind]] && !(it.kind === 'task' && parents.has(it.id)))
+    .map((it) => ({ item: it, due: it[DUE_FIELD[it.kind]] }));
+}
+
 // today: YYYY-MM-DD
-export function runHealth(ledger, today) {
+export function runHealth(fullLedger, today) {
   const out = [];
-  const ids = new Set(ledger.items.map((it) => it.id));
+  // 存在しない ID への参照はメモも含めて見る。それ以外の項目ごとの点検は、メモを除いた台帳で行う
+  const ids = new Set(fullLedger.items.map((it) => it.id));
+  const ledger = fullLedger.items.some((it) => it.kind === 'memo') ? { ...fullLedger, items: fullLedger.items.filter((it) => it.kind !== 'memo') } : fullLedger;
   const t = dayNumber(today);
   const push = (severity, code, item, message) => {
     const due = item && DUE_FIELD[item.kind] ? item[DUE_FIELD[item.kind]] || null : null;
@@ -28,7 +39,7 @@ export function runHealth(ledger, today) {
   };
 
   // 存在しない ID への参照（高）
-  for (const it of ledger.items) {
+  for (const it of fullLedger.items) {
     for (const r of refsOf(it)) {
       if (!ids.has(r.id)) push('high', 'dangling', it, `${it.id} の${refFieldLabel(r.field, it.kind)}が、台帳にない ${r.id} を指しています`);
     }

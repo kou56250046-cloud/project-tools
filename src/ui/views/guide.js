@@ -1,25 +1,20 @@
-// 使い方: 左の目次と右の本文。文章は core/guide-text.js、画面の一覧は core/screens.js、指示文の名前は PURPOSES から引く
+// 使い方: 左の目次と右の本文。文章は core/guide-text.js、進み具合は core/guide-flow.js、画面の一覧は core/screens.js、指示文の名前は PURPOSES から引く
+// 全体の流れは gemini-kit の使い方（箱と矢印の 1 周期の図 → 段ごとのカード）にならう
 
 import { GROUPS, SCREENS, hiddenScreenInPresentation } from '../../core/screens.js';
-import { INTRO, FIRST_STEPS, ROUND_TRIP, ROUND_TRIP_TIPS, PHASES, SCREEN_HELP, FAQ, TERMS } from '../../core/guide-text.js';
+import { INTRO, GUIDE_CHAPTERS, WHERE, FLOW_STEPS, FLOW_EDGES, MEETING_TIMELINE, FLOW_TEXT, ROUND_TRIP_TIPS, SCREEN_HELP, FAQ, TERMS } from '../../core/guide-text.js';
+import { stepStatus } from '../../core/guide-flow.js';
 import { PURPOSES } from '../../core/prompts.js';
-import { h } from '../dom.js';
+import { h, s } from '../dom.js';
 import { store } from '../store.js';
 
-const CHAPTERS = [
-  { id: 'g-intro', title: 'はじめに' },
-  { id: 'g-first', title: '最初の 10 分' },
-  { id: 'g-round', title: 'Gemini との往復' },
-  { id: 'g-phases', title: '案件の進め方' },
-  { id: 'g-screens', title: '画面ごとの説明' },
-  { id: 'g-faq', title: 'よくある困りごと' },
-  { id: 'g-terms', title: '用語' },
-];
-
-const screenOf = (id) => SCREENS.find((s) => s.id === id);
+const screenOf = (id) => SCREENS.find((x) => x.id === id);
 // 説明用の表示では、隠れる画面と道具の指示文の案内を出さない
 const showScreen = (id) => !(store.presentation && hiddenScreenInPresentation(screenOf(id)));
 const showPurposes = () => !store.presentation;
+// 使う場所の印の色（検査済みのバッジの組み合わせだけを使う。重要度の赤は使わない）
+const WHERE_BADGE = { GEM: 'accent', NLM: 'low', TOOL: 'ok', CLIENT: 'mid' };
+const whereBadge = (w) => h('span', { class: ['badge', WHERE_BADGE[w]], text: WHERE[w] });
 
 // 「この画面を開く」。開けないときは押せず、理由を出す
 function openButton(app, id, label) {
@@ -29,45 +24,137 @@ function openButton(app, id, label) {
     c.ok ? null : h('span', { class: 'muted small', text: c.reason }));
 }
 
-function purposeButton(app, pid) {
+// 「この指示文を開く」（開けないときは理由も出す）
+function purposeOpen(app, pid, fk) {
   const p = PURPOSES.find((x) => x.id === pid);
   const c = app.canOpen('prompts');
-  return h('li', { class: 'purpose-item' },
-    h('strong', { text: p ? p.label : pid }), ' ', h('span', { class: 'small muted', text: p ? p.desc : '' }), ' ',
-    h('button', { class: 'btn small', type: 'button', 'data-fk': 'purpose-' + pid, disabled: !c.ok, title: c.ok ? '' : c.reason, onclick: () => app.go('prompts', { purpose: pid }) }, 'この指示文を開く'));
-}
-
-// 「この指示文を開く」（開けないときは理由も出す）
-function purposeOpen(app, pid) {
-  const c = app.canOpen('prompts');
   return h('span', { class: 'open-wrap' },
-    h('button', { class: 'btn small', type: 'button', 'data-fk': 'flow-purpose-' + pid, disabled: !c.ok, title: c.ok ? '' : c.reason, onclick: () => app.go('prompts', { purpose: pid }) }, 'この指示文を開く'),
+    h('button', { class: 'btn small', type: 'button', 'data-fk': fk, disabled: !c.ok, title: c.ok ? '' : c.reason, onclick: () => app.go('prompts', { purpose: pid }) }, `指示文「${p ? p.label : pid}」を開く`),
     c.ok ? null : h('span', { class: 'muted small', text: c.reason }));
 }
 
-// 番号つきのカードと矢印の流れ図
-function flow(steps, app) {
-  const out = [];
-  steps.forEach((st, i) => {
-    if (i) out.push(h('div', { class: 'flow-arrow', 'aria-hidden': 'true', text: '→' }));
-    out.push(h('div', { class: 'flow-card', role: 'group', 'aria-label': `手順 ${i + 1}` },
-      h('div', { class: 'flow-num', text: String(i + 1) }),
-      h('div', { class: 'flow-title', text: st.title }),
-      h('p', { class: 'flow-desc', text: st.desc }),
-      app && st.screen ? openButton(app, st.screen, 'この画面を開く') : null,
-      app && st.purpose && showPurposes() ? purposeOpen(app, st.purpose) : null));
-  });
-  return h('div', { class: 'flow' }, out);
+function chapter(i, children) {
+  const c = GUIDE_CHAPTERS[i];
+  return h('section', { class: 'guide-chapter', id: c.id, 'aria-labelledby': c.id + '-h' },
+    h('h2', { id: c.id + '-h', text: `${i + 1}. ${c.title}` }),
+    c.lead ? h('p', { class: 'small muted', text: c.lead }) : null,
+    ...children);
 }
 
-function chapter(id, title, ...children) {
-  return h('section', { class: 'guide-chapter', id, 'aria-labelledby': id + '-h' }, h('h2', { id: id + '-h', text: title }), ...children);
+// 段のカードへ移り、見出しにフォーカスする
+function focusStep(id) {
+  const el = document.getElementById('step-' + id);
+  if (!el) return;
+  el.scrollIntoView({ block: 'start' });
+  const hd = el.querySelector('h3');
+  if (hd) hd.focus({ preventScroll: true });
+}
+
+// ---- 全体の流れの図（箱の位置は固定。1040 × 520） ----
+const BW = 168;
+const BH = 56;
+const POS = {
+  setup: [40, 60], digest: [40, 170], initial: [40, 280],
+  import: [260, 80], check: [450, 80], prep: [640, 80],
+  minutes: [260, 230], meeting: [640, 230],
+  docs: [850, 80],
+  baseline: [260, 420], plan: [450, 420], design: [640, 420], test: [830, 420],
+};
+const LOOP_BOX = { x: 240, y: 30, w: 590, h: 280 };
+// 線の形（FLOW_EDGES の from→to ごと）。d は SVG の path、at は名前の位置、rot は名前を縦にするとき
+const EDGE_PATHS = {
+  'setup>digest': { d: 'M124,116V168' },
+  'digest>initial': { d: 'M124,226V278' },
+  'setup>initial': { d: 'M40,88H18V308H38', at: [12, 198], rot: true },
+  'initial>import': { d: 'M208,308H226V108H258' },
+  'import>check': { d: 'M428,108H448' },
+  'check>prep': { d: 'M618,108H638' },
+  'prep>meeting': { d: 'M724,136V228' },
+  'meeting>minutes': { d: 'M640,258H430' },
+  'minutes>import': { d: 'M344,230V138', at: [344, 186] },
+  'check>baseline': { d: 'M534,136V360H344V418', at: [534, 340] },
+  'baseline>plan': { d: 'M428,448H448' },
+  'plan>design': { d: 'M618,448H638' },
+  'design>test': { d: 'M808,448H828' },
+  'check>docs': { d: 'M534,80V14H934V78', at: [760, 14] },
+};
+
+function flowDiagram(st) {
+  const svg = s('svg', { class: 'fl-svg', viewBox: '0 0 1040 520', width: '1040', height: '520', 'aria-labelledby': 'fl-summary' });
+  svg.appendChild(s('defs', null, s('marker', { id: 'fl-arrow', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto-start-reverse' },
+    s('path', { class: 'fl-arrowhead', d: 'M0,0L10,5L0,10Z' }))));
+  // 繰り返しの枠
+  svg.appendChild(s('rect', { class: ['fl-loop', st && st.loopActive && 'is-now'], x: LOOP_BOX.x, y: LOOP_BOX.y, width: LOOP_BOX.w, height: LOOP_BOX.h, rx: '18' }));
+  svg.appendChild(s('text', { class: 'fl-loop-label', x: '400', y: '58' }, FLOW_TEXT.loopLabel));
+  svg.appendChild(s('text', { class: 'fl-loop-sub', x: '600', y: '58' }, FLOW_TEXT.loopSub));
+  // 線
+  for (const e of FLOW_EDGES) {
+    const p = EDGE_PATHS[e.from + '>' + e.to];
+    if (!p) continue;
+    svg.appendChild(s('path', { class: ['fl-edge', e.back && 'fl-back'], d: p.d, 'marker-end': 'url(#fl-arrow)' }));
+    if (e.label && p.at) {
+      const [x, y] = p.at;
+      const w = e.label.length * 12 + 10;
+      const g = s('g', { class: 'fl-elabel', transform: p.rot ? `rotate(-90 ${x} ${y})` : null });
+      g.appendChild(s('rect', { x: x - w / 2, y: y - 10, width: w, height: '20', rx: '4' }));
+      g.appendChild(s('text', { x, y: y + 4, 'text-anchor': 'middle' }, e.label));
+      svg.appendChild(g);
+    }
+  }
+  // 箱（FLOW_STEPS の順に足す。Tab で回る順になる）
+  for (const step of FLOW_STEPS) {
+    const [x, y] = POS[step.id];
+    const state = st ? st.status[step.id] : null;
+    const mark = state ? FLOW_TEXT.marks[state] : '';
+    const where = WHERE[step.where] + (state === 'active' ? '・今ここ' : '');
+    const label = (mark ? mark.split(' ')[0] + ' ' : '') + step.label;
+    const g = s('g', {
+      class: ['fl-node', state && 'fl-' + state, `fl-where-${step.where}`],
+      role: 'button', tabindex: '0', 'data-step': step.id,
+      'aria-label': `${step.label}（${WHERE[step.where]}${state ? '・' + mark.split(' ').slice(1).join(' ') : ''}）。押すと説明に移ります`,
+    });
+    g.appendChild(s('rect', { x, y, width: BW, height: BH, rx: step.kind === 'step' ? '8' : String(BH / 2) }));
+    g.appendChild(s('text', { class: ['fl-name', label.length > 11 && 'is-long'], x: x + BW / 2, y: y + 24, 'text-anchor': 'middle' }, label));
+    g.appendChild(s('text', { class: 'fl-where', x: x + BW / 2, y: y + 44, 'text-anchor': 'middle' }, where));
+    const go = () => focusStep(step.id);
+    g.addEventListener('click', go);
+    g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(); } });
+    svg.appendChild(g);
+  }
+  return svg;
+}
+
+// ---- 段ごとのカード ----
+function stepCard(app, step, st, i) {
+  const state = st ? st.status[step.id] : null;
+  const next = FLOW_STEPS[i + 1];
+  const box = (cls, title, items) => h('div', { class: ['fl-frame', cls] }, h('p', { class: 'fl-frame-h', text: title }), h('ul', null, items.map((t) => h('li', { text: t }))));
+  const arrow = () => h('span', { class: 'fl-arrow', 'aria-hidden': 'true', text: '→' });
+  const screens = step.screens.filter(showScreen);
+  return h('section', { class: ['card', 'fl-step', state && 'fl-step-' + state], id: 'step-' + step.id },
+    h('div', { class: 'row fl-step-head' },
+      h('h3', { tabindex: '-1', text: step.label }),
+      whereBadge(step.where),
+      state ? h('span', { class: ['badge', state === 'active' && 'accent'], text: FLOW_TEXT.marks[state] }) : null),
+    h('div', { class: 'fl-frames', role: 'group', 'aria-label': `${step.label}: 入れるもの・使う場所・出るもの・次に持っていく先` },
+      box('fl-in', '入れるもの', step.in), arrow(),
+      h('div', { class: 'fl-frame fl-at' }, h('p', { class: 'fl-frame-h', text: '使う場所' }), whereBadge(step.where)), arrow(),
+      box('fl-out', '出るもの', step.out), arrow(),
+      box('fl-to', '次に持っていく先', [step.to])),
+    h('ol', { class: 'fl-how' }, step.how.map((t) => h('li', { text: t }))),
+    h('div', { class: 'row fl-actions' },
+      screens.map((id) => openButton(app, id, `画面「${screenOf(id).label}」を開く`)),
+      showPurposes() ? step.purposes.map((pid) => purposeOpen(app, pid, `step-${step.id}-${pid}`)) : null,
+      next ? h('button', { class: 'btn small', type: 'button', 'data-fk': 'next-' + step.id, onclick: () => focusStep(next.id) }, `次の段へ（${next.label}）`) : null));
 }
 
 export function renderGuide(root, app) {
+  // 進み具合は、台帳を開いているときだけ（説明用の表示では出さない）
+  const st = store.ledger && !store.presentation ? stepStatus(store.ledger) : null;
+
   const toc = h('nav', { class: 'guide-toc', 'aria-label': '使い方の目次' },
     h('div', { class: 'small muted', text: '目次' }),
-    CHAPTERS.map((c, i) => h('button', { type: 'button', class: 'toc-item', 'data-fk': 'toc-' + c.id, onclick: () => {
+    GUIDE_CHAPTERS.map((c, i) => h('button', { type: 'button', class: 'toc-item', 'data-fk': 'toc-' + c.id, onclick: () => {
       const el = document.getElementById(c.id);
       if (el) { el.scrollIntoView({ block: 'start' }); el.querySelector('h2').setAttribute('tabindex', '-1'); el.querySelector('h2').focus({ preventScroll: true }); }
     } }, `${i + 1}. ${c.title}`)));
@@ -75,63 +162,58 @@ export function renderGuide(root, app) {
   const body = h('div', { class: 'guide-body' });
 
   // 1 はじめに
-  body.appendChild(chapter('g-intro', '1. はじめに',
+  body.appendChild(chapter(0, [
     h('p', { class: 'guide-lead', text: INTRO.lead }),
     h('div', { class: 'grid cols-3 guide-points' }, INTRO.points.map((p) => h('div', { class: 'card' }, h('h3', { text: p.title }), h('p', { class: 'small', text: p.desc })))),
     h('h3', { text: 'データの扱い' }),
-    h('ul', { class: 'guide-list' }, INTRO.data.map((d) => h('li', { text: d })))));
+    h('ul', { class: 'guide-list' }, INTRO.data.map((d) => h('li', { text: d })))]));
 
-  // 2 最初の 10 分
-  body.appendChild(chapter('g-first', '2. 最初の 10 分',
-    h('p', { class: 'small muted', text: '初めて使うときは、この順に進めます。' }),
-    flow(FIRST_STEPS, app)));
+  // 2 全体の流れ
+  const state = !st ? FLOW_TEXT.noLedger : st.loopActive ? FLOW_TEXT.loopNow : (Object.values(st.status).includes('active') ? '' : FLOW_TEXT.allDone);
+  body.appendChild(chapter(1, [
+    h('ul', { class: 'fl-legend' },
+      Object.keys(WHERE).map((w) => h('li', null, whereBadge(w), ' ', FLOW_TEXT.legend[w])),
+      st ? h('li', { class: 'small muted', text: Object.values(FLOW_TEXT.marks).join('　') }) : null),
+    state ? h('p', { class: ['notice', 'small', st && st.loopActive && 'fl-now'], id: 'fl-state', text: state }) : null,
+    h('p', { class: 'small muted', id: 'fl-summary', text: FLOW_TEXT.summary }),
+    h('div', { class: 'fl-wrap' }, flowDiagram(st))]));
 
-  // 3 往復
-  body.appendChild(chapter('g-round', '3. Gemini・NotebookLM との往復',
-    h('p', { class: 'small muted', text: 'このツールでの作業は、ほぼすべてこの往復でできています。会議の後・資料が届いたとき・レビューのときも同じ流れです。' }),
-    flow(ROUND_TRIP, null),
-    h('h3', { text: 'うまくいかないとき' }),
-    h('div', { class: 'grid cols-3' }, ROUND_TRIP_TIPS.map((t) => h('div', { class: 'card tip' }, h('h4', { text: t.title }), h('p', { class: 'small', text: t.desc }))))));
+  // 3 段ごとにやること
+  body.appendChild(chapter(2, [h('div', { class: 'fl-steps' }, FLOW_STEPS.map((step, i) => stepCard(app, step, st, i)))]));
 
-  // 4 案件の進め方
-  body.appendChild(chapter('g-phases', '4. 案件の進め方',
-    h('p', { class: 'small muted', text: '段階ごとに、主に使う画面と指示文です。順番どおりでなくてもかまいません。' }),
-    h('div', { class: 'phases' }, PHASES.map((ph, i) => h('section', { class: 'card phase', id: 'phase-' + ph.id },
-      h('div', { class: 'row' }, h('span', { class: 'phase-num', text: String(i + 1) }), h('h3', { text: ph.title })),
-      h('p', { class: 'small', text: ph.desc }),
-      h('div', { class: 'phase-cols' },
-        h('div', null, h('h4', { text: '使う画面' }),
-          h('ul', { class: 'guide-list' }, ph.screens.filter(showScreen).map((sid) => h('li', null, h('strong', { text: screenOf(sid).label }), ' ', openButton(app, sid, '開く'))))),
-        showPurposes() ? h('div', null, h('h4', { text: '使う指示文' }), h('ul', { class: 'guide-list' }, ph.purposes.map((pid) => purposeButton(app, pid)))) : null))))));
+  // 4 毎朝と会議の前後
+  body.appendChild(chapter(3, [h('div', { class: 'fl-timeline', role: 'group', 'aria-label': GUIDE_CHAPTERS[3].title },
+    MEETING_TIMELINE.map((col) => h('div', { class: 'card fl-tl-col' },
+      h('p', { class: 'fl-tl-when', text: col.when }),
+      h('ul', null, col.items.map(([w, t]) => h('li', null, whereBadge(w), ' ', t))))))]));
 
-  // 5 画面ごとの説明
+  // 5 うまくいかないとき
+  body.appendChild(chapter(4, [h('div', { class: 'grid cols-3' }, ROUND_TRIP_TIPS.map((t) => h('div', { class: 'card tip' }, h('h4', { text: t.title }), h('p', { class: 'small', text: t.desc }))))]));
+
+  // 6 画面ごとの説明
   const groups = GROUPS.filter((g) => g.id !== 'help');
-  body.appendChild(chapter('g-screens', '5. 画面ごとの説明',
-    h('p', { class: 'small muted', text: '上段の分類ごとに並べています。' }),
-    groups.map((g) => {
-      const list = SCREENS.filter((s) => s.group === g.id && showScreen(s.id));
-      if (!list.length) return null;
-      return h('section', { class: 'screen-group' },
-        h('h3', { text: g.label }),
-        h('div', { class: 'table-wrap' }, h('table', { class: 'list guide-table' },
-          h('thead', null, h('tr', null, ['画面', '何ができるか', 'いつ使うか', ''].map((t) => h('th', { scope: 'col', text: t })))),
-          h('tbody', null, list.map((s) => {
-            const help = SCREEN_HELP[s.id] || { what: '説明準備中', when: '' };
-            return h('tr', { class: 'nocursor', 'data-screen': s.id },
-              h('td', null, h('strong', { text: s.label })),
-              h('td', { class: 'wrap small', text: help.what }),
-              h('td', { class: 'wrap small', text: help.when }),
-              h('td', null, openButton(app, s.id, 'この画面を開く')));
-          })))));
-    })));
+  body.appendChild(chapter(5, [groups.map((g) => {
+    const list = SCREENS.filter((x) => x.group === g.id && showScreen(x.id));
+    if (!list.length) return null;
+    return h('section', { class: 'screen-group' },
+      h('h3', { text: g.label }),
+      h('div', { class: 'table-wrap' }, h('table', { class: 'list guide-table' },
+        h('thead', null, h('tr', null, ['画面', '何ができるか', 'いつ使うか', ''].map((t) => h('th', { scope: 'col', text: t })))),
+        h('tbody', null, list.map((x) => {
+          const help = SCREEN_HELP[x.id] || { what: '説明準備中', when: '' };
+          return h('tr', { class: 'nocursor', 'data-screen': x.id },
+            h('td', null, h('strong', { text: x.label })),
+            h('td', { class: 'wrap small', text: help.what }),
+            h('td', { class: 'wrap small', text: help.when }),
+            h('td', null, openButton(app, x.id, 'この画面を開く')));
+        })))));
+  })]));
 
-  // 6 よくある困りごと
-  body.appendChild(chapter('g-faq', '6. よくある困りごと',
-    h('div', { class: 'faq' }, FAQ.map((f) => h('details', { class: 'card faq-item' }, h('summary', { text: f.q }), h('p', { class: 'small', text: f.a }))))));
+  // 7 よくある困りごと
+  body.appendChild(chapter(6, [h('div', { class: 'faq' }, FAQ.map((f) => h('details', { class: 'card faq-item' }, h('summary', { text: f.q }), h('p', { class: 'small', text: f.a }))))]));
 
-  // 7 用語
-  body.appendChild(chapter('g-terms', '7. 用語',
-    h('dl', { class: 'terms' }, TERMS.flatMap((t) => [h('dt', { text: t.term }), h('dd', { text: t.desc })]))));
+  // 8 用語
+  body.appendChild(chapter(7, [h('dl', { class: 'terms' }, TERMS.flatMap((t) => [h('dt', { text: t.term }), h('dd', { text: t.desc })]))]));
 
   root.appendChild(h('div', { class: 'guide' }, toc, body));
 }

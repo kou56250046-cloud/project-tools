@@ -1,13 +1,14 @@
 // 変更の影響範囲: 対象の項目から、参照フィールド（両方向）・links・関係を幅優先で 2 段までたどる
 // 関係者とシステムは影響範囲に含めるが、そこから先へはたどらない（担当者つながりで無関係な作業が入らないように）
 
-import { refsOf, buildBackrefs, linkIndex, KIND_IDS, kindLabel, statusLabel } from './schema.js';
+import { refsOf, buildBackrefs, linkIndex, LEDGER_KINDS, kindLabel, statusLabel } from './schema.js';
 
 const TERMINAL = new Set(['stakeholder', 'system']);
 
 // 戻り値: { items: { item, depth }[], byKind: Record<kind, Item[]>, tasks: Item[], taskEstimate: number }
 export function impactOf(ledger, rootIds, depth = 2) {
-  const byId = new Map(ledger.items.map((it) => [it.id, it]));
+  // メモは影響範囲に入れず、メモを通ってたどることもしない（社内のメモが変更要求書に出ないように）
+  const byId = new Map(ledger.items.filter((it) => it.kind !== 'memo').map((it) => [it.id, it]));
   const back = buildBackrefs(ledger);
   const links = linkIndex(ledger);
   const neighbors = (id) => {
@@ -51,7 +52,7 @@ export function impactOf(ledger, rootIds, depth = 2) {
 
   const items = [...seen].map(([id, d]) => ({ item: byId.get(id), depth: d }));
   const byKind = {};
-  for (const k of KIND_IDS) byKind[k] = [];
+  for (const k of LEDGER_KINDS) byKind[k] = [];
   for (const x of items) byKind[x.item.kind].push(x.item);
   // 見積は末端の作業だけを足す（親と子を二重に数えない）
   const tasks = byKind.task || [];
@@ -69,8 +70,9 @@ export function changeRequestText(ledger, cr, imp) {
   L.push(`■ 状態: ${statusLabel('change', cr.status)}`);
   if (cr.body) L.push('', '■ 内容', cr.body);
   L.push('', '■ 対象');
-  for (const id of cr.links || []) L.push(`・${name(id)}`);
-  if (!(cr.links || []).length) L.push('・（未指定）');
+  const targets = (cr.links || []).filter((id) => { const it = ledger.items.find((x) => x.id === id); return !it || it.kind !== 'memo'; });
+  for (const id of targets) L.push(`・${name(id)}`);
+  if (!targets.length) L.push('・（未指定）');
   L.push('', '■ 影響範囲（台帳から機械的に求めたもの）');
   for (const [k, list] of Object.entries(imp.byKind)) {
     if (!list.length || k === 'stakeholder' || k === 'system') continue;

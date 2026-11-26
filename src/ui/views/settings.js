@@ -1,8 +1,9 @@
 // 設定画面: 案件の一覧（切り替え・外す）・新規案件・読み込み・この案件の設定・書き出し・HTML のダウンロード・保存の大きさ
 
 import { STARTERS, createLedger } from '../../core/starter.js';
-import { SETTINGS, settingOf } from '../../core/schema.js';
-import { h, toast, download, confirmDialog, choiceDialog, nowIso, fmtDateTime } from '../dom.js';
+import { SETTINGS, settingOf, MEMO_TOTAL_WARN } from '../../core/schema.js';
+import { h, toast, download, confirmDialog, choiceDialog, nowIso, fmtDateTime, todayStr } from '../dom.js';
+import { ledgerToKarte } from '../../core/karte.js';
 import { store } from '../store.js';
 import { ensureVaultReady, MIN_PASSPHRASE } from '../lock.js';
 
@@ -68,6 +69,41 @@ async function resetCurrent(starterId) {
   if (!ok) return;
   store.resetProject(starterId || null);
   toast('中身を空に戻しました（取り消し可）');
+}
+
+// gemini-kit 用のカルテを書き出す（台帳・revision・書き出しの状態は変えない）
+function karteDialog() {
+  const l = store.ledger;
+  const inc = h('input', { type: 'checkbox', id: 'karte-internal' });
+  const info = h('div', { class: 'stack', id: 'karte-info' });
+  const show = () => {
+    const { counts: c, notes } = ledgerToKarte(l, { includeInternal: inc.checked, now: nowIso(), today: todayStr() });
+    info.replaceChildren(
+      h('ul', { class: 'small guide-list' },
+        h('li', { text: `事実 ${c.facts} 件（うち質問の回答から ${c.answerFacts} 件）・未回答 ${c.unknowns} 件（うち未回答・依頼中 ${c.openUnknowns} 件）` }),
+        h('li', { text: `決定 ${c.decisions} 件・保留（課題）${c.pending} 件・ToDo（作業）${c.todos} 件` }),
+        h('li', { text: `関係者 ${c.people} 人・出典 ${c.sources} 件` })),
+      notes.length ? h('ul', { class: 'small notice warn guide-list' }, notes.map((n) => h('li', { text: n }))) : null);
+  };
+  inc.addEventListener('change', show);
+  show();
+  const dlg = h('dialog', { class: 'dialog', id: 'karte-dialog', 'aria-labelledby': 'karte-title' },
+    h('h2', { id: 'karte-title', text: 'gemini-kit 用（カルテ）を書き出す' }),
+    h('p', { class: 'small', text: '要件・要望・制約・質問の回答は「事実」、質問は「未回答」、課題は「保留」、作業は「ToDo」になります。同じ台帳からは毎回同じ ID で書き出すので、gemini-kit で前の版との差分が出ます。' }),
+    info,
+    h('label', { class: 'row small' }, inc, '社内のみの項目を含める'),
+    h('div', { class: 'row dialog-actions' },
+      h('button', { class: 'btn', type: 'button', 'data-act': 'cancel', onclick: () => close() }, 'やめる'),
+      h('button', { class: 'btn primary', type: 'button', 'data-act': 'ok', onclick: () => {
+        const { karte } = ledgerToKarte(l, { includeInternal: inc.checked, now: nowIso(), today: todayStr() });
+        download(store.exportFilename().replace(/_rev/, '_karte_rev'), JSON.stringify(karte, null, 2) + '\n');
+        close();
+        toast('カルテを書き出しました（台帳は変わっていません）');
+      } }, '書き出す')));
+  function close() { dlg.close(); dlg.remove(); }
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
+  document.body.appendChild(dlg);
+  dlg.showModal();
 }
 
 // 合言葉を変える
@@ -267,14 +303,20 @@ export function renderSettings(root, app) {
         download(store.exportFilename(), store.exportText());
         store.markExported();
         toast('書き出しました');
-      } }, '書き出し'))));
+      } }, '書き出し'),
+      h('button', { class: 'btn', type: 'button', id: 'karte-export', onclick: () => karteDialog() }, 'gemini-kit 用（カルテ）を書き出す')),
+      h('p', { class: 'muted small', text: 'gemini-kit で要件定義書・設計書・顧客向け資料を作るときは、カルテを書き出し、gemini-kit のダッシュボードのタブでファイルを選ぶか貼り付けて取り込みます。台帳は変わりません。' })));
   }
 
   // 保存の大きさ
   const size = store.storageSize();
   root.appendChild(h('section', { class: 'card stack', id: 'storage-size' },
     h('h3', { text: 'ブラウザの保存の大きさ' }),
-    h('p', { class: ['small', size > STORAGE_WARN && 'notice error'], text: `約 ${(size / 1024 / 1024).toFixed(2)} MB（目安の上限 5 MB）。${size > STORAGE_WARN ? '4 MB を超えています。使っていない案件を書き出してからブラウザから外してください。' : ''}` })));
+    h('p', { class: ['small', size > STORAGE_WARN && 'notice error'], text: `約 ${(size / 1024 / 1024).toFixed(2)} MB（目安の上限 5 MB）。${size > STORAGE_WARN ? '4 MB を超えています。使っていない案件を書き出してからブラウザから外してください。' : ''}` }),
+    store.ledger ? (() => {
+      const total = store.ledger.items.filter((it) => it.kind === 'memo').reduce((a, it) => a + String(it.body || '').length, 0);
+      return h('p', { class: ['small', total > MEMO_TOTAL_WARN && 'notice warn'], id: 'memo-total', text: `この案件のメモの本文: 合計 ${total.toLocaleString()} 字（目安 ${MEMO_TOTAL_WARN.toLocaleString()} 字まで。保存の中ではおよそ 4 倍の大きさになります）${total > MEMO_TOTAL_WARN ? '。要らないメモを書き出してから消してください' : ''}` });
+    })() : null));
 
   // 配布（GitHub Pages で開いたときだけ）
   if (location.protocol === 'http:' || location.protocol === 'https:') {

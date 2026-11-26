@@ -1,6 +1,6 @@
 // 一覧画面: 全種別の項目を絞り込み・並べ替えして表で出す
 
-import { KINDS, KIND_IDS, CONFIDENCE, kindLabel, statusLabel, isOpen, afterBaselineIds } from '../../core/schema.js';
+import { KINDS, KIND_IDS, LEDGER_KINDS, CONFIDENCE, kindLabel, statusLabel, isOpen, afterBaselineIds } from '../../core/schema.js';
 import { h } from '../dom.js';
 import { store } from '../store.js';
 import { confBadge, statusBadge, itemTitle } from '../detail.js';
@@ -74,7 +74,9 @@ function select(label, value, options, onChange) {
 
 export function renderList(root, app, opts) {
   if (opts && opts.filter) { setListFilter(opts.filter); app.viewOpts = {}; }
-  const ledger = store.view();
+  // メモは一覧に出さない（メモの画面で扱う）
+  const view = store.view();
+  const ledger = { ...view, items: view.items.filter((it) => it.kind !== 'memo') };
   const rerender = () => app.refresh();
 
   root.appendChild(h('h2', { text: '一覧' }));
@@ -88,7 +90,7 @@ export function renderList(root, app, opts) {
     if (again) again.setSelectionRange(pos, pos);
   });
   root.appendChild(h('div', { class: 'filters' },
-    select('種別', filter.kind, [['', 'すべての種別'], ...KIND_IDS.map((k) => [k, kindLabel(k)])], (v) => { filter.kind = v; filter.status = ''; rerender(); }),
+    select('種別', filter.kind, [['', 'すべての種別'], ...LEDGER_KINDS.map((k) => [k, kindLabel(k)])], (v) => { filter.kind = v; filter.status = ''; rerender(); }),
     filter.kind ? select('状態', filter.status, [['', 'すべての状態'], ...statusOptions], (v) => { filter.status = v; rerender(); }) : null,
     select('確度', filter.confidence, [['', 'すべての確度'], ...CONFIDENCE.map((c) => [c.v, c.label])], (v) => { filter.confidence = v; rerender(); }),
     select('優先度', filter.priority, [['', 'すべての優先度'], ...PRIORITIES.map((p) => [p, p]), ['none', '優先度なし']], (v) => { filter.priority = v; rerender(); }),

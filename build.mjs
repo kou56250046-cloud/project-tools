@@ -14,11 +14,17 @@ import { createHash } from 'node:crypto';
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const SRC = join(ROOT, 'src');
 
+// 写した部品（ES module ではない）。import の除去と名前の衝突の検査をせず、そのまま本体の前に入れる
+// dash.js は window.Dash だけを作る（test/build.test.mjs で確かめる）
+export const VENDOR_JS = ['vendor/dash.js'];
+export const VENDOR_CSS = ['vendor/dash.css'];
+
 // 連結の順番。依存される側を先に置く
 export const JS_FILES = [
   'core/schema.js',
   'core/screens.js',
   'core/guide-text.js',
+  'core/guide-flow.js',
   'core/nfr.js',
   'core/extract.js',
   'core/patch.js',
@@ -32,10 +38,20 @@ export const JS_FILES = [
   'core/ddl.js',
   'core/erlayout.js',
   'core/csv.js',
+  'core/zip.js',
+  'core/xlsx.js',
+  'core/tableprep.js',
+  'core/convert.js',
+  'core/gemini-convert.js',
+  'core/transcript.js',
+  'core/chat.js',
+  'core/mask.js',
   'core/mastercheck.js',
   'core/trace.js',
   'core/workspace.js',
   'core/cross.js',
+  'core/karte.js',
+  'core/dashboard.js',
   'core/hearing.js',
   'core/prompts.js',
   'core/starter.js',
@@ -70,6 +86,10 @@ export const JS_FILES = [
   'ui/views/trace.js',
   'ui/views/tests.js',
   'ui/views/cross.js',
+  'ui/views/convert.js',
+  'ui/views/memos.js',
+  'ui/views/preprocess.js',
+  'ui/views/mask.js',
   'ui/views/guide.js',
   'app.js',
 ];
@@ -113,10 +133,11 @@ export function build({ files = JS_FILES, write = true } = {}) {
   if (collisions.length) throw new Error('ビルド失敗:\n' + collisions.join('\n'));
 
   const body = sources.map(({ file, code }) => `// ---- ${file} ----\n` + stripModule(code, file)).join('\n\n');
-  const js = `\n(() => {\n'use strict';\n${body}\n})();\n`;
+  const vendor = VENDOR_JS.map((f) => `// ---- ${f} ----\n` + readFileSync(join(SRC, f), 'utf8')).join('\n');
+  const js = `\n${vendor}\n(() => {\n'use strict';\n${body}\n})();\n`;
   if (/<\/script/i.test(js)) throw new Error('ビルド失敗: スクリプト内に </script が含まれています');
 
-  const css = '\n' + readFileSync(join(SRC, 'styles.css'), 'utf8') + '\n';
+  const css = '\n' + [join(SRC, 'styles.css'), ...VENDOR_CSS.map((f) => join(SRC, f))].map((p) => readFileSync(p, 'utf8')).join('\n') + '\n';
   const csp = [
     "default-src 'none'",
     `script-src ${sha(js)}`,

@@ -15,41 +15,126 @@ export const INTRO = {
   ],
 };
 
-// 2章 最初の 10 分
-export const FIRST_STEPS = [
-  { title: '合言葉を決める', desc: '上部の「＋ 新しい案件」か「設定」で案件を作ると、最初に合言葉を決める画面が出ます。8 文字以上。次から開くたびに入れます。あとから「設定」で変えられます。', screen: 'settings' },
-  { title: '案件を作る', desc: '上部の「＋ 新しい案件」（または「設定」の「新しい案件を作る」）で案件名と型（業務システム新規・基幹システム刷新・パッケージ導入）を選びます。型の標準のヒヤリング質問が入った状態で始まります。', screen: 'settings' },
-  { title: '資料から最初の台帳を作る', desc: '「指示文」で「初期作成」を選んでコピーし、Gemini に貼ります。指示文の末尾の「ここから資料」の下に、提案依頼書やメモを貼って送ります。', purpose: 'initial' },
-  { title: '返事を取り込む', desc: 'Gemini の返事をまるごとコピーして「取込」に貼り、「読み取る」。カードを確かめ、要らないものは「却下」にして「適用」します。', screen: 'import' },
+// 章の名前と前置き（目次もこれを使う）
+export const GUIDE_CHAPTERS = [
+  { id: 'g-intro', title: 'はじめに', lead: '' },
+  { id: 'g-flow', title: '全体の流れ', lead: '箱を押すと、その段の説明に移ります。点線の枠の中は、会議のたびに繰り返す部分です。' },
+  { id: 'g-steps', title: '段ごとにやること', lead: '入れるもの → 使う場所 → 出るもの → 次に持っていく先 の順に並べています。' },
+  { id: 'g-days', title: '毎朝と会議の前後でやること', lead: '会議 1 回のまわりで、いつ何をするかの目安です。' },
+  { id: 'g-tips', title: 'うまくいかないとき', lead: 'Gemini との往復でつまずきやすいところです。' },
+  { id: 'g-screens', title: '画面ごとの説明', lead: '上段の分類ごとに並べています。' },
+  { id: 'g-faq', title: 'よくある困りごと', lead: '' },
+  { id: 'g-terms', title: '用語', lead: '' },
 ];
 
-// 3章 往復の流れ
-export const ROUND_TRIP = [
-  { title: '指示文を作る', desc: '「指示文」で目的を選び、「指示文をコピー」。台帳の今の状態と、返事の形の決まりが入っています。' },
-  { title: 'Gemini に貼る', desc: '指示文を貼り、末尾の「ここから資料」の下に資料・議事録・メモを貼って送ります。' },
-  { title: '返事を取り込む', desc: '返事をまるごと「取込」に貼ります。```json の囲みや説明文が付いていてもかまいません。' },
-  { title: '確かめて適用', desc: '1 件ずつカードで確かめ、要らないものは「却下」。「適用」で台帳に入ります。間違えたら上部の「取り消し」（20 段まで。「履歴」からまとめて戻せます）。' },
+// 使う場所
+export const WHERE = { GEM: 'Gemini', NLM: 'NotebookLM', TOOL: 'このツール', CLIENT: '顧客' };
+
+// 全体の流れの段。kind: start / step / end、loop: 会議ごとに繰り返す段、optional: 任意の段
+export const FLOW_STEPS = [
+  { id: 'setup', label: '準備（案件と合言葉）', where: 'TOOL', kind: 'start',
+    in: ['案件名', '案件の型（業務システム新規・基幹システム刷新・パッケージ導入）'], out: ['型の標準のヒヤリング質問が入った台帳'], to: '初期作成',
+    how: ['上部の「＋ 新しい案件」（または「設定」の「新しい案件を作る」）で案件名と型を選ぶ', '初めてなら合言葉（8 文字以上）を決める。台帳はこの合言葉で暗号化してブラウザに保存される。あとから「設定」で変えられる', '区切りごとに上部の「書き出し」で JSON ファイルにも残す（合言葉を忘れたときの控え）'],
+    screens: ['settings'], purposes: [] },
+  { id: 'digest', label: '資料の下ごしらえ', where: 'NLM', kind: 'step', optional: true,
+    in: ['提案依頼書・議事録・メールなどの資料'], out: ['要点の箇条書き'], to: '初期作成（資料からの追加）',
+    how: ['NotebookLM が読めない Excel・Word・PowerPoint・HTML は、「資料の変換」で Markdown にする（大きな表は「NotebookLM 用の一式」。PDF・画像は変換の指示文で Gemini に書き写させる）', '資料が多いときは NotebookLM に入れ、「NotebookLM 用の要点整理」の指示文をコピーして送る', '返ってきた箇条書きを、次の段の指示文の「ここから資料」の下に貼る'],
+    screens: ['convert'], purposes: ['notebooklm'] },
+  { id: 'initial', label: '初期作成', where: 'GEM', kind: 'step',
+    in: ['指示文（台帳の今の状態入り）', '資料・メモ'], out: ['差分（JSON）'], to: '取込',
+    how: ['「指示文」で「初期作成」（台帳があるなら「資料からの追加」）を選び、「指示文をコピー」', 'Gemini に貼り、末尾の「ここから資料」の下に資料を貼って送る', '返事をまるごとコピーする（```json の囲みや説明文が付いていてもよい）'],
+    screens: ['prompts'], purposes: ['initial', 'material'] },
+  { id: 'import', label: '取込', where: 'TOOL', kind: 'step', loop: true,
+    in: ['Gemini の返事（差分）'], out: ['台帳の項目（ID でつながる）'], to: '点検',
+    how: ['返事を「取込」に貼って「読み取る」', '1 件ずつカードを確かめ、要らないものは「却下」。形の誤りがあるカードは自動で却下になる', '「適用」で台帳に入る。間違えたら上部の「取り消し」（20 段まで。「履歴」からまとめて戻せる）'],
+    screens: ['import'], purposes: [] },
+  { id: 'check', label: '点検', where: 'TOOL', kind: 'step', loop: true,
+    in: ['台帳'], out: ['次にやること', '催促する相手'], to: 'ヒヤリング準備',
+    how: ['毎朝、概要の「次にやること」と健康診断を見る（期限切れ・担当なし・出典なし・推測のまま）', '課題と質問で、顧客待ちが長いものを催促する', '関係図と一覧で全体を確かめる。兼務なら横断で全案件をまとめて見る'],
+    screens: ['overview', 'health', 'issues', 'graph', 'list', 'cross'], purposes: [] },
+  { id: 'prep', label: 'ヒヤリング準備', where: 'GEM', kind: 'step', loop: true,
+    in: ['未確定・空欄・矛盾のある項目（自動で入る）'], out: ['質問の差分', 'ヒヤリングシート'], to: '会議',
+    how: ['「ヒヤリング質問の生成」（非機能が手薄なら「非機能の洗い出し」）を Gemini に送り、返事を取り込む', 'ヒヤリングの画面で、候補の質問を次の会議に割り当てる', '非機能の 6 大項目に未着手が無いかを確かめる'],
+    screens: ['hearing', 'nfr'], purposes: ['hearing-questions', 'nfr'] },
+  { id: 'meeting', label: '会議・回答', where: 'CLIENT', kind: 'step', loop: true,
+    in: ['ヒヤリングシート'], out: ['回答', '文字起こし'], to: '議事録の取込',
+    how: ['シートの順に聞き、その場で回答を書く', '会議の文字起こしを保存する'],
+    screens: ['hearing'], purposes: [] },
+  { id: 'minutes', label: '議事録の取込', where: 'GEM', kind: 'step', loop: true,
+    in: ['議事録・文字起こし', 'メモ'], out: ['決定・課題・質問の差分'], to: '取込（次の周期）',
+    how: ['文字起こしは「議事録の前処理」で 1 行 1 発言に整えてから、「議事録の取込」の指示文に貼って送る。既存の質問の回答や課題の状態も更新される', 'チャットのやりとりは「メモ」に貼って保管し、選んで「メモからの取込」の指示文で送る。それ以外の指示は「自由指示」', '返事を取込に貼る。ここから次の周期が始まる'],
+    screens: ['prompts', 'preprocess', 'memos'], purposes: ['minutes', 'memo', 'free'] },
+  { id: 'baseline', label: '要件の合意', where: 'TOOL', kind: 'step',
+    in: ['合意した要望・要件'], out: ['ベースライン', '決定'], to: '計画・進捗',
+    how: ['範囲（スコープ）の画面でベースラインを記録する。その後に増えた要望が目立つようになる', '決定ログに、合意した理由と決めた人を残す', '「レビュー: PM」「レビュー: 利用者」で抜けを指摘させ、取り込む'],
+    screens: ['scope', 'decisions'], purposes: ['review-pm', 'review-user'] },
+  { id: 'plan', label: '計画・進捗', where: 'GEM', kind: 'step',
+    in: ['要件・決定・制約（自動で入る）', '週次の報告・メモ'], out: ['WBS', '進捗の更新', '定例会資料・週報'], to: '設計・見積',
+    how: ['「WBS の作成」で要件とつながった作業を作らせて取り込む', '週次の報告は「進捗の更新」で取り込む。ガントと EVM（SPI・CPI）で遅れを見る', '要件を変えるときは変更管理で影響を見て、定例会資料と週報を出す'],
+    screens: ['wbs', 'gantt', 'progress', 'changes', 'meeting-report'], purposes: ['wbs', 'progress', 'change-review', 'report-polish'] },
+  { id: 'design', label: '設計・見積', where: 'GEM', kind: 'step',
+    in: ['要件・決定（自動で入る）'], out: ['テーブル・画面・連携・バッチ', 'DDL・CRUD 表・FP 見積'], to: 'テスト',
+    how: ['「データ設計」でテーブルと列を、「画面・連携の洗い出し」で画面・連携・CRUD を作らせて取り込む', 'CRUD 表とマスタ点検で抜けと重複を見る', '見積の画面で FP と WBS の工数の食い違いを見る。「レビュー: エンジニア」で実現性を指摘させる'],
+    screens: ['data', 'functions', 'crud', 'estimate', 'master'], purposes: ['data-design', 'functions', 'review-eng'] },
+  { id: 'test', label: 'テスト', where: 'GEM', kind: 'end',
+    in: ['要件・画面の詳細'], out: ['テスト', '対応表'], to: '受入・リリース',
+    how: ['「テスト観点の生成」で対象を選び、正常・境界値・異常系・権限のテストを作らせる', '対応表で、テストの無い要件を見つける', '「レビュー: PL」「レビュー: 運用者」で抜けを指摘させる'],
+    screens: ['trace', 'tests'], purposes: ['test-viewpoints', 'review-pl', 'review-ops'] },
+  { id: 'docs', label: '文書づくり', where: 'TOOL', kind: 'end', optional: true,
+    in: ['台帳'], out: ['gemini-kit 用のカルテ（JSON）'], to: 'gemini-kit（要件定義書・設計書・顧客向け資料）',
+    how: ['「設定」の「gemini-kit 用（カルテ）を書き出す」で書き出す', 'gemini-kit のダッシュボードのタブで、ファイルを選ぶか貼り付けて取り込む', '書き出し直すと、gemini-kit で前の版との差分が出る'],
+    screens: ['settings'], purposes: [] },
 ];
+
+// 流れの矢印。back は戻りの線（破線）
+export const FLOW_EDGES = [
+  { from: 'setup', to: 'digest' },
+  { from: 'digest', to: 'initial' },
+  { from: 'setup', to: 'initial', label: '資料が少なければ' },
+  { from: 'initial', to: 'import' },
+  { from: 'import', to: 'check' },
+  { from: 'check', to: 'prep' },
+  { from: 'prep', to: 'meeting' },
+  { from: 'meeting', to: 'minutes' },
+  { from: 'minutes', to: 'import', label: '次の周期', back: true },
+  { from: 'check', to: 'baseline', label: '要件が固まったら' },
+  { from: 'baseline', to: 'plan' },
+  { from: 'plan', to: 'design' },
+  { from: 'design', to: 'test' },
+  { from: 'check', to: 'docs', label: '文書が要るとき' },
+];
+
+// 毎朝と会議の前後
+export const MEETING_TIMELINE = [
+  { when: '毎朝', items: [['TOOL', '概要の「次にやること」と健康診断'], ['TOOL', '兼務なら横断で全案件']] },
+  { when: '会議の前日', items: [['TOOL', '顧客待ちの催促'], ['GEM', 'ヒヤリング質問の生成'], ['TOOL', 'ヒヤリングシートの割り当て']] },
+  { when: '会議の当日', items: [['CLIENT', 'シートの順に聞く'], ['TOOL', 'その場で回答を書く'], ['CLIENT', '文字起こしを保存']] },
+  { when: '会議の翌日', items: [['GEM', '議事録の取込'], ['TOOL', '取込で確かめて適用'], ['TOOL', '定例会資料・週報']] },
+];
+
+// 図のまわりの文言
+export const FLOW_TEXT = {
+  summary: '準備 → 初期作成のあと、取込 → 点検 → ヒヤリング準備 → 会議 → 議事録の取込 を会議ごとに繰り返し、要件が固まったら 要件の合意 → 計画・進捗 → 設計・見積 → テスト へ進みます。',
+  legend: { GEM: 'Gemini で行う', NLM: 'NotebookLM で行う', TOOL: 'このツールで行う', CLIENT: '顧客とのやりとり' },
+  marks: { done: '✓ 済', active: '● 今ここ', todo: '○ これから', loop: '↻ 繰り返し', optional: '― 任意' },
+  loopLabel: '↻ 会議 1 回ごとに回す',
+  loopSub: '取込 → 点検 → ヒヤリング → 議事録',
+  noLedger: '案件を開くと、進み具合（✓ 済・● 今ここ など）がここに出ます。',
+  allDone: 'すべての段に手が付いています。会議のたびに繰り返しの部分を回します。',
+  loopNow: '今は繰り返しの部分（点線の枠）です。要件が固まったら「要件の合意」へ進みます。',
+};
+
+// 往復がうまくいかないとき
 export const ROUND_TRIP_TIPS = [
   { title: '誤りが出たとき', desc: '形の誤りがある操作は自動で却下されます。「修正依頼文をコピー」を Gemini に貼ると、直した差分を出し直させられます。' },
   { title: '資料が多いとき', desc: 'NotebookLM に資料を入れ、「NotebookLM 用の要点整理」の指示文で要点を箇条書きにさせます。その箇条書きを「資料からの追加」の指示文と一緒に Gemini に貼ります。' },
   { title: '返事が途中で切れたとき', desc: '「JSON として読めません」と出ます。Gemini に「続きを出して」ではなく、資料を分けて送り直すのが確実です（1 回の返事は 40 件までにしてあります）。' },
 ];
 
-// 4章 案件の進め方（段階ごとに使う画面と指示文）
-export const PHASES = [
-  { id: 'start', title: '立ち上げ', desc: '関係者・システム・要望・制約を洗い出し、全体像をつかむ。', screens: ['overview', 'graph', 'list'], purposes: ['initial', 'material', 'notebooklm'] },
-  { id: 'req', title: '要件定義', desc: 'ヒヤリングで穴を埋め、決定と範囲を残す。非機能の抜けをつぶす。', screens: ['hearing', 'issues', 'nfr', 'scope', 'decisions'], purposes: ['hearing-questions', 'minutes', 'nfr', 'review-pm', 'review-user'] },
-  { id: 'plan', title: '計画・進捗', desc: '要件から WBS を作り、進捗と変更を追い、定例会資料と週報を出す。', screens: ['wbs', 'gantt', 'progress', 'changes', 'meeting-report'], purposes: ['wbs', 'progress', 'change-review', 'report-polish'] },
-  { id: 'design', title: '設計・見積', desc: 'テーブル・画面・連携を作り、DDL・CRUD 表・FP の見積を出す。', screens: ['data', 'functions', 'crud', 'estimate', 'master'], purposes: ['data-design', 'functions', 'review-eng'] },
-  { id: 'test', title: 'テスト', desc: 'テスト観点を作り、要件からテストまでのつながりと合格率を見る。', screens: ['trace', 'tests'], purposes: ['test-viewpoints', 'review-pl', 'review-ops'] },
-  { id: 'daily', title: '毎日・毎週', desc: '朝に「次にやること」と健康診断、兼務なら横断。会議の後は議事録の取込。', screens: ['overview', 'health', 'cross'], purposes: ['minutes', 'free'] },
-];
-
 // 5章 画面ごとの説明（キーは core/screens.js の id）
 export const SCREEN_HELP = {
   cross: { what: 'ブラウザの中の全案件について、自分の作業・自分が持つボール・顧客の返事待ち・健康診断の高の件数を1画面にまとめる', when: '兼務しているとき、朝いちばんに' },
-  overview: { what: '案件の目的・期間・ゴール、種別ごとの件数、健康診断の上位5件（次にやること）', when: '案件を開いたとき、毎日の最初に' },
+  overview: { what: 'ダッシュボード。KPI（顧客待ち・期限切れ・要件の合意率・SPI）、要件の状態・ボールの状況・S カーブ・確度の内訳・期限の分布のグラフ、次にやること（健康診断の上位5件）、種別ごとの件数', when: '案件を開いたとき、毎日の最初に' },
   graph: { what: '関係者とシステムを立場ごとの列に並べ、関係を矢印で結ぶ。押すとつながる相手が強調される', when: '体制や連携の全体像を説明するとき' },
   list: { what: '全種別の項目を、種別・状態・確度・優先度・文字列で絞り込んで一覧にする', when: '項目を探すとき、まとめて状況を見るとき' },
   decisions: { what: '決定を日付の新しい順に。理由・検討した他の案・決めた人・置き換えた決定', when: '「いつ誰が何を決めたか」を確かめるとき' },
@@ -72,7 +157,11 @@ export const SCREEN_HELP = {
   tests: { what: 'テストの一覧と工程ごとの合格率。状態と実施日を表で直接変えられる', when: 'テストの実施中' },
   prompts: { what: 'Gemini・NotebookLM に貼る指示文を、目的を選んで作る', when: 'Gemini に何か頼むとき（いつでも）' },
   import: { what: 'Gemini の返事を貼り、1 件ずつ確かめて台帳に適用する', when: 'Gemini から返事が来たとき' },
-  settings: { what: '案件の作成・読み込み・切り替え・外す、この案件の設定（自分・日数・生産性など）、中身を空に戻す、合言葉を変える、書き出し', when: '案件を始めるとき、区切りごとの書き出し、やり直したいとき' },
+  preprocess: { what: 'Teams（VTT・txt）・Meet の文字起こしを 1 行 1 発言に整え、つなぎ言葉を除く。話者ごとの発言数・読めた割合を出す。.clean.txt で保存するか、メモにする。結果は保存しない', when: '会議の後、議事録の取込の前' },
+  mask: { what: '表の顧客名・担当者・メール・電話・住所・金額・日付を、列ごとの規則で伏せる。同じ値には同じ仮名。伏せた表と対応表を保存できる（対応表はブラウザに残さない）', when: '実データの表を NotebookLM や Gemini に渡す前' },
+  memos: { what: 'チャット（Teams・Google Chat の貼り付け）や会議の文字起こしを、1 行 1 発言に整えて保管する。絞り込み・JSON と md の書き出し・メモからの取込の指示文。社内のものなので顧客向けの表示やカルテには出ない', when: 'チャットで決まったことを台帳に入れたいとき、やりとりを NotebookLM に渡したいとき' },
+  convert: { what: 'Excel・CSV・JSON・Word・PowerPoint・HTML を Markdown にする。大きな表は NotebookLM 用の一式（項目定義書・集計・サンプル・分けたデータ）を zip で。PDF・画像は Gemini に貼る変換の指示文と、返事の点検（抜けたページ・表・見出し）。結果は保存しない', when: 'NotebookLM や Gemini に資料を渡す前' },
+  settings: { what: '案件の作成・読み込み・切り替え・外す、この案件の設定（自分・日数・生産性など）、中身を空に戻す、合言葉を変える、書き出し、gemini-kit 用のカルテの書き出し', when: '案件を始めるとき、区切りごとの書き出し、やり直したいとき' },
   guide: { what: 'この画面。使い方の説明', when: '迷ったとき' },
 };
 
@@ -81,6 +170,9 @@ export const FAQ = [
   { q: '合言葉を忘れました', a: '合言葉は復元できません。書き出したファイルがあれば、合言葉の画面の「合言葉を忘れたとき」からブラウザ内の台帳を消し、新しい合言葉を決めてファイルを読み込み直してください。' },
   { q: '取り込んだ内容を間違えました', a: '上部の「取り消し」を押すたびに 1 段ずつ戻ります（案件ごとに直近 20 段）。「履歴」を押すと、いつ・どこからの変更かの一覧から「ここまで戻す」でまとめて戻せます。戻した変更をやり直すことはできません。再読み込みやロックをすると戻せなくなります（案件の切り替えでは消えません）。' },
   { q: '案件を最初からやり直したい', a: '「設定」の「この案件の中身を空に戻す」で、案件名などの案件情報と設定は残したまま、項目・関係・ベースライン・変更の記録を消せます。型も選び直せます。直後なら「取り消し」で戻せますが、念のため先に書き出してください。' },
+  { q: 'Teams や Google Chat のやりとりを台帳に入れたい', a: '「把握」の「メモ」に貼り付けて「読み取る」と、日時・発言者・本文に分けて保管します（「編集済み」やリアクションの行は落とします）。メモを選んで「メモからの取込の指示文を開く」で Gemini に送り、返事を取込に貼ります。まとめて NotebookLM に渡すときは「JSON で書き出す」か「md で書き出す」を使います。メモは社内のもので、顧客に見せる表示や gemini-kit 用カルテには出ません。1 件 50,000 字まで、案件の合計が 300,000 字を超えると警告が出ます。前のバージョンのツールでメモを持つ案件を開くと、その案件だけ退避に移ります（消えません）。' },
+  { q: 'NotebookLM に Excel・PowerPoint・PDF を読ませたい', a: '「道具」の「資料の変換」で Markdown にしてから入れます。Excel・Word・PowerPoint・HTML はこのブラウザの中で変換します。大きな表は「NotebookLM 用の一式」にすると、集計を先に計算して渡すので読み違えが減ります。PDF・画像は「変換の指示文をコピー」でファイルと一緒に Gemini に貼り、返ってきた Markdown を貼ると抜けたページを点検できます。古い形式（.xls など）と暗号化されたファイルは読めません。' },
+  { q: 'gemini-kit で要件定義書や顧客向け資料を作りたい', a: '「設定」の「gemini-kit 用（カルテ）を書き出す」で、台帳を gemini-kit の案件カルテの形で書き出し、gemini-kit のダッシュボードのタブで取り込みます。要件・要望・制約・質問の回答は「事実」、質問は「未回答」、課題は「保留」、作業は「ToDo」になります。同じ台帳からは毎回同じ ID で書き出すので、書き出し直すと gemini-kit で前の版との差分が出ます。台帳には資料の原文が無いため、gemini-kit では「引用がありません」と表示されます。' },
   { q: '合言葉を変えたい', a: '「設定」の「合言葉を変える」で、今の合言葉と新しい合言葉（2 回）を入れます。すべての案件と退避データが新しい合言葉で暗号化し直されます。同じツールを別のタブで開いているときは、先に閉じてください。' },
   { q: '「JSON として読めません」と出ます', a: 'Gemini の返事が途中で切れているか、形が崩れています。「Gemini への修正依頼文をコピー」を Gemini に貼るか、資料を分けて送り直してください。' },
   { q: 'カードが「却下」から変えられません', a: 'そのカードには形の誤りがあります。赤い文字の理由を見て、修正依頼文で Gemini に直させてください。正しいカードだけ先に適用することもできます。' },

@@ -218,6 +218,7 @@ export const store = {
     this.workspace = emptyWorkspace(); this.undoById.clear(); this.key = null; this.keyRef = null; this.selectedId = null; this.recovery = {};
     this.vaultState = lsGet(KEY_VAULT) ? 'locked' : 'empty';
     this.gen++;
+    this.emit('lock');   // 画面が持つ一時の結果（資料の変換など）を消す合図。ロックのときだけ出す
     this.emit('vault');
   },
 

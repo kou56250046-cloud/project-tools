@@ -18,6 +18,7 @@ export const SCREENS = [
   { id: 'list', group: 'grasp', label: '一覧' },
   { id: 'decisions', group: 'grasp', label: '決定ログ' },
   { id: 'health', group: 'grasp', label: '健康診断' },
+  { id: 'memos', group: 'grasp', label: 'メモ' },
   { id: 'hearing', group: 'req', label: 'ヒヤリング' },
   { id: 'issues', group: 'req', label: '課題と質問' },
   { id: 'nfr', group: 'req', label: '非機能' },
@@ -36,16 +37,19 @@ export const SCREENS = [
   { id: 'tests', group: 'test', label: 'テスト' },
   { id: 'prompts', group: 'tools', label: '指示文' },
   { id: 'import', group: 'tools', label: '取込' },
+  { id: 'convert', group: 'tools', label: '資料の変換' },
+  { id: 'preprocess', group: 'tools', label: '議事録の前処理' },
+  { id: 'mask', group: 'tools', label: 'マスキング' },
   { id: 'settings', group: 'tools', label: '設定' },
   { id: 'guide', group: 'help', label: '使い方' },
 ];
 
 // 台帳が無くても開ける画面
-export const NO_LEDGER_OK = ['settings', 'guide'];
+export const NO_LEDGER_OK = ['settings', 'guide', 'convert', 'preprocess', 'mask'];
 
-// 説明用の表示で隠す画面（社内向けの点検・道具・他の案件が見える画面）
+// 説明用の表示で隠す画面（社内向けの点検・道具・他の案件が見える画面・社内のメモ）
 export function hiddenScreenInPresentation(s) {
-  return !!s && (s.group === 'tools' || s.id === 'health' || s.id === 'cross');
+  return !!s && (s.group === 'tools' || s.id === 'health' || s.id === 'cross' || s.id === 'memos');
 }
 
 export function screenById(id) {

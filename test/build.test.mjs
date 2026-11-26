@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { stripModule, findCollisions, build } from '../build.mjs';
+import { readFileSync } from 'node:fs';
 
 test('トップレベルの名前の衝突を検出する', () => {
   const errs = findCollisions([
@@ -27,4 +28,12 @@ test('ビルドすると CSP にハッシュが入り unsafe-inline を使わな
   assert.match(html, /connect-src 'none'/);
   assert.doesNotMatch(html, /unsafe-inline/);
   assert.match(html, /<link rel="icon" href="data:,">/);
+});
+
+test('写した部品 dash.js は Dash だけを作り、innerHTML・fetch・eval・new Function を使わない', () => {
+  const html = build({ write: false });
+  const defs = html.match(/root\.Dash\s*=/g) || [];
+  assert.equal(defs.length, 1);
+  const vendor = readFileSync(new URL('../src/vendor/dash.js', import.meta.url), 'utf8');
+  for (const bad of ['innerHTML', 'fetch(', 'eval(', 'new Function', 'insertAdjacentHTML', 'document.write']) assert.equal(vendor.includes(bad), false, bad);
 });

@@ -1,0 +1,175 @@
+/* 写した部品: ~/.claude/skills/dashboard/assets/dash.css（2026-11-26 に写す）
+   変えたところ: :root を styles.css へ移した・目盛線の灰色を var(--d-grid)・印刷用の枠の灰色を var(--d-mute) にした */
+/* dashboard スキルの部品。依存ゼロ。
+   色はデジタル庁デザインシステムの Blue パレット。変えたら scripts/contrast.mjs を通す。 */
+/* :root の --d-* は src/styles.css の :root に移した（ワークベンチの色の決まりに合わせるため） */
+
+.d-page {
+  margin: 0;
+  background: var(--d-bg);
+  color: var(--d-text);
+  font-family: var(--d-font);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* ---- 画面の枠 ---- */
+.d-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding: 16px var(--d-gap) 0;
+}
+.d-header h1 { margin: 0; font-size: 1.5rem; line-height: 1.3; }
+.d-header .d-asof { margin-left: auto; color: var(--d-label); font-size: .875rem; }
+.d-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.d-filters select, .d-filters input {
+  font: inherit; font-size: .9375rem;
+  padding: 6px 10px; border: 1px solid var(--d-label); border-radius: 6px;
+  background: var(--d-card); color: var(--d-text);
+}
+.d-filters label { display: grid; gap: 2px; font-size: .8125rem; color: var(--d-label); }
+
+/* 縦横6分割のグリッド。左上から右下へ、全体から部分へ置く */
+.d-board {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--d-gap);
+  padding: var(--d-gap);
+}
+/* 会議室モニターなど 16:9 で常時表示するとき */
+.d-board--screen {
+  aspect-ratio: 16 / 9;
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+  max-height: 100vh;
+}
+.d-span-1 { grid-column: span 1; } .d-span-2 { grid-column: span 2; }
+.d-span-3 { grid-column: span 3; } .d-span-4 { grid-column: span 4; }
+.d-span-5 { grid-column: span 5; } .d-span-6 { grid-column: span 6; }
+.d-row-2 { grid-row: span 2; } .d-row-3 { grid-row: span 3; } .d-row-4 { grid-row: span 4; }
+
+@media (max-width: 960px) {
+  .d-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .d-board--screen { aspect-ratio: auto; grid-template-rows: none; max-height: none; }
+  [class*="d-span-"] { grid-column: span 2; }
+  .d-span-1 { grid-column: span 1; }
+  [class*="d-row-"] { grid-row: auto; }
+}
+@media (max-width: 560px) {
+  .d-board { grid-template-columns: minmax(0, 1fr); }
+  [class*="d-span-"], .d-span-1 { grid-column: span 1; }
+}
+
+/* ---- カード ---- */
+.d-card {
+  background: var(--d-card);
+  border: 1px solid var(--d-grid);
+  border-radius: var(--d-radius);
+  padding: 16px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* 最初に見る指標の強調。左上のカードに付ける */
+.d-card--lead { border-left: 4px solid var(--d-s1); }
+.d-card > figure { margin: 0; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.d-title { margin: 0 0 2px; font-size: 1rem; font-weight: 700; line-height: 1.4; }
+.d-sub { margin: 0 0 8px; font-size: .8125rem; color: var(--d-label); }
+.d-plot { position: relative; flex: 1; min-height: 160px; }
+.d-plot svg { display: block; width: 100%; overflow: visible; }
+
+.d-meta {
+  margin: 8px 0 0;
+  font-size: .75rem;
+  color: var(--d-label);
+  display: flex; flex-wrap: wrap; gap: 0 12px;
+}
+
+/* ---- KPI ---- */
+.d-kpi-label { margin: 0; font-size: .9375rem; font-weight: 700; }
+.d-kpi-value { margin: 4px 0; font-size: 2.5rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.d-kpi-value small { font-size: 1rem; font-weight: 400; margin-left: 4px; }
+.d-kpi-compare { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .875rem; }
+.d-kpi-compare li { display: flex; gap: 6px; align-items: baseline; }
+.d-kpi-compare .d-k { color: var(--d-label); }
+.d-good { color: var(--d-pos); font-weight: 700; }
+.d-bad { color: var(--d-neg-text); font-weight: 700; }
+.d-flat { color: var(--d-label); font-weight: 700; }
+.d-plot--kpi { min-height: 0; flex: none; }
+.d-spark { display: block; margin-top: 6px; }
+
+/* ---- 凡例（グラフに隣接、グラフと同じ順） ---- */
+.d-legend { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .8125rem; }
+.d-legend li { display: flex; align-items: center; gap: 6px; }
+.d-legend svg, .d-plot .d-legend svg { flex: none; width: auto; display: inline-block; }
+.d-legend--list { flex-direction: column; gap: 6px; }
+.d-legend--list li { justify-content: space-between; gap: 12px; }
+.d-legend .d-num { font-variant-numeric: tabular-nums; }
+
+.d-legend-key { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.d-legend--list .d-legend-key { flex: 1 1 auto; }
+.d-legend .d-num { white-space: nowrap; }
+.d-donut { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
+.d-donut .d-legend--list { flex: 1; min-width: 180px; }
+
+/* ---- SVG の文字と線 ---- */
+.d-axis text, .d-tick { fill: var(--d-label); font-size: 12px; font-family: var(--d-font); }
+.d-gridline { stroke: var(--d-grid); stroke-width: 1; }
+.d-guide { stroke: var(--d-text); stroke-width: 1; stroke-dasharray: 2 2; pointer-events: none; }
+.d-refline { stroke: var(--d-ref); stroke-width: 1.5; stroke-dasharray: 6 4; }
+.d-halo { paint-order: stroke; stroke: var(--d-card); stroke-width: 3px; stroke-linejoin: round; }
+.d-node-label { font-size: 13px; font-family: var(--d-font); }
+.d-node { cursor: default; transition: opacity .15s; }
+.d-edge { transition: opacity .15s; }
+.is-dim { opacity: .15; }
+.d-flow:hover, .d-flow:focus-visible { stroke-opacity: 1; stroke: var(--d-s3); }
+.d-bar:hover { filter: brightness(1.15); }
+.d-scroll { overflow-x: auto; }
+.d-scroll svg { width: auto; max-width: none; }
+.d-sort { all: unset; cursor: pointer; }
+.d-sort:focus-visible { outline: 2px solid var(--d-link); outline-offset: 2px; }
+.d-barcell { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.d-csv { display: inline-block; margin-top: 6px; font-size: .8125rem; color: var(--d-link); }
+.d-summary { margin: 0; padding-left: 1.2em; font-size: .875rem; }
+.d-zero { stroke: var(--d-label); stroke-width: 1; }
+.d-direct { font-size: 12px; font-weight: 700; font-family: var(--d-font); }
+.d-value { fill: var(--d-text); font-size: 12px; font-family: var(--d-font); font-variant-numeric: tabular-nums; }
+.d-center-value { fill: var(--d-text); font-size: 22px; font-weight: 700; font-family: var(--d-font); }
+.d-center-label { fill: var(--d-label); font-size: 12px; font-family: var(--d-font); }
+.d-note-svg { fill: var(--d-label); font-size: 11px; font-family: var(--d-font); }
+.d-pt:focus { outline: none; }
+.d-pt:focus-visible { stroke: var(--d-text); stroke-width: 3; }
+
+/* ホバー・フォーカスで値を出す（3:1 未満の色面の代替） */
+.d-tip {
+  position: absolute; pointer-events: none;
+  background: var(--d-text); color: #fff;
+  font-size: .75rem; padding: 4px 8px; border-radius: 4px;
+  white-space: nowrap; transform: translate(-50%, calc(-100% - 8px));
+  opacity: 0; transition: opacity .1s;
+}
+.d-tip.is-on { opacity: 1; }
+
+/* ---- 表 ---- */
+.d-table-wrap { overflow-x: auto; }
+.d-table { width: 100%; border-collapse: collapse; font-size: .875rem; font-variant-numeric: tabular-nums; }
+.d-table th, .d-table td { padding: 6px 8px; border-bottom: 1px solid var(--d-grid); text-align: left; }
+.d-table th { color: var(--d-label); font-weight: 700; font-size: .8125rem; }
+.d-table .d-r { text-align: right; }
+
+/* 代替の表（グラフごとに自動で付く） */
+.d-alt { margin-top: 6px; font-size: .8125rem; }
+.d-alt summary { cursor: pointer; color: var(--d-link); width: fit-content; }
+.d-alt .d-table { margin-top: 6px; }
+
+.d-empty { margin: auto; color: var(--d-label); font-size: .875rem; text-align: center; padding: 24px 0; }
+
+.d-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) { .d-tip { transition: none; } }
+@media print {
+  .d-page { background: #fff; }
+  .d-card { break-inside: avoid; border-color: var(--d-mute); }
+  .d-alt { display: none; }
+}

@@ -35,16 +35,20 @@ import { renderTrace } from './ui/views/trace.js';
 import { renderTests } from './ui/views/tests.js';
 import { renderCross } from './ui/views/cross.js';
 import { renderGuide } from './ui/views/guide.js';
+import { renderConvert, clearConvertState } from './ui/views/convert.js';
+import { renderMemos, clearMemosState } from './ui/views/memos.js';
+import { renderPreprocess, clearPreprocessState } from './ui/views/preprocess.js';
+import { renderMask, clearMaskState } from './ui/views/mask.js';
 import { GROUPS, SCREENS, NO_LEDGER_OK, hiddenScreenInPresentation } from './core/screens.js';
 
 // 画面の描画関数（画面の id → 関数）。分類と画面の一覧は core/screens.js が正
 const RENDERERS = {
-  cross: renderCross, overview: renderOverview, graph: renderGraph, list: renderList, decisions: renderDecisions, health: renderHealth,
+  cross: renderCross, memos: renderMemos, overview: renderOverview, graph: renderGraph, list: renderList, decisions: renderDecisions, health: renderHealth,
   hearing: renderHearing, issues: renderIssues, nfr: renderNfr, scope: renderScope,
   wbs: renderWbs, gantt: renderGantt, progress: renderProgress, changes: renderChanges, 'meeting-report': renderMeetingReport,
   data: renderData, functions: renderFunctions, crud: renderCrud, estimate: renderEstimate, master: renderMaster,
   trace: renderTrace, tests: renderTests,
-  prompts: renderPrompts, import: renderImport, settings: renderSettings,
+  prompts: renderPrompts, import: renderImport, convert: renderConvert, preprocess: renderPreprocess, mask: renderMask, settings: renderSettings,
   guide: renderGuide,
 };
 const VIEWS = SCREENS.map((sc) => ({ ...sc, render: RENDERERS[sc.id] }));
@@ -307,6 +311,7 @@ function boot() {
       return;
     }
     if (reason === 'save-error') { renderTopbar(); return; }
+    if (reason === 'lock') { clearConvertState(); clearMemosState(); clearPreprocessState(); clearMaskState(); return; }   // ロックのときだけ、資料の変換の結果を消す（続く vault の通知で描き直す）
     if (reason === 'vault') clearMasterState();
     if (reason === 'presentation' && hiddenInPresentation(app.view)) { app.go('overview'); return; }
     app.refresh();

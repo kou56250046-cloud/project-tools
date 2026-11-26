@@ -1,21 +1,22 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { KIND_IDS, COMMON_FIELDS, validateLedger } from '../src/core/schema.js';
+import { LEDGER_KINDS, COMMON_FIELDS, validateLedger } from '../src/core/schema.js';
 import { PURPOSES, MATERIAL_MARK, buildPrompt, buildFixPrompt, schemaText } from '../src/core/prompts.js';
 import { createLedger, STARTERS } from '../src/core/starter.js';
 
 const ledger = JSON.parse(readFileSync(new URL('../samples/sample-ledger.json', import.meta.url), 'utf8'));
 const opts = { today: '2026-11-25', freeText: '課題の重要度を見直して' };
 
-test('目的は19種', () => {
-  assert.equal(PURPOSES.length, 19);
+test('目的は20種（P6c でメモからの取込を足した）', () => {
+  assert.equal(PURPOSES.length, 20);
 });
 
 for (const p of PURPOSES.filter((x) => x.id !== 'notebooklm' && !x.kinds && !x.plain)) {
-  test(`指示文（${p.label}）に全 kind・全 ID・資料の位置・revision が入る`, () => {
+  test(`指示文（${p.label}）に全 kind（メモを除く）・全 ID・資料の位置・revision が入る`, () => {
     const s = buildPrompt(p.id, ledger, opts);
-    for (const k of KIND_IDS) assert.ok(s.includes(k), k);
+    for (const k of LEDGER_KINDS) assert.ok(s.includes(k), k);
+    assert.ok(!s.includes('- memo'), 'メモの種別が指示文に出ている');
     for (const it of ledger.items) assert.ok(s.includes(it.id), it.id);
     assert.ok(s.includes(MATERIAL_MARK));
     assert.ok(s.includes('"basedOnRevision": 12'));

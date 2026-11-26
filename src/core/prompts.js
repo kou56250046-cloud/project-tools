@@ -1,6 +1,6 @@
 // Gemini / NotebookLM に貼る指示文を作る。種別と値の説明は schema.js の表から生成する。
 
-import { KINDS, KIND_IDS, CONFIDENCE, SOURCE_TYPES, SCHEMA_VERSION, kindLabel, statusLabel, enumLabel, NFR_CATEGORIES, LOGICAL_TYPES, linkIndex } from './schema.js';
+import { KINDS, LEDGER_KINDS, CONFIDENCE, SOURCE_TYPES, SCHEMA_VERSION, kindLabel, statusLabel, enumLabel, NFR_CATEGORIES, LOGICAL_TYPES, linkIndex } from './schema.js';
 import { runHealth } from './health.js';
 import { NFR, nfrStatus, NFR_STATES } from './nfr.js';
 import { impactOf } from './impact.js';
@@ -10,6 +10,7 @@ export const MATERIAL_MARK = '--- ここから資料 ---';
 export const PURPOSES = [
   { id: 'initial', group: '作る', label: '初期作成', desc: '提案依頼書・メモなどから、関係者・要望・制約などを洗い出す' },
   { id: 'minutes', group: '作る', label: '議事録の取込', desc: '議事録・文字起こしから、決定・課題・質問を足し、既存の質問の回答や課題の状態を更新する' },
+  { id: 'memo', group: '作る', label: 'メモからの取込', desc: '選んだメモ（チャット・文字起こし）から、決定・課題・質問を足し、既存の質問の回答や課題の状態を更新する（メモを選ぶ）' },
   { id: 'material', group: '作る', label: '資料からの追加', desc: '資料や NotebookLM の要点整理から、台帳に無い項目を足す' },
   { id: 'hearing-questions', group: '要件定義', label: 'ヒヤリング質問の生成', desc: '未確定・空欄・矛盾から、次のヒヤリングで聞くべき質問を作らせる', kinds: ['stakeholder', 'request', 'constraint', 'requirement', 'decision', 'question', 'meeting'] },
   { id: 'nfr', group: '要件定義', label: '非機能の洗い出し', desc: 'IPA 非機能要求グレードの 6 大項目に沿って、非機能要件の案と確認すべき質問を作らせる', kinds: ['requirement', 'question', 'constraint', 'system'] },
@@ -71,7 +72,7 @@ export function schemaText() {
   lines.push('- internal: true にすると社内のみの項目になり、顧客に見せる表示で隠れる（任意。社内向けのメモやリスクに使う）');
   lines.push('');
   lines.push('### 種別（kind）ごとの項目。* は必須');
-  for (const k of KIND_IDS) {
+  for (const k of LEDGER_KINDS) {
     const d = KINDS[k];
     const fields = Object.entries(d.fields).map(([name, f]) => {
       let t = `${name}${f.required ? '*' : ''}（${f.label}`;
@@ -149,7 +150,8 @@ const oneLine = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 
 // 今の項目一覧。detailed なら本文や主要な項目も含める（レビュー用）。kinds を渡すとその種別だけ載せる
 export function itemsText(ledger, detailed, kinds, ids) {
-  const items = ids ? ledger.items.filter((it) => ids.has(it.id)) : kinds ? ledger.items.filter((it) => kinds.includes(it.kind)) : ledger.items;
+  const base = ledger.items.filter((it) => it.kind !== 'memo');   // メモは指示文の台帳の一覧に出さない
+  const items = ids ? base.filter((it) => ids.has(it.id)) : kinds ? base.filter((it) => kinds.includes(it.kind)) : base;
   if (!items.length) return '（まだ項目はありません）';
   const shown = new Set(items.map((it) => it.id));
   const lines = ['ID | 種別 | 状態 | 題名' + (detailed ? ' | 詳細' : '')];
@@ -239,6 +241,8 @@ function taskText(purpose, opts) {
       return 'あなたは SIer のベテラン PM です。下の資料（提案依頼書・メモなど）を読み、案件台帳の最初の項目を洗い出してください。関係者（顧客・自社・協力会社）、システム、要望、制約、決まっていること（決定）、課題、確認すべきこと（質問）を、資料に根拠があるものから足してください。関係者とシステムの関係（relate）も足してください。案件名・目的・期間が分かれば project で設定してください。';
     case 'minutes':
       return 'あなたは SIer の PM の補佐役です。下の議事録・文字起こしを読み、次を差分にしてください: (1) 新たに決まったこと（decision。理由・検討した他の案・決めた人を入れる。以前の決定を覆したときは supersedes に古い決定の ID） (2) 新たな課題（issue。担当と期限が分かれば入れる） (3) 新たな確認事項（question） (4) 新たな要望・制約 (5) 一覧にある質問に回答が出たら update で status を answered にし answer に回答を書く (6) 一覧にある課題が片付いたら update で status を closed にする。発言者は出典の speaker に入れてください。';
+    case 'memo':
+      return 'あなたは SIer の PM の補佐役です。下の「メモ」（チャットのやりとりや会議の文字起こし。1 行が「日時 発言者｜本文」）を読み、次を差分にしてください: (1) 新たに決まったこと（decision。理由・決めた人を入れる。以前の決定を覆したときは supersedes に古い決定の ID） (2) 新たな課題（issue。担当と期限が分かれば入れる） (3) 新たな確認事項（question） (4) 新たな要望・制約 (5) 一覧にある質問に回答が出たら update で status を answered にし answer に回答を書く (6) 一覧にある課題が片付いたら update で status を closed にする。出典（sources）は type を "chat"、ref をメモの題名、date を発言の日にし、発言者は speaker に入れてください。メモの ID（MM-）は links に入れないでください。';
     case 'material':
       return 'あなたは SIer の SE です。下の資料を読み、台帳の一覧に無い項目（関係者・システム・要望・制約・要件・決定・課題・質問）を足してください。一覧の項目と内容が食い違うところは、update で直すか、食い違いを課題（issue）として足してください。';
     case 'free':
@@ -251,8 +255,9 @@ function taskText(purpose, opts) {
 }
 
 function notebookPrompt(ledger) {
-  const known = ledger.items.length
-    ? ledger.items.map((it) => `- ${kindLabel(it.kind)}: ${oneLine(it.title)}`).join('\n')
+  const items = ledger.items.filter((it) => it.kind !== 'memo');
+  const known = items.length
+    ? items.map((it) => `- ${kindLabel(it.kind)}: ${oneLine(it.title)}`).join('\n')
     : '（まだありません）';
   return [
     `案件「${ledger.project.name}」について、アップロードした資料から要点を整理してください。`,
@@ -355,8 +360,19 @@ function reportPolishPrompt(ledger, text) {
 }
 
 // 指示文を作る。opts: { today: 'YYYY-MM-DD', freeText?: string }
+export const MEMO_PROMPT_MAX = 60000;
+
+// 選んだメモを資料にする。戻り値 { text, total, over, count }（total は本文の字数の合計）
+export function memoMaterial(ledger, memoIds) {
+  const memos = (memoIds || []).map((id) => ledger.items.find((it) => it.id === id && it.kind === 'memo')).filter(Boolean);
+  const total = memos.reduce((a, m) => a + String(m.body || '').length, 0);
+  const text = memos.map((m) => [`### メモ「${m.title}」${m.channel ? `（${m.channel}）` : ''}${m.from || m.to ? `　期間: ${m.from || '?'}〜${m.to || '?'}` : ''}`, String(m.body || '')].join('\n')).join('\n\n');
+  return { text, total, over: total > MEMO_PROMPT_MAX, count: memos.length };
+}
+
 export function buildPrompt(purpose, ledger, opts = {}) {
   const today = opts.today || new Date().toISOString().slice(0, 10);
+  const memo = purpose === 'memo' ? memoMaterial(ledger, opts.memoIds) : null;
   if (purpose === 'notebooklm') return notebookPrompt(ledger);
   if (purpose === 'report-polish') return reportPolishPrompt(ledger, opts.reportText || '');
   if (!PURPOSES.some((p) => p.id === purpose)) throw new Error('不明な目的: ' + purpose);
@@ -402,9 +418,9 @@ export function buildPrompt(purpose, ledger, opts = {}) {
     ids ? (purpose === 'test-viewpoints' ? '（テストの対象と、それにつながる項目だけを載せています）' : '（変更要求とその影響範囲の項目だけを載せています）') : def.kinds ? `（${def.kinds.map(kindLabel).join('・')}だけを載せています）` : null,
     itemsText(ledger, detailed || purpose === 'change-review', ids ? null : def.kinds, ids),
     '',
-    detailed ? '（レビュー対象は上の台帳です。補足の資料があれば下に貼ります）' : '（この下に資料を貼ります）',
+    detailed ? '（レビュー対象は上の台帳です。補足の資料があれば下に貼ります）' : memo ? '（この下がメモです）' : '（この下に資料を貼ります）',
     MATERIAL_MARK,
-    '',
+    memo ? (memo.count ? memo.text : '（メモが選ばれていません。指示文の画面でメモを選んでください）') : '',
   ].filter((x) => x !== null).join('\n');
 }
 

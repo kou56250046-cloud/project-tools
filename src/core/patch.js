@@ -15,7 +15,8 @@ const relKey = (from, to, label) => [from, to, String(label).trim()].join('|');
 // 差分を検査する。戻り値:
 // { errors: 差分全体の誤り, warnings, ops: ParsedOp[] }
 // ParsedOp = { index, op, type, kind, tempId, errors, warnings, unknown }
-export function validatePatch(patch, ledger) {
+// opts.local: 画面の操作（applyLocalOps）から呼ぶとき true。Gemini の差分ではメモ（memo）を足したり変えたりできない
+export function validatePatch(patch, ledger, opts = {}) {
   const errors = [];
   const warnings = [];
   if (!isObj(patch)) return { errors: ['差分がオブジェクトではありません'], warnings, ops: [] };
@@ -58,6 +59,7 @@ export function validatePatch(patch, ledger) {
       if (!isObj(op.item)) { p.errors.push('item（追加する項目）がありません'); continue; }
       if (op.item.id !== undefined) p.warnings.push(`item.id「${String(op.item.id)}」は無視します。ID は取り込み時に振ります`);
       if (!KINDS[op.item.kind]) { p.errors.push(`種別（kind）「${String(op.item.kind)}」は使えません。使える値: ${KIND_IDS.join(', ')}`); continue; }
+      if (op.item.kind === 'memo' && !opts.local) { p.errors.push(MEMO_PATCH_ERROR); continue; }
       const r = validateFields(op.item.kind, withDefaults(op.item.kind, op.item), { resolve });
       p.errors.push(...r.errors); p.warnings.push(...r.warnings); p.unknown = r.unknown;
       if (op.item.kind === 'decision' && op.item.supersedes && op.item.supersedes === op.tempId) p.errors.push('supersedes に自分自身は指定できません');
@@ -67,6 +69,7 @@ export function validatePatch(patch, ledger) {
       const k = base(op.id);
       if (!k) { p.errors.push(kindOfId(op.id) ? `ID「${op.id}」は台帳にありません` : `「${op.id}」は ID の形式ではありません`); continue; }
       p.kind = k;
+      if (k === 'memo' && !opts.local) { p.errors.push(MEMO_PATCH_ERROR); continue; }
       const set = op.set === undefined ? {} : op.set;
       if (!isObj(set)) { p.errors.push('set（変更する内容）はオブジェクトで指定してください'); continue; }
       for (const f of FORBIDDEN_SET) if (set[f] !== undefined) p.errors.push(`${f} は変更できません`);
@@ -335,8 +338,33 @@ export function previewPatch(ledger, validated, accepted, now) {
 }
 
 // 画面の内部から作る差分（詳細パネルでの変更など）を検証して適用する
+export const MEMO_PATCH_ERROR = 'メモは差分で足したり変えたりできません（メモの画面で扱います）';
+
+// メモを消す（画面の操作だけ。取り消し・変更の記録・revision の対象）。メモを指す関連（links）も外す
+function removeMemos(ledger, ids, now, source) {
+  const errors = [];
+  for (const id of ids) {
+    const it = ledger.items.find((x) => x.id === id);
+    if (!it) errors.push(`ID「${id}」は台帳にありません`);
+    else if (it.kind !== 'memo') errors.push(`${id} はメモではありません。消せるのはメモだけです`);
+  }
+  if (errors.length) return { ok: false, errors };
+  const gone = new Set(ids);
+  const next = structuredClone(ledger);
+  next.items = next.items.filter((x) => !gone.has(x.id)).map((x) => (Array.isArray(x.links) && x.links.some((l) => gone.has(l)) ? { ...x, links: x.links.filter((l) => !gone.has(l)), updatedAt: now } : x));
+  next.revision = ledger.revision + 1;
+  next.updatedAt = now;
+  appendChange(next, { rev: next.revision, at: now, source, changes: ids.map((id) => ({ id, op: 'remove', kind: 'memo' })) });
+  return { ok: true, ledger: next, idMap: {}, applied: ids.length };
+}
+
 export function applyLocalOps(ledger, ops, now, source = 'local') {
-  const v = validatePatch({ type: 'ledger-patch', schemaVersion: SCHEMA_VERSION, ops }, ledger);
+  const removes = ops.filter((o) => o && o.op === 'remove');
+  if (removes.length) {
+    if (removes.length !== ops.length) return { ok: false, errors: ['remove は他の操作と混ぜられません'] };
+    return removeMemos(ledger, removes.map((o) => o.id), now, source);
+  }
+  const v = validatePatch({ type: 'ledger-patch', schemaVersion: SCHEMA_VERSION, ops }, ledger, { local: true });
   const errs = [...v.errors, ...v.ops.flatMap((p) => p.errors)];
   if (errs.length) return { ok: false, errors: errs };
   const r = applyPatch(ledger, v, new Set(v.ops.map((p) => p.index)), now, source);

@@ -3,6 +3,11 @@ private/
 *.ledger.json
 *_rev*.json
 !samples/*.json
+# 書き出したメモ・前処理・伏せた表・対応表（P6c）
+*_memo_*
+*.clean.txt
+*_masked_*
+対応表_社外秘_*
 
 node_modules/
 .DS_Store
