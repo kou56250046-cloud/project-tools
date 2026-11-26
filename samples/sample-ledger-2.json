@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 2,
+  "type": "ledger",
+  "revision": 1,
+  "project": {
+    "name": "【ダミー】さくら食品 在庫管理パッケージ導入",
+    "goals": [],
+    "starter": null,
+    "customer": "さくら食品株式会社（架空）",
+    "purpose": "倉庫の在庫管理をパッケージに置き換える",
+    "periodStart": "2026-11-01",
+    "periodEnd": "2027-03-31"
+  },
+  "items": [
+    {
+      "id": "SH-001",
+      "kind": "stakeholder",
+      "title": "中村 課長",
+      "side": "customer",
+      "org": "物流部",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "キックオフ",
+          "date": "2026-11-05"
+        }
+      ],
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-11-10T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z"
+    },
+    {
+      "id": "SH-002",
+      "kind": "stakeholder",
+      "title": "小野",
+      "side": "own",
+      "role": "PM（兼務）",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "体制図"
+        }
+      ],
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-11-10T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z"
+    },
+    {
+      "id": "QA-001",
+      "kind": "question",
+      "title": "棚卸しの頻度と方法",
+      "askTo": "SH-001",
+      "askedAt": "2026-11-10",
+      "due": "2026-11-20",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "キックオフ",
+          "date": "2026-11-05"
+        }
+      ],
+      "status": "open",
+      "links": [],
+      "createdAt": "2026-11-10T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z"
+    },
+    {
+      "id": "IS-001",
+      "kind": "issue",
+      "title": "パッケージの標準帳票で足りるか確認する",
+      "owner": "SH-002",
+      "due": "2026-12-03",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "キックオフ",
+          "date": "2026-11-05"
+        }
+      ],
+      "status": "open",
+      "links": [],
+      "createdAt": "2026-11-10T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z"
+    },
+    {
+      "id": "TK-001",
+      "kind": "task",
+      "title": "Fit & Gap 分析",
+      "assignee": "SH-002",
+      "estimate": 8,
+      "start": "2026-11-16",
+      "end": "2026-12-04",
+      "progress": 20,
+      "actual": 3,
+      "status": "doing",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-11-10T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z"
+    }
+  ],
+  "relations": [],
+  "baselines": [],
+  "changelog": [
+    {
+      "rev": 1,
+      "at": "2026-11-10T09:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "project",
+          "op": "project",
+          "fields": [
+            "customer",
+            "purpose",
+            "periodStart",
+            "periodEnd"
+          ]
+        },
+        {
+          "id": "SH-001",
+          "op": "add",
+          "kind": "stakeholder"
+        },
+        {
+          "id": "SH-002",
+          "op": "add",
+          "kind": "stakeholder"
+        },
+        {
+          "id": "QA-001",
+          "op": "add",
+          "kind": "question"
+        },
+        {
+          "id": "IS-001",
+          "op": "add",
+          "kind": "issue"
+        },
+        {
+          "id": "TK-001",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "progress": 20,
+            "actual": 3,
+            "estimate": 8,
+            "status": "doing"
+          }
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "ballWaitDays": 7,
+    "productivity": null,
+    "ddlDialect": "postgres",
+    "me": "SH-002",
+    "namingCase": "lower"
+  },
+  "counters": {
+    "SH": 2,
+    "SY": 0,
+    "RQ": 0,
+    "CN": 0,
+    "RE": 0,
+    "DC": 0,
+    "IS": 1,
+    "QA": 1,
+    "MT": 0,
+    "TK": 1,
+    "CR": 0,
+    "EN": 0,
+    "SC": 0,
+    "IF": 0,
+    "BT": 0,
+    "TS": 0,
+    "RL": 0,
+    "BL": 0
+  },
+  "updatedAt": "2026-11-10T09:00:00.000Z"
+}

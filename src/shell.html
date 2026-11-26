@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="{{CSP}}">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<title>案件ワークベンチ</title>
+<style>{{CSS}}</style>
+</head>
+<body>
+<header class="topbar">
+  <h1 class="brand">案件ワークベンチ</h1>
+  <div class="project-name" id="project-name"></div>
+  <div class="topbar-status" id="topbar-status"></div>
+  <div class="topbar-actions" id="topbar-actions"></div>
+</header>
+<nav class="groups" id="groups" aria-label="画面の分類"></nav>
+<nav class="tabs" id="tabs" aria-label="画面の切り替え"></nav>
+<div class="layout">
+  <main id="view" class="view" tabindex="-1"></main>
+  <aside id="detail" class="detail" aria-label="詳細" hidden></aside>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<noscript>このツールは JavaScript を有効にして使ってください。</noscript>
+<script>{{JS}}</script>
+</body>
+</html>

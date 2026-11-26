@@ -1,0 +1,292 @@
+// 起動・画面切替・上部の状態表示
+
+import { h, clear, toast, download } from './ui/dom.js';
+import { store } from './ui/store.js';
+import { renderLock } from './ui/lock.js';
+import { runHealth } from './core/health.js';
+import { createLedger } from './core/starter.js';
+import { validatePatch } from './core/patch.js';
+import { extractJson } from './core/extract.js';
+import { todayStr } from './ui/dom.js';
+import { renderDetail } from './ui/detail.js';
+import { renderOverview } from './ui/views/overview.js';
+import { renderGraph } from './ui/views/graph.js';
+import { renderList } from './ui/views/list.js';
+import { renderDecisions } from './ui/views/decisions.js';
+import { renderHealth } from './ui/views/health.js';
+import { renderImport } from './ui/views/import.js';
+import { renderPrompts } from './ui/views/prompts.js';
+import { renderSettings } from './ui/views/settings.js';
+import { renderHearing } from './ui/views/hearing.js';
+import { renderIssues } from './ui/views/issues.js';
+import { renderNfr } from './ui/views/nfr.js';
+import { renderScope } from './ui/views/scope.js';
+import { renderWbs } from './ui/views/wbs.js';
+import { renderGantt } from './ui/views/gantt.js';
+import { renderProgress } from './ui/views/progress.js';
+import { renderChanges } from './ui/views/changes.js';
+import { renderMeetingReport } from './ui/views/meeting-report.js';
+import { renderData } from './ui/views/data.js';
+import { renderFunctions } from './ui/views/functions.js';
+import { renderCrud } from './ui/views/crud.js';
+import { renderEstimate } from './ui/views/estimate.js';
+import { renderMaster, clearMasterState } from './ui/views/master.js';
+import { renderTrace } from './ui/views/trace.js';
+import { renderTests } from './ui/views/tests.js';
+import { renderCross } from './ui/views/cross.js';
+import { renderGuide } from './ui/views/guide.js';
+import { GROUPS, SCREENS, NO_LEDGER_OK, hiddenScreenInPresentation } from './core/screens.js';
+
+// 画面の描画関数（画面の id → 関数）。分類と画面の一覧は core/screens.js が正
+const RENDERERS = {
+  cross: renderCross, overview: renderOverview, graph: renderGraph, list: renderList, decisions: renderDecisions, health: renderHealth,
+  hearing: renderHearing, issues: renderIssues, nfr: renderNfr, scope: renderScope,
+  wbs: renderWbs, gantt: renderGantt, progress: renderProgress, changes: renderChanges, 'meeting-report': renderMeetingReport,
+  data: renderData, functions: renderFunctions, crud: renderCrud, estimate: renderEstimate, master: renderMaster,
+  trace: renderTrace, tests: renderTests,
+  prompts: renderPrompts, import: renderImport, settings: renderSettings,
+  guide: renderGuide,
+};
+const VIEWS = SCREENS.map((sc) => ({ ...sc, render: RENDERERS[sc.id] }));
+// 台帳が無いと開けない画面
+const NEEDS_LEDGER = new Set(VIEWS.filter((v) => !NO_LEDGER_OK.includes(v.id)).map((v) => v.id));
+// 再描画をまたいで保つスクロール位置（画面の中の横スクロール領域も含む）
+const SCROLLERS = ['#view', '.graph-wrap', '.table-wrap', '#detail'];
+
+// フォーカスしている要素を、再描画後に探し直せる形で覚える
+function focusSelector(el) {
+  if (!el || el === document.body || !el.closest) return null;
+  if (!el.closest('#view, #detail, #tabs, #groups, .topbar')) return null;
+  if (el.id) return '#' + CSS.escape(el.id);
+  if (el.dataset && el.dataset.fk) return `[data-fk="${CSS.escape(el.dataset.fk)}"]`;
+  if (el.dataset && el.dataset.id) return `${el.tagName.toLowerCase()}[data-id="${CSS.escape(el.dataset.id)}"]`;
+  return null;
+}
+
+function captureUi() {
+  const scroll = SCROLLERS.map((sel) => { const e = document.querySelector(sel); return e ? [sel, e.scrollTop, e.scrollLeft] : null; }).filter(Boolean);
+  return { scroll, focus: focusSelector(document.activeElement) };
+}
+
+function restoreUi(st) {
+  for (const [sel, top, left] of st.scroll) {
+    const e = document.querySelector(sel);
+    if (e) { e.scrollTop = top; e.scrollLeft = left; }
+  }
+  if (st.focus) {
+    const f = document.querySelector(st.focus);
+    if (f) f.focus({ preventScroll: true });
+  }
+}
+
+const app = {
+  view: 'overview',
+  viewOpts: {},
+  opener: null,
+  // 画面を切り替える（先頭から表示する）
+  go(view, opts) {
+    if (!VIEWS.some((v) => v.id === view) || hiddenInPresentation(view)) view = 'overview';
+    const same = view === this.view;
+    // マスタ点検の元データは、画面を離れたら捨てる（保存しない）
+    if (!same && this.view === 'master') clearMasterState();
+    this.view = view;
+    this.viewOpts = opts || {};
+    if (location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
+    if (same) { this.refresh(); return; }
+    renderAll();
+    document.getElementById('view').scrollTop = 0;
+    const cur = document.querySelector('#tabs [aria-current="page"]');
+    if (cur && document.activeElement && document.activeElement.closest && document.activeElement.closest('#tabs, #groups')) cur.focus();
+  },
+  // 同じ画面を描き直す（スクロール位置とフォーカスを保つ）
+  refresh() {
+    const st = captureUi();
+    renderAll();
+    restoreUi(st);
+  },
+  openItem(id) {
+    this.opener = focusSelector(document.activeElement);
+    store.select(id);
+    const t = document.getElementById('detail-title');
+    if (t) t.focus({ preventScroll: true });
+  },
+  closeDetail() {
+    const back = this.opener;
+    store.select(null);
+    if (back) { const e = document.querySelector(back); if (e) e.focus({ preventScroll: true }); }
+  },
+  // 画面を開けるか。タブのボタンと使い方のボタンの両方がこれを使う。戻り値: { ok, reason }
+  canOpen(viewId) {
+    if (!VIEWS.some((v) => v.id === viewId)) return { ok: false, reason: 'その画面はありません' };
+    if (locked()) return viewId === 'guide' ? { ok: true } : { ok: false, reason: '合言葉で開いてから使えます' };
+    if (!store.ledger && NEEDS_LEDGER.has(viewId)) return { ok: false, reason: '先に「設定」で案件を作るか、読み込んでください' };
+    if (hiddenInPresentation(viewId)) return { ok: false, reason: '説明用の表示中は開けません' };
+    return { ok: true };
+  },
+  views() { return VIEWS; },
+  health() {
+    // 説明用の表示では健康診断を出さない（社内向けの点検のため）
+    return store.ledger && !store.presentation ? runHealth(store.ledger, todayStr()) : [];
+  },
+};
+
+// 説明用の表示で開けない画面（道具の分類と健康診断）
+function hiddenInPresentation(viewId) {
+  if (!store.presentation) return false;
+  return hiddenScreenInPresentation(VIEWS.find((x) => x.id === viewId));
+}
+
+function locked() {
+  return store.vaultState === 'locked' || store.vaultState === 'legacy';
+}
+
+// 分類ごとに最後に開いた画面（分類を押したときに戻る先）
+const lastInGroup = {};
+
+function renderTabs() {
+  const groupsEl = clear(document.getElementById('groups'));
+  const tabs = clear(document.getElementById('tabs'));
+  if (locked()) return;
+  const highCount = app.health().filter((f) => f.severity === 'high').length;
+  const curView = VIEWS.find((v) => v.id === app.view);
+  lastInGroup[curView.group] = curView.id;
+  for (const g of GROUPS) {
+    const views = VIEWS.filter((v) => v.group === g.id && !hiddenInPresentation(v.id));
+    if (!views.length) continue;
+    groupsEl.appendChild(h('button', {
+      class: 'group', type: 'button', id: 'group-' + g.id, 'aria-current': g.id === curView.group ? 'true' : null,
+      onclick: () => app.go(lastInGroup[g.id] || (g.id === 'grasp' ? 'overview' : views[0].id)),
+    }, g.label));
+  }
+  for (const v of VIEWS.filter((x) => x.group === curView.group && !hiddenInPresentation(x.id))) {
+    // 台帳が無いときの「概要」タブは押せてようこそ画面を出す（初回の入口）
+    const disabled = !app.canOpen(v.id).ok && !(v.id === 'overview' && !store.ledger);
+    tabs.appendChild(h('button', {
+      class: 'tab', type: 'button', id: 'tab-' + v.id, 'aria-current': app.view === v.id ? 'page' : null, disabled,
+      onclick: () => app.go(v.id),
+    }, v.label, v.id === 'health' && highCount ? h('span', { class: 'count', text: String(highCount), 'aria-label': `（重要度 高 ${highCount}件）` }) : null));
+  }
+}
+
+function renderTopbar() {
+  const name = clear(document.getElementById('project-name'));
+  const projects = store.projects();
+  // 案件が複数あるときは切り替えの一覧を出す。説明用の表示では、他の顧客の案件名を見せないよう今の案件名だけ
+  if (projects.length > 1 && !store.presentation && !locked()) {
+    const sel = h('select', { id: 'project-switch', 'aria-label': '案件を切り替える' },
+      projects.map((p) => h('option', { value: p.id, selected: p.id === store.activeId, text: p.name + (p.dirty ? '（未書き出し）' : '') })));
+    sel.addEventListener('change', () => { store.switchProject(sel.value); toast('案件を切り替えました'); });
+    name.appendChild(sel);
+  } else {
+    name.textContent = store.ledger ? store.ledger.project.name : '';
+  }
+  const status = clear(document.getElementById('topbar-status'));
+  if (store.saveError) status.appendChild(h('span', { class: 'badge high', text: '保存に失敗', title: store.saveError }));
+  if (store.vaultState === 'nostore') status.appendChild(h('span', { class: 'badge high', text: 'ブラウザに保存しません', title: store.loadError || '' }));
+  if (store.presentation) status.appendChild(h('span', { class: 'badge accent', id: 'presentation-badge', text: '説明用の表示中' }));
+  if (store.ledger && !store.presentation) {
+    status.appendChild(h('span', { class: 'muted small', text: `rev ${store.ledger.revision}` }));
+    if (store.isDirty()) status.appendChild(h('span', { class: 'badge mid', id: 'dirty-badge', text: '未書き出しの変更あり' }));
+    else status.appendChild(h('span', { class: 'badge ok', text: '書き出し済み' }));
+  }
+  const actions = clear(document.getElementById('topbar-actions'));
+  if (store.ledger) {
+    actions.appendChild(h('button', {
+      class: ['btn', store.presentation && 'primary'], type: 'button', id: 'btn-presentation', 'aria-pressed': String(store.presentation),
+      title: '顧客に画面を見せるときの表示。社内のみの項目・健康診断・実績の値・道具の画面を隠す',
+      onclick: () => { store.setPresentation(!store.presentation); toast(store.presentation ? '説明用の表示にしました' : '通常の表示に戻しました'); },
+    }, store.presentation ? '通常の表示に戻す' : '説明用の表示'));
+  }
+  if (store.ledger && !store.presentation) {
+    actions.appendChild(h('button', {
+      class: 'btn', type: 'button', id: 'btn-undo', disabled: !store.canUndo(), title: '直前の1回の変更を取り消す',
+      onclick: () => { if (store.undo()) toast('直前の変更を取り消しました'); },
+    }, '取り消し'));
+    actions.appendChild(h('button', {
+      class: 'btn primary', type: 'button', id: 'btn-export', title: '台帳を JSON ファイルに保存する',
+      onclick: () => { download(store.exportFilename(), store.exportText()); store.markExported(); toast('書き出しました（保存ダイアログを閉じた場合は保存されていません）'); },
+    }, '書き出し'));
+  }
+  if (store.vaultState === 'unlocked') {
+    actions.appendChild(h('button', {
+      class: 'btn', type: 'button', id: 'btn-lock', title: '台帳と鍵をメモリから消し、合言葉を入れるまで開けないようにする',
+      onclick: () => { store.lock(); toast('ロックしました'); },
+    }, 'ロック'));
+  }
+}
+
+function renderView() {
+  const root = clear(document.getElementById('view'));
+  if (locked()) {
+    // ロック中でも使い方だけは読める（案件のデータは出さない）
+    if (app.view === 'guide') {
+      root.appendChild(h('div', { class: 'row guide-back' }, h('button', { class: 'btn', type: 'button', id: 'guide-back-lock', onclick: () => app.go('overview') }, '← 合言葉の画面に戻る')));
+      renderGuide(root, app, app.viewOpts);
+    } else renderLock(root, app);
+    return;
+  }
+  if (store.loadError) root.appendChild(h('p', { class: 'notice error', text: store.loadError }));
+  if (store.saveError) root.appendChild(h('p', { class: 'notice error', text: store.saveError }));
+  const v = VIEWS.find((x) => x.id === app.view);
+  if (!store.ledger && NEEDS_LEDGER.has(v.id)) {
+    renderWelcome(root);
+    return;
+  }
+  v.render(root, app, app.viewOpts);
+}
+
+function renderWelcome(root) {
+  root.appendChild(h('div', { class: 'card stack welcome' },
+    h('h2', { text: '案件ワークベンチへようこそ' }),
+    h('p', { text: 'まだ台帳がありません。「設定」から新しい案件を作るか、書き出した台帳ファイルを読み込んでください。' }),
+    h('p', { class: 'muted small', text: '台帳は合言葉で暗号化してこのブラウザの中に保存し、書き出したファイルにも保存できます。外部へは一切送信しません。' }),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn primary', type: 'button', onclick: () => app.go('settings') }, '設定を開く'),
+      h('button', { class: 'btn', type: 'button', id: 'welcome-guide', onclick: () => app.go('guide') }, '使い方を見る'))));
+}
+
+function renderAll() {
+  renderTabs();
+  renderTopbar();
+  renderView();
+  renderDetail(document.getElementById('detail'), app);
+}
+
+function boot() {
+  // 他人のページの枠の中では動かない（クリックジャッキング対策。GitHub Pages ではヘッダで防げないため）
+  if (window.top !== window.self) {
+    document.body.textContent = 'このツールは単独のタブで開いてください。';
+    return;
+  }
+  store.init();
+  const fromHash = location.hash.replace('#', '');
+  app.view = VIEWS.some((v) => v.id === fromHash) ? fromHash : 'overview';
+  store.subscribe((reason) => {
+    if (reason === 'select') {
+      // 選んだ項目を画面の中でも強調する画面は、描き直す
+      if (['graph', 'list', 'data', 'gantt', 'wbs', 'issues', 'scope', 'changes', 'functions', 'tests'].includes(app.view)) app.refresh();
+      else renderDetail(document.getElementById('detail'), app);
+      return;
+    }
+    if (reason === 'save-error') { renderTopbar(); return; }
+    if (reason === 'vault') clearMasterState();
+    if (reason === 'presentation' && hiddenInPresentation(app.view)) { app.go('overview'); return; }
+    app.refresh();
+  });
+  window.addEventListener('hashchange', () => {
+    const id = location.hash.replace('#', '');
+    if (id !== app.view && VIEWS.some((v) => v.id === id)) app.go(id);
+    else if (hiddenInPresentation(id)) app.go('overview');
+  });
+  // Esc で詳細パネルを閉じる（ダイアログが開いているときはダイアログ側が受ける）
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && store.selectedId && !document.querySelector('dialog[open]')) { e.preventDefault(); app.closeDetail(); }
+  });
+  // 自動確認用の入口。URL に ?debug を付けたときだけ公開する（普段は台帳をメモリから取り出せないようにする）
+  if (new URLSearchParams(location.search).has('debug')) {
+    window.__workbench = { store, app, core: { createLedger, validatePatch, extractJson } };
+  }
+  renderAll();
+}
+
+boot();

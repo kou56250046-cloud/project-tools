@@ -1,0 +1,9 @@
+```json
+{
+  "type": "ledger-patch",
+  "schemaVersion": 1,
+  "ops": [
+    { "op": "add", "item": { "kind": "question", "title": "既存の会員データは何件か", "links": ["RQ-001",], }, },
+  ],
+}
+```

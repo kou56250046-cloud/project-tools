@@ -1,0 +1,2795 @@
+{
+  "schemaVersion": 2,
+  "type": "ledger",
+  "revision": 12,
+  "project": {
+    "name": "【ダミー】みなと物産 受発注システム刷新",
+    "customer": "株式会社みなと物産（架空）",
+    "purpose": "電話・FAX中心の受注業務を Web 化し、受注から出荷・請求までの手入力をなくす",
+    "periodStart": "2026-10-01",
+    "periodEnd": "2027-09-30",
+    "goals": [
+      "受注入力の工数を半分にする",
+      "出荷ミスを月5件から1件以下にする",
+      "2027年10月に新システムで本番稼働"
+    ],
+    "summary": "現行の受発注システム（2009年稼働）の保守切れに伴う刷新。会計・倉庫管理とは連携を維持する。",
+    "starter": "business-system-new"
+  },
+  "items": [
+    {
+      "id": "SH-001",
+      "kind": "stakeholder",
+      "title": "青木 部長",
+      "side": "customer",
+      "org": "情報システム部",
+      "role": "顧客側の窓口・責任者",
+      "status": "active",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "キックオフ",
+          "date": "2026-10-05"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-05T09:00:00.000Z",
+      "updatedAt": "2026-10-05T09:00:00.000Z"
+    },
+    {
+      "id": "SH-002",
+      "kind": "stakeholder",
+      "title": "石田 課長",
+      "side": "customer",
+      "org": "営業部",
+      "role": "受注業務の主担当",
+      "status": "active",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "キックオフ",
+          "date": "2026-10-05"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-05T09:00:00.000Z",
+      "updatedAt": "2026-10-05T09:00:00.000Z"
+    },
+    {
+      "id": "SH-003",
+      "kind": "stakeholder",
+      "title": "上野 主任",
+      "side": "customer",
+      "org": "物流部",
+      "role": "出荷業務",
+      "status": "active",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第1回ヒヤリング",
+          "date": "2026-10-14"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-14T09:00:00.000Z",
+      "updatedAt": "2026-10-14T09:00:00.000Z"
+    },
+    {
+      "id": "SH-004",
+      "kind": "stakeholder",
+      "title": "江口 さん",
+      "side": "customer",
+      "org": "経理部",
+      "role": "請求・入金消込",
+      "status": "active",
+      "confidence": "guess",
+      "sources": [],
+      "links": [],
+      "createdAt": "2026-10-14T09:00:00.000Z",
+      "updatedAt": "2026-10-14T09:00:00.000Z"
+    },
+    {
+      "id": "SH-005",
+      "kind": "stakeholder",
+      "title": "坂本 取締役",
+      "side": "customer",
+      "org": "経営企画",
+      "role": "決裁者",
+      "status": "active",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "提案依頼書 v1.2"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "SH-006",
+      "kind": "stakeholder",
+      "title": "小野",
+      "side": "own",
+      "org": "第2開発部",
+      "role": "PM",
+      "status": "active",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "体制図"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "SH-007",
+      "kind": "stakeholder",
+      "title": "加藤",
+      "side": "own",
+      "org": "第2開発部",
+      "role": "SE（業務設計）",
+      "status": "active",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "体制図"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "SH-008",
+      "kind": "stakeholder",
+      "title": "木村",
+      "side": "own",
+      "org": "営業部",
+      "role": "営業担当",
+      "status": "active",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "体制図"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "SH-009",
+      "kind": "stakeholder",
+      "title": "工藤",
+      "side": "vendor",
+      "org": "クラウド基盤パートナー（架空）",
+      "role": "インフラ構築",
+      "status": "active",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "mail",
+          "ref": "基盤見積の件",
+          "date": "2026-10-20"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-20T09:00:00.000Z",
+      "updatedAt": "2026-10-20T09:00:00.000Z"
+    },
+    {
+      "id": "SH-010",
+      "kind": "stakeholder",
+      "title": "佐々木",
+      "side": "vendor",
+      "org": "帳票ツールベンダー（架空）",
+      "role": "帳票開発",
+      "status": "active",
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "社内定例",
+          "date": "2026-10-21"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-21T09:00:00.000Z",
+      "updatedAt": "2026-10-21T09:00:00.000Z"
+    },
+    {
+      "id": "SY-001",
+      "kind": "system",
+      "title": "現行受発注システム",
+      "body": "2009年稼働のクライアントサーバー型。保守は2027年9月で終了。",
+      "owner": "SH-001",
+      "status": "existing",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "提案依頼書 v1.2"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "SY-002",
+      "kind": "system",
+      "title": "新受発注システム",
+      "owner": "SH-001",
+      "status": "planned",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "提案依頼書 v1.2"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "SY-003",
+      "kind": "system",
+      "title": "会計システム",
+      "body": "パッケージ製品。CSV で仕訳を取り込む。",
+      "owner": "SH-004",
+      "status": "existing",
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第1回ヒヤリング",
+          "date": "2026-10-14",
+          "speaker": "SH-001"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-14T09:00:00.000Z",
+      "updatedAt": "2026-10-14T09:00:00.000Z"
+    },
+    {
+      "id": "SY-004",
+      "kind": "system",
+      "title": "倉庫管理システム",
+      "owner": "SH-003",
+      "status": "existing",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第1回ヒヤリング",
+          "date": "2026-10-14",
+          "speaker": "SH-003"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-14T09:00:00.000Z",
+      "updatedAt": "2026-10-14T09:00:00.000Z"
+    },
+    {
+      "id": "RQ-001",
+      "kind": "request",
+      "title": "得意先が Web から直接発注できるようにしたい",
+      "body": "FAX の受注が全体の約6割。入力と照合に毎日3時間かかっている。",
+      "owner": "SH-002",
+      "priority": "Must",
+      "status": "accepted",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第1回ヒヤリング",
+          "date": "2026-10-14",
+          "speaker": "SH-002"
+        }
+      ],
+      "links": [
+        "SY-002"
+      ],
+      "createdAt": "2026-10-14T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z",
+      "scope": "in"
+    },
+    {
+      "id": "RQ-002",
+      "kind": "request",
+      "title": "出荷指示を倉庫管理へ自動で送りたい",
+      "owner": "SH-003",
+      "priority": "Must",
+      "status": "accepted",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第1回ヒヤリング",
+          "date": "2026-10-14",
+          "speaker": "SH-003"
+        }
+      ],
+      "links": [
+        "SY-004"
+      ],
+      "createdAt": "2026-10-14T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z",
+      "scope": "in"
+    },
+    {
+      "id": "RQ-003",
+      "kind": "request",
+      "title": "スマホで受注状況を見たい",
+      "owner": "SH-005",
+      "priority": "Could",
+      "status": "open",
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "chat",
+          "ref": "木村さんからの共有",
+          "date": "2026-11-02"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-11-02T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z",
+      "scope": "out"
+    },
+    {
+      "id": "RQ-004",
+      "kind": "request",
+      "title": "請求書を電子で送りたい",
+      "owner": "SH-004",
+      "priority": "Should",
+      "status": "open",
+      "confidence": "fact",
+      "sources": [],
+      "links": [
+        "SY-003"
+      ],
+      "createdAt": "2026-11-05T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z",
+      "scope": "tbd"
+    },
+    {
+      "id": "CN-001",
+      "kind": "constraint",
+      "title": "現行システムの保守が2027年9月で終了する",
+      "category": "schedule",
+      "status": "active",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "提案依頼書 v1.2"
+        }
+      ],
+      "links": [
+        "SY-001"
+      ],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "CN-002",
+      "kind": "constraint",
+      "title": "予算の上限は税抜8,000万円",
+      "category": "budget",
+      "status": "active",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "キックオフ",
+          "date": "2026-10-05",
+          "speaker": "SH-005"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-05T09:00:00.000Z",
+      "updatedAt": "2026-10-05T09:00:00.000Z"
+    },
+    {
+      "id": "CN-003",
+      "kind": "constraint",
+      "title": "会計システムの取込形式は変更できない",
+      "category": "technical",
+      "status": "active",
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第1回ヒヤリング",
+          "date": "2026-10-14",
+          "speaker": "SH-001"
+        }
+      ],
+      "links": [
+        "SY-003"
+      ],
+      "createdAt": "2026-10-14T09:00:00.000Z",
+      "updatedAt": "2026-10-14T09:00:00.000Z"
+    },
+    {
+      "id": "RE-001",
+      "kind": "requirement",
+      "title": "得意先向けの Web 発注画面を提供する",
+      "category": "functional",
+      "priority": "Must",
+      "status": "agreed",
+      "confidence": "confirmed",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第3回定例",
+          "date": "2026-10-28"
+        }
+      ],
+      "links": [
+        "RQ-001",
+        "SY-002"
+      ],
+      "createdAt": "2026-10-28T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z",
+      "scope": "in"
+    },
+    {
+      "id": "RE-002",
+      "kind": "requirement",
+      "title": "受注確定時に出荷指示データを倉庫管理システムへ送る",
+      "category": "functional",
+      "priority": "Must",
+      "status": "draft",
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第3回定例",
+          "date": "2026-10-28"
+        }
+      ],
+      "links": [
+        "RQ-002",
+        "SY-004"
+      ],
+      "createdAt": "2026-10-28T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z",
+      "scope": "in"
+    },
+    {
+      "id": "RE-003",
+      "kind": "requirement",
+      "title": "売上データを会計システムの取込形式（CSV）で日次出力する",
+      "category": "functional",
+      "priority": "Must",
+      "status": "draft",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "会計システム 取込仕様書"
+        }
+      ],
+      "links": [
+        "CN-003",
+        "SY-003"
+      ],
+      "createdAt": "2026-11-04T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z",
+      "scope": "in"
+    },
+    {
+      "id": "RE-004",
+      "kind": "requirement",
+      "title": "受注画面は3秒以内に表示する",
+      "category": "nonfunctional",
+      "priority": "Should",
+      "status": "draft",
+      "confidence": "guess",
+      "sources": [],
+      "links": [],
+      "createdAt": "2026-11-04T09:00:00.000Z",
+      "updatedAt": "2026-11-10T09:00:00.000Z",
+      "scope": "in",
+      "nfrCategory": "performance"
+    },
+    {
+      "id": "DC-001",
+      "kind": "decision",
+      "title": "基盤はオンプレミスで構築する",
+      "decidedAt": "2026-10-14",
+      "decidedBy": [
+        "SH-001"
+      ],
+      "reason": "既存の社内サーバー室を使える",
+      "alternatives": [
+        "パブリッククラウド"
+      ],
+      "status": "superseded",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第1回ヒヤリング",
+          "date": "2026-10-14",
+          "speaker": "SH-001"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-14T09:00:00.000Z",
+      "updatedAt": "2026-11-11T09:00:00.000Z"
+    },
+    {
+      "id": "DC-002",
+      "kind": "decision",
+      "title": "得意先ごとの専用単価は新システムでも維持する",
+      "decidedAt": "2026-10-28",
+      "decidedBy": [
+        "SH-002",
+        "SH-005"
+      ],
+      "reason": "取引条件の変更は営業上できない",
+      "alternatives": [
+        "標準単価への統一",
+        "得意先ランク別の単価"
+      ],
+      "status": "valid",
+      "confidence": "confirmed",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第3回定例",
+          "date": "2026-10-28",
+          "speaker": "SH-005"
+        }
+      ],
+      "links": [
+        "RE-001"
+      ],
+      "createdAt": "2026-10-28T09:00:00.000Z",
+      "updatedAt": "2026-10-28T09:00:00.000Z"
+    },
+    {
+      "id": "DC-003",
+      "kind": "decision",
+      "title": "基盤はパブリッククラウドで構築する",
+      "decidedAt": "2026-11-11",
+      "decidedBy": [
+        "SH-001",
+        "SH-005"
+      ],
+      "reason": "サーバー室の移転が2027年に決まり、オンプレミスの前提が崩れた",
+      "alternatives": [
+        "オンプレミス（移転先で再構築）"
+      ],
+      "supersedes": "DC-001",
+      "status": "valid",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第5回定例",
+          "date": "2026-11-11",
+          "speaker": "SH-001"
+        }
+      ],
+      "links": [
+        "SY-002"
+      ],
+      "createdAt": "2026-11-11T09:00:00.000Z",
+      "updatedAt": "2026-11-11T09:00:00.000Z"
+    },
+    {
+      "id": "IS-001",
+      "kind": "issue",
+      "title": "得意先専用単価のデータが Excel に分散している",
+      "owner": "SH-002",
+      "due": "2026-11-20",
+      "severity": "high",
+      "status": "open",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第3回定例",
+          "date": "2026-10-28",
+          "speaker": "SH-002"
+        }
+      ],
+      "links": [
+        "DC-002"
+      ],
+      "createdAt": "2026-10-28T09:00:00.000Z",
+      "updatedAt": "2026-10-28T09:00:00.000Z"
+    },
+    {
+      "id": "IS-002",
+      "kind": "issue",
+      "title": "倉庫管理システム側の改修費用の負担者が決まっていない",
+      "severity": "high",
+      "status": "open",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第5回定例",
+          "date": "2026-11-11"
+        }
+      ],
+      "links": [
+        "RE-002",
+        "SY-004"
+      ],
+      "createdAt": "2026-11-11T09:00:00.000Z",
+      "updatedAt": "2026-11-11T09:00:00.000Z"
+    },
+    {
+      "id": "IS-003",
+      "kind": "issue",
+      "title": "クラウド基盤の見積を取り直す",
+      "owner": "SH-006",
+      "due": "2026-12-04",
+      "severity": "mid",
+      "status": "in_progress",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第5回定例",
+          "date": "2026-11-11"
+        }
+      ],
+      "links": [
+        "DC-003"
+      ],
+      "createdAt": "2026-11-11T09:00:00.000Z",
+      "updatedAt": "2026-11-18T09:00:00.000Z"
+    },
+    {
+      "id": "IS-004",
+      "kind": "issue",
+      "title": "帳票ツールのライセンス形態を確認する",
+      "owner": "SH-007",
+      "due": "2026-11-15",
+      "severity": "low",
+      "status": "closed",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "社内定例",
+          "date": "2026-10-21"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-10-21T09:00:00.000Z",
+      "updatedAt": "2026-11-14T09:00:00.000Z"
+    },
+    {
+      "id": "QA-001",
+      "kind": "question",
+      "title": "Web 発注を使う得意先は何社か",
+      "askTo": "SH-002",
+      "due": "2026-11-18",
+      "status": "open",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第3回定例",
+          "date": "2026-10-28"
+        }
+      ],
+      "links": [
+        "RQ-001"
+      ],
+      "createdAt": "2026-10-28T09:00:00.000Z",
+      "updatedAt": "2026-11-20T09:00:00.000Z",
+      "meeting": "MT-001",
+      "askedAt": "2026-10-28"
+    },
+    {
+      "id": "QA-002",
+      "kind": "question",
+      "title": "会計システムの取込は日次でよいか、随時が必要か",
+      "askTo": "SH-004",
+      "due": "2026-12-02",
+      "status": "open",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第5回定例",
+          "date": "2026-11-11"
+        }
+      ],
+      "links": [
+        "RE-003"
+      ],
+      "createdAt": "2026-11-11T09:00:00.000Z",
+      "updatedAt": "2026-11-20T10:00:00.000Z",
+      "meeting": "MT-003"
+    },
+    {
+      "id": "QA-003",
+      "kind": "question",
+      "title": "繁忙期（3月）の1日あたりの最大受注件数",
+      "status": "open",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "template",
+          "ref": "業務システム新規"
+        }
+      ],
+      "links": [
+        "RE-004"
+      ],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-11-20T10:00:00.000Z",
+      "meeting": "MT-003",
+      "nfrCategory": "performance"
+    },
+    {
+      "id": "QA-004",
+      "kind": "question",
+      "title": "現行システムのデータはいつまで遡って移行するか",
+      "askTo": "SH-001",
+      "due": "2026-11-30",
+      "answer": "過去3年分。それ以前は参照用に CSV で保管する。",
+      "status": "answered",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "mail",
+          "ref": "Re: 移行範囲について",
+          "date": "2026-11-19",
+          "speaker": "SH-001"
+        }
+      ],
+      "links": [
+        "SY-001"
+      ],
+      "createdAt": "2026-10-28T09:00:00.000Z",
+      "updatedAt": "2026-11-19T09:00:00.000Z"
+    },
+    {
+      "id": "MT-001",
+      "kind": "meeting",
+      "title": "第3回定例",
+      "date": "2026-10-28",
+      "meetingType": "regular",
+      "status": "held",
+      "attendees": [
+        "SH-001",
+        "SH-002",
+        "SH-005",
+        "SH-006"
+      ],
+      "agenda": [
+        "Web 発注の範囲",
+        "専用単価の扱い"
+      ],
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第3回定例",
+          "date": "2026-10-28"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-11-20T09:00:00.000Z",
+      "updatedAt": "2026-11-20T09:00:00.000Z"
+    },
+    {
+      "id": "MT-002",
+      "kind": "meeting",
+      "title": "第5回定例",
+      "date": "2026-11-11",
+      "meetingType": "regular",
+      "status": "held",
+      "attendees": [
+        "SH-001",
+        "SH-005",
+        "SH-006"
+      ],
+      "agenda": [
+        "基盤の方針"
+      ],
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第5回定例",
+          "date": "2026-11-11"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-11-20T09:00:00.000Z",
+      "updatedAt": "2026-11-20T09:00:00.000Z"
+    },
+    {
+      "id": "MT-003",
+      "kind": "meeting",
+      "title": "第2回ヒヤリング（物流・経理）",
+      "date": "2026-12-02",
+      "meetingType": "hearing",
+      "status": "planned",
+      "attendees": [
+        "SH-003",
+        "SH-004",
+        "SH-007"
+      ],
+      "agenda": [
+        "出荷指示の連携",
+        "会計への取込",
+        "非機能（性能・可用性）"
+      ],
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "mail",
+          "ref": "ヒヤリング日程のご連絡",
+          "date": "2026-11-20"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-11-20T09:00:00.000Z",
+      "updatedAt": "2026-11-20T09:00:00.000Z"
+    },
+    {
+      "id": "RQ-005",
+      "kind": "request",
+      "title": "CSV で受注を一括登録したい",
+      "owner": "SH-002",
+      "priority": "Should",
+      "scope": "tbd",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "mail",
+          "ref": "受注の一括登録について",
+          "date": "2026-11-19",
+          "speaker": "SH-002"
+        }
+      ],
+      "status": "open",
+      "links": [],
+      "createdAt": "2026-11-20T10:00:00.000Z",
+      "updatedAt": "2026-11-20T10:00:00.000Z"
+    },
+    {
+      "id": "RE-005",
+      "kind": "requirement",
+      "title": "ログインは社内の ID 基盤と連携する",
+      "category": "nonfunctional",
+      "nfrCategory": "security",
+      "status": "agreed",
+      "scope": "in",
+      "confidence": "confirmed",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第5回定例",
+          "date": "2026-11-11",
+          "speaker": "SH-001"
+        }
+      ],
+      "links": [],
+      "createdAt": "2026-11-20T10:00:00.000Z",
+      "updatedAt": "2026-11-20T10:00:00.000Z"
+    },
+    {
+      "id": "QA-005",
+      "kind": "question",
+      "title": "障害時に受注を止めてよい時間はどれくらいか",
+      "askTo": "SH-001",
+      "due": "2026-12-02",
+      "meeting": "MT-003",
+      "nfrCategory": "availability",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "other",
+          "ref": "非機能の洗い出し"
+        }
+      ],
+      "status": "open",
+      "links": [],
+      "createdAt": "2026-11-20T10:00:00.000Z",
+      "updatedAt": "2026-11-20T10:00:00.000Z"
+    },
+    {
+      "id": "TK-001",
+      "kind": "task",
+      "title": "要件定義",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "start": "2026-10-01",
+      "end": "2026-12-25",
+      "status": "todo",
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "TK-002",
+      "kind": "task",
+      "title": "現行業務の調査",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "parent": "TK-001",
+      "estimate": 10,
+      "assignee": "SH-007",
+      "start": "2026-10-01",
+      "end": "2026-10-23",
+      "progress": 100,
+      "actual": 11,
+      "status": "done",
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-23T18:00:00.000Z"
+    },
+    {
+      "id": "TK-003",
+      "kind": "task",
+      "title": "要件定義書の作成",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "parent": "TK-001",
+      "estimate": 15,
+      "assignee": "SH-007",
+      "start": "2026-10-19",
+      "end": "2026-12-11",
+      "progress": 40,
+      "actual": 9,
+      "links": [
+        "RE-001",
+        "RE-002",
+        "RE-003"
+      ],
+      "status": "doing",
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-11-20T18:00:00.000Z"
+    },
+    {
+      "id": "TK-004",
+      "kind": "task",
+      "title": "非機能要件の定義",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "parent": "TK-001",
+      "estimate": 5,
+      "assignee": "SH-006",
+      "start": "2026-11-16",
+      "end": "2026-12-11",
+      "progress": 10,
+      "actual": 1,
+      "links": [
+        "RE-004",
+        "RE-005"
+      ],
+      "status": "doing",
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-11-20T18:00:00.000Z"
+    },
+    {
+      "id": "TK-005",
+      "kind": "task",
+      "title": "要件定義 合意",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "parent": "TK-001",
+      "milestone": true,
+      "start": "2026-12-25",
+      "end": "2026-12-25",
+      "dependsOn": [
+        "TK-003",
+        "TK-004"
+      ],
+      "status": "todo",
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "TK-006",
+      "kind": "task",
+      "title": "基本設計",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "start": "2027-01-05",
+      "end": "2027-03-31",
+      "status": "todo",
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "TK-007",
+      "kind": "task",
+      "title": "画面設計",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "parent": "TK-006",
+      "estimate": 20,
+      "assignee": "SH-007",
+      "start": "2027-01-05",
+      "end": "2027-02-26",
+      "dependsOn": [
+        "TK-005"
+      ],
+      "links": [
+        "RE-001"
+      ],
+      "status": "todo",
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "TK-008",
+      "kind": "task",
+      "title": "連携設計（倉庫・会計）",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "parent": "TK-006",
+      "estimate": 15,
+      "assignee": "SH-007",
+      "start": "2027-01-12",
+      "end": "2027-02-26",
+      "dependsOn": [
+        "TK-005"
+      ],
+      "links": [
+        "RE-002",
+        "RE-003"
+      ],
+      "status": "todo",
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "TK-009",
+      "kind": "task",
+      "title": "基盤設計（クラウド）",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "parent": "TK-006",
+      "estimate": 12,
+      "assignee": "SH-009",
+      "start": "2027-01-05",
+      "end": "2027-02-19",
+      "dependsOn": [
+        "TK-005"
+      ],
+      "links": [
+        "DC-003"
+      ],
+      "status": "todo",
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "TK-010",
+      "kind": "task",
+      "title": "基本設計レビュー",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "parent": "TK-006",
+      "estimate": 4,
+      "assignee": "SH-006",
+      "start": "2027-03-01",
+      "end": "2027-03-31",
+      "dependsOn": [
+        "TK-007",
+        "TK-008",
+        "TK-009"
+      ],
+      "status": "todo",
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "TK-011",
+      "kind": "task",
+      "title": "開発",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "start": "2027-04-01",
+      "end": "2027-07-30",
+      "status": "todo",
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "TK-012",
+      "kind": "task",
+      "title": "Web 発注画面の開発",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "parent": "TK-011",
+      "estimate": 40,
+      "assignee": "SH-007",
+      "start": "2027-04-01",
+      "end": "2027-06-30",
+      "dependsOn": [
+        "TK-010"
+      ],
+      "links": [
+        "RE-001"
+      ],
+      "status": "todo",
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "TK-013",
+      "kind": "task",
+      "title": "連携機能の開発",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "parent": "TK-011",
+      "estimate": 30,
+      "assignee": "SH-007",
+      "start": "2027-04-01",
+      "end": "2027-06-30",
+      "dependsOn": [
+        "TK-010"
+      ],
+      "links": [
+        "RE-002",
+        "RE-003"
+      ],
+      "status": "todo",
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "TK-014",
+      "kind": "task",
+      "title": "総合テスト",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "estimate": 30,
+      "assignee": "SH-006",
+      "start": "2027-07-01",
+      "end": "2027-08-31",
+      "dependsOn": [
+        "TK-012",
+        "TK-013"
+      ],
+      "status": "todo",
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "TK-015",
+      "kind": "task",
+      "title": "本番稼働",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "WBS 初版",
+          "date": "2026-10-01"
+        }
+      ],
+      "milestone": true,
+      "start": "2027-09-21",
+      "end": "2027-09-21",
+      "dependsOn": [
+        "TK-014"
+      ],
+      "status": "todo",
+      "links": [],
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "CR-001",
+      "kind": "change",
+      "title": "スマホで受注状況を見られるようにする",
+      "body": "坂本取締役から、外出先で受注状況を確認したいとの要望。範囲外と判断した RQ-003 の再検討。",
+      "requestedBy": "SH-005",
+      "extraEstimate": 15,
+      "links": [
+        "RQ-003",
+        "RE-001"
+      ],
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "第5回定例",
+          "date": "2026-11-11",
+          "speaker": "SH-005"
+        }
+      ],
+      "status": "proposed",
+      "createdAt": "2026-11-21T09:00:00.000Z",
+      "updatedAt": "2026-11-21T09:00:00.000Z"
+    },
+    {
+      "id": "CR-002",
+      "kind": "change",
+      "title": "会計への取込を日次から随時に変える",
+      "requestedBy": "SH-004",
+      "extraEstimate": 8,
+      "links": [
+        "RE-003"
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "mail",
+          "ref": "会計連携の頻度について",
+          "date": "2026-11-19",
+          "speaker": "SH-004"
+        }
+      ],
+      "status": "proposed",
+      "createdAt": "2026-11-21T09:00:00.000Z",
+      "updatedAt": "2026-11-21T09:00:00.000Z"
+    },
+    {
+      "id": "IS-005",
+      "kind": "issue",
+      "title": "基盤費用が見積を超えそう（社内で調整中）",
+      "severity": "high",
+      "owner": "SH-006",
+      "due": "2026-12-04",
+      "internal": true,
+      "links": [
+        "DC-003",
+        "CN-002"
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "meeting",
+          "ref": "社内定例",
+          "date": "2026-11-18"
+        }
+      ],
+      "status": "open",
+      "createdAt": "2026-11-21T09:00:00.000Z",
+      "updatedAt": "2026-11-21T09:00:00.000Z"
+    },
+    {
+      "id": "EN-001",
+      "kind": "entity",
+      "title": "得意先",
+      "physicalName": "customer",
+      "fileType": "internal",
+      "columns": [
+        {
+          "name": "customer_code",
+          "logical": "得意先コード",
+          "type": "code",
+          "length": 8,
+          "pk": true,
+          "required": true,
+          "pattern": "^C[0-9]{7}$"
+        },
+        {
+          "name": "customer_name",
+          "logical": "得意先名",
+          "type": "string",
+          "length": 100,
+          "required": true
+        },
+        {
+          "name": "price_rank",
+          "logical": "価格ランク",
+          "type": "code",
+          "length": 2
+        },
+        {
+          "name": "created_at",
+          "logical": "登録日時",
+          "type": "datetime",
+          "required": true
+        }
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "master": true,
+      "links": [
+        "RE-001"
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "EN-002",
+      "kind": "entity",
+      "title": "商品",
+      "physicalName": "product",
+      "fileType": "internal",
+      "columns": [
+        {
+          "name": "product_code",
+          "logical": "商品コード",
+          "type": "code",
+          "length": 7,
+          "pk": true,
+          "required": true,
+          "pattern": "^P[0-9]{6}$"
+        },
+        {
+          "name": "product_name",
+          "logical": "商品名",
+          "type": "string",
+          "length": 100,
+          "required": true
+        },
+        {
+          "name": "unit_price",
+          "logical": "標準単価",
+          "type": "decimal",
+          "length": 10,
+          "scale": 0,
+          "required": true
+        }
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "master": true,
+      "links": [
+        "RE-001"
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "EN-003",
+      "kind": "entity",
+      "title": "得意先別単価",
+      "physicalName": "customer_price",
+      "fileType": "internal",
+      "columns": [
+        {
+          "name": "customer_code",
+          "logical": "得意先コード",
+          "type": "code",
+          "length": 8,
+          "pk": true,
+          "required": true,
+          "fk": {
+            "entity": "EN-001",
+            "column": "customer_code"
+          }
+        },
+        {
+          "name": "product_code",
+          "logical": "商品コード",
+          "type": "code",
+          "length": 7,
+          "pk": true,
+          "required": true,
+          "fk": {
+            "entity": "EN-002",
+            "column": "product_code"
+          }
+        },
+        {
+          "name": "unit_price",
+          "logical": "単価",
+          "type": "decimal",
+          "length": 10,
+          "scale": 0,
+          "required": true
+        },
+        {
+          "name": "valid_from",
+          "logical": "適用開始日",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "master": true,
+      "links": [
+        "DC-002"
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "EN-004",
+      "kind": "entity",
+      "title": "受注",
+      "physicalName": "order_header",
+      "fileType": "internal",
+      "columns": [
+        {
+          "name": "order_no",
+          "logical": "受注番号",
+          "type": "string",
+          "length": 12,
+          "pk": true,
+          "required": true
+        },
+        {
+          "name": "customer_code",
+          "logical": "得意先コード",
+          "type": "code",
+          "length": 8,
+          "required": true,
+          "fk": {
+            "entity": "EN-001",
+            "column": "customer_code"
+          }
+        },
+        {
+          "name": "order_date",
+          "logical": "受注日",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "status",
+          "logical": "状態",
+          "type": "code",
+          "length": 2,
+          "required": true
+        }
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "links": [
+        "RE-001",
+        "RE-002"
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "EN-005",
+      "kind": "entity",
+      "title": "受注明細",
+      "physicalName": "order_line",
+      "fileType": "internal",
+      "columns": [
+        {
+          "name": "order_no",
+          "logical": "受注番号",
+          "type": "string",
+          "length": 12,
+          "pk": true,
+          "required": true,
+          "fk": {
+            "entity": "EN-004",
+            "column": "order_no"
+          }
+        },
+        {
+          "name": "line_no",
+          "logical": "行番号",
+          "type": "int",
+          "pk": true,
+          "required": true
+        },
+        {
+          "name": "product_code",
+          "logical": "商品コード",
+          "type": "code",
+          "length": 7,
+          "required": true,
+          "fk": {
+            "entity": "EN-002",
+            "column": "product_code"
+          }
+        },
+        {
+          "name": "quantity",
+          "logical": "数量",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "unit_price",
+          "logical": "単価",
+          "type": "decimal",
+          "length": 10,
+          "scale": 0,
+          "required": true
+        }
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "links": [
+        "RE-001"
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "EN-006",
+      "kind": "entity",
+      "title": "倉庫在庫（倉庫管理システム）",
+      "physicalName": "warehouse_stock",
+      "fileType": "external",
+      "columns": [
+        {
+          "name": "product_code",
+          "logical": "商品コード",
+          "type": "code",
+          "length": 7,
+          "pk": true,
+          "required": true,
+          "fk": {
+            "entity": "EN-002",
+            "column": "product_code"
+          }
+        },
+        {
+          "name": "stock_qty",
+          "logical": "在庫数",
+          "type": "int",
+          "required": true
+        }
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "status": "draft",
+      "links": [],
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "SC-001",
+      "kind": "screen",
+      "title": "Web 発注入力",
+      "screenType": "input",
+      "links": [
+        "RE-001"
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "fields": [
+        {
+          "name": "得意先",
+          "type": "code",
+          "required": true,
+          "source": {
+            "entity": "EN-001",
+            "column": "customer_code"
+          }
+        },
+        {
+          "name": "商品",
+          "type": "code",
+          "required": true,
+          "source": {
+            "entity": "EN-002",
+            "column": "product_code"
+          }
+        },
+        {
+          "name": "数量",
+          "type": "int",
+          "required": true
+        }
+      ],
+      "crud": [
+        {
+          "entity": "EN-004",
+          "ops": "C"
+        },
+        {
+          "entity": "EN-005",
+          "ops": "C"
+        },
+        {
+          "entity": "EN-001",
+          "ops": "R"
+        },
+        {
+          "entity": "EN-002",
+          "ops": "R"
+        },
+        {
+          "entity": "EN-003",
+          "ops": "R"
+        }
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "SC-002",
+      "kind": "screen",
+      "title": "受注照会",
+      "screenType": "inquiry",
+      "links": [
+        "RE-001"
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "crud": [
+        {
+          "entity": "EN-004",
+          "ops": "R"
+        },
+        {
+          "entity": "EN-005",
+          "ops": "R"
+        }
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "SC-003",
+      "kind": "screen",
+      "title": "得意先マスタ保守",
+      "screenType": "input",
+      "links": [
+        "RE-001"
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "crud": [
+        {
+          "entity": "EN-001",
+          "ops": "CRUD"
+        }
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "SC-004",
+      "kind": "screen",
+      "title": "商品・単価マスタ保守",
+      "screenType": "input",
+      "links": [
+        "DC-002"
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "crud": [
+        {
+          "entity": "EN-002",
+          "ops": "CRUD"
+        },
+        {
+          "entity": "EN-003",
+          "ops": "CRUD"
+        }
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "SC-005",
+      "kind": "screen",
+      "title": "納品書",
+      "screenType": "report",
+      "links": [
+        "RE-001"
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "crud": [
+        {
+          "entity": "EN-004",
+          "ops": "R"
+        },
+        {
+          "entity": "EN-005",
+          "ops": "R"
+        },
+        {
+          "entity": "EN-001",
+          "ops": "R"
+        }
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "IF-001",
+      "kind": "interface",
+      "title": "出荷指示の連携",
+      "system": "SY-004",
+      "direction": "out",
+      "method": "file",
+      "frequency": "受注確定のつど",
+      "links": [
+        "RE-002"
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "crud": [
+        {
+          "entity": "EN-004",
+          "ops": "RU"
+        },
+        {
+          "entity": "EN-005",
+          "ops": "R"
+        }
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "IF-002",
+      "kind": "interface",
+      "title": "売上仕訳の連携",
+      "system": "SY-003",
+      "direction": "out",
+      "method": "file",
+      "frequency": "日次",
+      "links": [
+        "RE-003"
+      ],
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "crud": [
+        {
+          "entity": "EN-004",
+          "ops": "R"
+        },
+        {
+          "entity": "EN-005",
+          "ops": "R"
+        }
+      ],
+      "status": "draft",
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "BT-001",
+      "kind": "batch",
+      "title": "倉庫在庫の取込",
+      "trigger": "夜間",
+      "frequency": "日次",
+      "confidence": "guess",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "データ設計 初版",
+          "date": "2026-11-24"
+        }
+      ],
+      "crud": [
+        {
+          "entity": "EN-006",
+          "ops": "CU"
+        }
+      ],
+      "status": "draft",
+      "links": [],
+      "createdAt": "2026-11-24T09:00:00.000Z",
+      "updatedAt": "2026-11-24T09:00:00.000Z"
+    },
+    {
+      "id": "TS-001",
+      "kind": "test",
+      "title": "Web 発注: 正しい入力で発注できる",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "総合テスト仕様書 案",
+          "date": "2026-11-25"
+        }
+      ],
+      "level": "system",
+      "viewpoint": "normal",
+      "steps": "得意先でログインし、商品と数量を入れて発注する",
+      "expected": "受注番号が表示され、受注照会に出る",
+      "status": "passed",
+      "executedAt": "2026-11-25",
+      "links": [
+        "SC-001"
+      ],
+      "createdAt": "2026-11-25T09:00:00.000Z",
+      "updatedAt": "2026-11-25T09:00:00.000Z"
+    },
+    {
+      "id": "TS-002",
+      "kind": "test",
+      "title": "Web 発注: 数量 0 は入力エラーになる",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "総合テスト仕様書 案",
+          "date": "2026-11-25"
+        }
+      ],
+      "level": "system",
+      "viewpoint": "boundary",
+      "steps": "数量に 0 を入れて発注する",
+      "expected": "「1 以上を入れてください」と出て発注されない",
+      "status": "failed",
+      "executedAt": "2026-11-25",
+      "links": [
+        "SC-001"
+      ],
+      "createdAt": "2026-11-25T09:00:00.000Z",
+      "updatedAt": "2026-11-25T09:00:00.000Z"
+    },
+    {
+      "id": "TS-003",
+      "kind": "test",
+      "title": "出荷指示ファイルが倉庫管理へ連携される",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "総合テスト仕様書 案",
+          "date": "2026-11-25"
+        }
+      ],
+      "level": "integration",
+      "viewpoint": "normal",
+      "expected": "受注確定から 5 分以内にファイルが置かれる",
+      "status": "ready",
+      "links": [
+        "IF-001"
+      ],
+      "createdAt": "2026-11-25T09:00:00.000Z",
+      "updatedAt": "2026-11-25T09:00:00.000Z"
+    },
+    {
+      "id": "TS-004",
+      "kind": "test",
+      "title": "得意先別単価が発注に適用される",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "総合テスト仕様書 案",
+          "date": "2026-11-25"
+        }
+      ],
+      "level": "system",
+      "viewpoint": "normal",
+      "expected": "得意先別単価のある商品は、その単価で発注される",
+      "status": "draft",
+      "links": [
+        "RE-001",
+        "DC-002"
+      ],
+      "createdAt": "2026-11-25T09:00:00.000Z",
+      "updatedAt": "2026-11-25T09:00:00.000Z"
+    },
+    {
+      "id": "TS-005",
+      "kind": "test",
+      "title": "権限の無い利用者は発注画面に入れない",
+      "confidence": "fact",
+      "sources": [
+        {
+          "type": "doc",
+          "ref": "総合テスト仕様書 案",
+          "date": "2026-11-25"
+        }
+      ],
+      "level": "system",
+      "viewpoint": "authority",
+      "expected": "ログイン画面に戻される",
+      "status": "passed",
+      "executedAt": "2026-11-24",
+      "links": [
+        "RE-005"
+      ],
+      "createdAt": "2026-11-25T09:00:00.000Z",
+      "updatedAt": "2026-11-25T09:00:00.000Z"
+    }
+  ],
+  "relations": [
+    {
+      "id": "RL-001",
+      "from": "SH-005",
+      "to": "SH-008",
+      "label": "発注"
+    },
+    {
+      "id": "RL-002",
+      "from": "SH-001",
+      "to": "SH-006",
+      "label": "窓口"
+    },
+    {
+      "id": "RL-003",
+      "from": "SH-006",
+      "to": "SH-007",
+      "label": "指示"
+    },
+    {
+      "id": "RL-004",
+      "from": "SH-006",
+      "to": "SH-009",
+      "label": "委託"
+    },
+    {
+      "id": "RL-005",
+      "from": "SH-007",
+      "to": "SH-010",
+      "label": "委託"
+    },
+    {
+      "id": "RL-006",
+      "from": "SH-002",
+      "to": "SY-001",
+      "label": "利用"
+    },
+    {
+      "id": "RL-007",
+      "from": "SH-003",
+      "to": "SY-004",
+      "label": "利用"
+    },
+    {
+      "id": "RL-008",
+      "from": "SH-004",
+      "to": "SY-003",
+      "label": "利用"
+    },
+    {
+      "id": "RL-009",
+      "from": "SY-001",
+      "to": "SY-003",
+      "label": "連携"
+    },
+    {
+      "id": "RL-010",
+      "from": "SY-002",
+      "to": "SY-003",
+      "label": "連携"
+    },
+    {
+      "id": "RL-011",
+      "from": "SY-002",
+      "to": "SY-004",
+      "label": "連携"
+    },
+    {
+      "id": "RL-012",
+      "from": "SH-009",
+      "to": "SY-002",
+      "label": "基盤構築"
+    }
+  ],
+  "counters": {
+    "SH": 10,
+    "SY": 4,
+    "RQ": 5,
+    "CN": 3,
+    "RE": 5,
+    "DC": 3,
+    "IS": 5,
+    "QA": 5,
+    "RL": 12,
+    "BL": 1,
+    "MT": 3,
+    "TK": 15,
+    "CR": 2,
+    "EN": 6,
+    "SC": 5,
+    "IF": 2,
+    "BT": 1,
+    "TS": 5
+  },
+  "updatedAt": "2026-11-25T09:00:00.000Z",
+  "baselines": [
+    {
+      "id": "BL-001",
+      "name": "要件定義 中間合意",
+      "date": "2026-11-11",
+      "items": [
+        {
+          "id": "RQ-001",
+          "kind": "request",
+          "title": "得意先が Web から直接発注できるようにしたい",
+          "scope": "in",
+          "status": "accepted"
+        },
+        {
+          "id": "RQ-002",
+          "kind": "request",
+          "title": "出荷指示を倉庫管理へ自動で送りたい",
+          "scope": "in",
+          "status": "accepted"
+        },
+        {
+          "id": "RQ-003",
+          "kind": "request",
+          "title": "スマホで受注状況を見たい",
+          "scope": "out",
+          "status": "open"
+        },
+        {
+          "id": "RQ-004",
+          "kind": "request",
+          "title": "請求書を電子で送りたい",
+          "scope": "tbd",
+          "status": "open"
+        },
+        {
+          "id": "RE-001",
+          "kind": "requirement",
+          "title": "得意先向けの Web 発注画面を提供する",
+          "scope": "in",
+          "status": "agreed"
+        },
+        {
+          "id": "RE-002",
+          "kind": "requirement",
+          "title": "受注確定時に出荷指示データを倉庫管理システムへ送る",
+          "scope": "in",
+          "status": "draft"
+        },
+        {
+          "id": "RE-003",
+          "kind": "requirement",
+          "title": "売上データを会計システムの取込形式（CSV）で日次出力する",
+          "scope": "in",
+          "status": "draft"
+        },
+        {
+          "id": "RE-004",
+          "kind": "requirement",
+          "title": "受注画面は3秒以内に表示する",
+          "scope": "in",
+          "status": "draft"
+        }
+      ]
+    }
+  ],
+  "changelog": [
+    {
+      "rev": 13,
+      "at": "2026-11-20T09:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "MT-001",
+          "op": "add",
+          "kind": "meeting"
+        },
+        {
+          "id": "MT-002",
+          "op": "add",
+          "kind": "meeting"
+        },
+        {
+          "id": "MT-003",
+          "op": "add",
+          "kind": "meeting"
+        },
+        {
+          "id": "QA-001",
+          "op": "update",
+          "kind": "question",
+          "fields": [
+            "meeting",
+            "askedAt"
+          ]
+        }
+      ]
+    },
+    {
+      "rev": 14,
+      "at": "2026-11-10T09:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "RQ-001",
+          "op": "update",
+          "kind": "request",
+          "fields": [
+            "scope"
+          ]
+        },
+        {
+          "id": "RQ-002",
+          "op": "update",
+          "kind": "request",
+          "fields": [
+            "scope"
+          ]
+        },
+        {
+          "id": "RQ-003",
+          "op": "update",
+          "kind": "request",
+          "fields": [
+            "scope"
+          ]
+        },
+        {
+          "id": "RQ-004",
+          "op": "update",
+          "kind": "request",
+          "fields": [
+            "scope"
+          ]
+        },
+        {
+          "id": "RE-001",
+          "op": "update",
+          "kind": "requirement",
+          "fields": [
+            "scope"
+          ]
+        },
+        {
+          "id": "RE-002",
+          "op": "update",
+          "kind": "requirement",
+          "fields": [
+            "scope"
+          ]
+        },
+        {
+          "id": "RE-003",
+          "op": "update",
+          "kind": "requirement",
+          "fields": [
+            "scope"
+          ]
+        },
+        {
+          "id": "RE-004",
+          "op": "update",
+          "kind": "requirement",
+          "fields": [
+            "scope",
+            "nfrCategory"
+          ]
+        }
+      ]
+    },
+    {
+      "rev": 15,
+      "at": "2026-11-20T10:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "RQ-005",
+          "op": "add",
+          "kind": "request"
+        },
+        {
+          "id": "RE-005",
+          "op": "add",
+          "kind": "requirement"
+        },
+        {
+          "id": "QA-002",
+          "op": "update",
+          "kind": "question",
+          "fields": [
+            "meeting"
+          ]
+        },
+        {
+          "id": "QA-003",
+          "op": "update",
+          "kind": "question",
+          "fields": [
+            "meeting",
+            "nfrCategory"
+          ]
+        },
+        {
+          "id": "QA-005",
+          "op": "add",
+          "kind": "question"
+        }
+      ]
+    },
+    {
+      "rev": 13,
+      "at": "2026-10-01T09:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "TK-001",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-002",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "progress": 0,
+            "actual": 0,
+            "estimate": 10,
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-003",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "progress": 0,
+            "actual": 0,
+            "estimate": 15,
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-004",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "progress": 0,
+            "actual": 0,
+            "estimate": 5,
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-005",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-006",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-007",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "estimate": 20,
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-008",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "estimate": 15,
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-009",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "estimate": 12,
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-010",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "estimate": 4,
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-011",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-012",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "estimate": 40,
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-013",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "estimate": 30,
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-014",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "estimate": 30,
+            "status": "todo"
+          }
+        },
+        {
+          "id": "TK-015",
+          "op": "add",
+          "kind": "task",
+          "values": {
+            "status": "todo"
+          }
+        }
+      ]
+    },
+    {
+      "rev": 14,
+      "at": "2026-10-09T18:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "TK-002",
+          "op": "update",
+          "kind": "task",
+          "fields": [
+            "progress",
+            "actual",
+            "status"
+          ],
+          "statusFrom": "todo",
+          "statusTo": "doing",
+          "values": {
+            "progress": 40,
+            "actual": 4,
+            "status": "doing"
+          }
+        },
+        {
+          "id": "TK-003",
+          "op": "update",
+          "kind": "task",
+          "fields": [
+            "progress",
+            "actual",
+            "status"
+          ],
+          "statusFrom": "todo",
+          "statusTo": "doing",
+          "values": {
+            "progress": 0,
+            "actual": 1,
+            "status": "doing"
+          }
+        }
+      ]
+    },
+    {
+      "rev": 15,
+      "at": "2026-10-23T18:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "TK-002",
+          "op": "update",
+          "kind": "task",
+          "fields": [
+            "progress",
+            "actual",
+            "status"
+          ],
+          "statusFrom": "doing",
+          "statusTo": "done",
+          "values": {
+            "progress": 100,
+            "actual": 11,
+            "status": "done"
+          }
+        },
+        {
+          "id": "TK-003",
+          "op": "update",
+          "kind": "task",
+          "fields": [
+            "progress",
+            "actual"
+          ],
+          "values": {
+            "progress": 15,
+            "actual": 3
+          }
+        }
+      ]
+    },
+    {
+      "rev": 16,
+      "at": "2026-11-06T18:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "TK-003",
+          "op": "update",
+          "kind": "task",
+          "fields": [
+            "progress",
+            "actual"
+          ],
+          "values": {
+            "progress": 30,
+            "actual": 6
+          }
+        }
+      ]
+    },
+    {
+      "rev": 17,
+      "at": "2026-11-20T18:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "TK-003",
+          "op": "update",
+          "kind": "task",
+          "fields": [
+            "progress",
+            "actual"
+          ],
+          "values": {
+            "progress": 40,
+            "actual": 9
+          }
+        },
+        {
+          "id": "TK-004",
+          "op": "update",
+          "kind": "task",
+          "fields": [
+            "progress",
+            "actual",
+            "status"
+          ],
+          "statusFrom": "todo",
+          "statusTo": "doing",
+          "values": {
+            "progress": 10,
+            "actual": 1,
+            "status": "doing"
+          }
+        }
+      ]
+    },
+    {
+      "rev": 18,
+      "at": "2026-11-21T09:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "CR-001",
+          "op": "add",
+          "kind": "change"
+        },
+        {
+          "id": "CR-002",
+          "op": "add",
+          "kind": "change"
+        },
+        {
+          "id": "IS-005",
+          "op": "add",
+          "kind": "issue"
+        }
+      ]
+    },
+    {
+      "rev": 13,
+      "at": "2026-11-24T09:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "EN-001",
+          "op": "add",
+          "kind": "entity"
+        },
+        {
+          "id": "EN-002",
+          "op": "add",
+          "kind": "entity"
+        },
+        {
+          "id": "EN-003",
+          "op": "add",
+          "kind": "entity"
+        },
+        {
+          "id": "EN-004",
+          "op": "add",
+          "kind": "entity"
+        },
+        {
+          "id": "EN-005",
+          "op": "add",
+          "kind": "entity"
+        },
+        {
+          "id": "EN-006",
+          "op": "add",
+          "kind": "entity"
+        },
+        {
+          "id": "SC-001",
+          "op": "add",
+          "kind": "screen"
+        },
+        {
+          "id": "SC-002",
+          "op": "add",
+          "kind": "screen"
+        },
+        {
+          "id": "SC-003",
+          "op": "add",
+          "kind": "screen"
+        },
+        {
+          "id": "SC-004",
+          "op": "add",
+          "kind": "screen"
+        },
+        {
+          "id": "SC-005",
+          "op": "add",
+          "kind": "screen"
+        },
+        {
+          "id": "IF-001",
+          "op": "add",
+          "kind": "interface"
+        },
+        {
+          "id": "IF-002",
+          "op": "add",
+          "kind": "interface"
+        },
+        {
+          "id": "BT-001",
+          "op": "add",
+          "kind": "batch"
+        }
+      ]
+    },
+    {
+      "rev": 13,
+      "at": "2026-11-25T09:00:00.000Z",
+      "source": "import",
+      "changes": [
+        {
+          "id": "TS-001",
+          "op": "add",
+          "kind": "test"
+        },
+        {
+          "id": "TS-002",
+          "op": "add",
+          "kind": "test"
+        },
+        {
+          "id": "TS-003",
+          "op": "add",
+          "kind": "test"
+        },
+        {
+          "id": "TS-004",
+          "op": "add",
+          "kind": "test"
+        },
+        {
+          "id": "TS-005",
+          "op": "add",
+          "kind": "test"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "ballWaitDays": 7,
+    "me": "SH-006"
+  }
+}

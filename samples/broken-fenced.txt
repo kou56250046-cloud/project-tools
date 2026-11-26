@@ -1,0 +1,13 @@
+承知しました。議事録から抽出した差分は以下のとおりです。
+
+```json
+{
+  "type": "ledger-patch",
+  "schemaVersion": 1,
+  "ops": [
+    { "op": "add", "tempId": "new:1", "item": { "kind": "issue", "title": "帳票の出力形式が未定", "confidence": "fact" } }
+  ]
+}
+```
+
+ご確認ください。

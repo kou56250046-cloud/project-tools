@@ -1,0 +1,14 @@
+{
+  "type": "ledger-patch",
+  "schemaVersion": 1,
+  "basedOnRevision": 12,
+  "ops": [
+    { "op": "add", "tempId": "new:1", "item": { "kind": "stakeholder", "title": "大西 係長", "side": "customer", "org": "営業部", "role": "Web 発注の得意先窓口", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第6回定例", "date": "2026-11-25" }] } },
+    { "op": "add", "tempId": "new:2", "item": { "kind": "question", "title": "得意先へのアカウント発行は誰が行うか", "askTo": "new:1", "due": "2026-12-09", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第6回定例", "date": "2026-11-25", "speaker": "SH-007" }], "links": ["RE-001"] } },
+    { "op": "add", "item": { "kind": "decision", "title": "Web 発注は主要得意先30社から先行して始める", "decidedAt": "2026-11-25", "decidedBy": ["SH-002"], "reason": "全社一斉だと問い合わせ対応が追いつかない", "alternatives": ["全得意先で一斉に開始"], "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第6回定例", "date": "2026-11-25", "speaker": "SH-002" }], "links": ["RE-001", "new:2"] } },
+    { "op": "update", "id": "QA-001", "set": { "status": "answered", "answer": "初年度は主要得意先30社" }, "reason": "第6回定例で回答" },
+    { "op": "update", "id": "IS-002", "set": { "owner": "SH-001", "due": "2026-12-11" } },
+    { "op": "relate", "from": "new:1", "to": "SH-002", "label": "報告" },
+    { "op": "project", "set": { "summary": "現行の受発注システム（2009年稼働）の保守切れに伴う刷新。会計・倉庫管理とは連携を維持する。Web 発注は30社から先行。" } }
+  ]
+}

@@ -1,0 +1,1 @@
+以下が差分です。 { "type": "ledger-patch", "schemaVersion": 1, "ops": [ { "op": "update", "id": "QA-001", "set": { "status": "answered", "answer": "利用者は約120名" } } ] } 以上、3件の更新は不要と判断しました。

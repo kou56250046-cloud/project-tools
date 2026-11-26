@@ -1,0 +1,6 @@
+```
+[
+  { "op": "add", "item": { "kind": "request", "title": "スマホから承認したい", "priority": "Should" } },
+  { "op": "relate", "from": "SH-001", "to": "SY-001", "label": "利用" }
+]
+```

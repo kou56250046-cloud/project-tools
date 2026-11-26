@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "type": "ledger",
+  "revision": 12,
+  "project": {
+    "name": "【ダミー】みなと物産 受発注システム刷新",
+    "customer": "株式会社みなと物産（架空）",
+    "purpose": "電話・FAX中心の受注業務を Web 化し、受注から出荷・請求までの手入力をなくす",
+    "periodStart": "2026-10-01",
+    "periodEnd": "2027-09-30",
+    "goals": ["受注入力の工数を半分にする", "出荷ミスを月5件から1件以下にする", "2027年10月に新システムで本番稼働"],
+    "summary": "現行の受発注システム（2009年稼働）の保守切れに伴う刷新。会計・倉庫管理とは連携を維持する。",
+    "starter": "business-system-new"
+  },
+  "items": [
+    { "id": "SH-001", "kind": "stakeholder", "title": "青木 部長", "side": "customer", "org": "情報システム部", "role": "顧客側の窓口・責任者", "status": "active", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "キックオフ", "date": "2026-10-05" }], "links": [], "createdAt": "2026-10-05T09:00:00.000Z", "updatedAt": "2026-10-05T09:00:00.000Z" },
+    { "id": "SH-002", "kind": "stakeholder", "title": "石田 課長", "side": "customer", "org": "営業部", "role": "受注業務の主担当", "status": "active", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "キックオフ", "date": "2026-10-05" }], "links": [], "createdAt": "2026-10-05T09:00:00.000Z", "updatedAt": "2026-10-05T09:00:00.000Z" },
+    { "id": "SH-003", "kind": "stakeholder", "title": "上野 主任", "side": "customer", "org": "物流部", "role": "出荷業務", "status": "active", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第1回ヒヤリング", "date": "2026-10-14" }], "links": [], "createdAt": "2026-10-14T09:00:00.000Z", "updatedAt": "2026-10-14T09:00:00.000Z" },
+    { "id": "SH-004", "kind": "stakeholder", "title": "江口 さん", "side": "customer", "org": "経理部", "role": "請求・入金消込", "status": "active", "confidence": "guess", "sources": [], "links": [], "createdAt": "2026-10-14T09:00:00.000Z", "updatedAt": "2026-10-14T09:00:00.000Z" },
+    { "id": "SH-005", "kind": "stakeholder", "title": "坂本 取締役", "side": "customer", "org": "経営企画", "role": "決裁者", "status": "active", "confidence": "fact", "sources": [{ "type": "doc", "ref": "提案依頼書 v1.2" }], "links": [], "createdAt": "2026-10-01T09:00:00.000Z", "updatedAt": "2026-10-01T09:00:00.000Z" },
+    { "id": "SH-006", "kind": "stakeholder", "title": "小野", "side": "own", "org": "第2開発部", "role": "PM", "status": "active", "confidence": "fact", "sources": [{ "type": "doc", "ref": "体制図" }], "links": [], "createdAt": "2026-10-01T09:00:00.000Z", "updatedAt": "2026-10-01T09:00:00.000Z" },
+    { "id": "SH-007", "kind": "stakeholder", "title": "加藤", "side": "own", "org": "第2開発部", "role": "SE（業務設計）", "status": "active", "confidence": "fact", "sources": [{ "type": "doc", "ref": "体制図" }], "links": [], "createdAt": "2026-10-01T09:00:00.000Z", "updatedAt": "2026-10-01T09:00:00.000Z" },
+    { "id": "SH-008", "kind": "stakeholder", "title": "木村", "side": "own", "org": "営業部", "role": "営業担当", "status": "active", "confidence": "fact", "sources": [{ "type": "doc", "ref": "体制図" }], "links": [], "createdAt": "2026-10-01T09:00:00.000Z", "updatedAt": "2026-10-01T09:00:00.000Z" },
+    { "id": "SH-009", "kind": "stakeholder", "title": "工藤", "side": "vendor", "org": "クラウド基盤パートナー（架空）", "role": "インフラ構築", "status": "active", "confidence": "fact", "sources": [{ "type": "mail", "ref": "基盤見積の件", "date": "2026-10-20" }], "links": [], "createdAt": "2026-10-20T09:00:00.000Z", "updatedAt": "2026-10-20T09:00:00.000Z" },
+    { "id": "SH-010", "kind": "stakeholder", "title": "佐々木", "side": "vendor", "org": "帳票ツールベンダー（架空）", "role": "帳票開発", "status": "active", "confidence": "guess", "sources": [{ "type": "meeting", "ref": "社内定例", "date": "2026-10-21" }], "links": [], "createdAt": "2026-10-21T09:00:00.000Z", "updatedAt": "2026-10-21T09:00:00.000Z" },
+
+    { "id": "SY-001", "kind": "system", "title": "現行受発注システム", "body": "2009年稼働のクライアントサーバー型。保守は2027年9月で終了。", "owner": "SH-001", "status": "existing", "confidence": "fact", "sources": [{ "type": "doc", "ref": "提案依頼書 v1.2" }], "links": [], "createdAt": "2026-10-01T09:00:00.000Z", "updatedAt": "2026-10-01T09:00:00.000Z" },
+    { "id": "SY-002", "kind": "system", "title": "新受発注システム", "owner": "SH-001", "status": "planned", "confidence": "fact", "sources": [{ "type": "doc", "ref": "提案依頼書 v1.2" }], "links": [], "createdAt": "2026-10-01T09:00:00.000Z", "updatedAt": "2026-10-01T09:00:00.000Z" },
+    { "id": "SY-003", "kind": "system", "title": "会計システム", "body": "パッケージ製品。CSV で仕訳を取り込む。", "owner": "SH-004", "status": "existing", "confidence": "guess", "sources": [{ "type": "meeting", "ref": "第1回ヒヤリング", "date": "2026-10-14", "speaker": "SH-001" }], "links": [], "createdAt": "2026-10-14T09:00:00.000Z", "updatedAt": "2026-10-14T09:00:00.000Z" },
+    { "id": "SY-004", "kind": "system", "title": "倉庫管理システム", "owner": "SH-003", "status": "existing", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第1回ヒヤリング", "date": "2026-10-14", "speaker": "SH-003" }], "links": [], "createdAt": "2026-10-14T09:00:00.000Z", "updatedAt": "2026-10-14T09:00:00.000Z" },
+
+    { "id": "RQ-001", "kind": "request", "title": "得意先が Web から直接発注できるようにしたい", "body": "FAX の受注が全体の約6割。入力と照合に毎日3時間かかっている。", "owner": "SH-002", "priority": "Must", "status": "accepted", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第1回ヒヤリング", "date": "2026-10-14", "speaker": "SH-002" }], "links": ["SY-002"], "createdAt": "2026-10-14T09:00:00.000Z", "updatedAt": "2026-10-28T09:00:00.000Z" },
+    { "id": "RQ-002", "kind": "request", "title": "出荷指示を倉庫管理へ自動で送りたい", "owner": "SH-003", "priority": "Must", "status": "accepted", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第1回ヒヤリング", "date": "2026-10-14", "speaker": "SH-003" }], "links": ["SY-004"], "createdAt": "2026-10-14T09:00:00.000Z", "updatedAt": "2026-10-28T09:00:00.000Z" },
+    { "id": "RQ-003", "kind": "request", "title": "スマホで受注状況を見たい", "owner": "SH-005", "priority": "Could", "status": "open", "confidence": "guess", "sources": [{ "type": "chat", "ref": "木村さんからの共有", "date": "2026-11-02" }], "links": [], "createdAt": "2026-11-02T09:00:00.000Z", "updatedAt": "2026-11-02T09:00:00.000Z" },
+    { "id": "RQ-004", "kind": "request", "title": "請求書を電子で送りたい", "owner": "SH-004", "priority": "Should", "status": "open", "confidence": "fact", "sources": [], "links": ["SY-003"], "createdAt": "2026-11-05T09:00:00.000Z", "updatedAt": "2026-11-05T09:00:00.000Z" },
+
+    { "id": "CN-001", "kind": "constraint", "title": "現行システムの保守が2027年9月で終了する", "category": "schedule", "status": "active", "confidence": "fact", "sources": [{ "type": "doc", "ref": "提案依頼書 v1.2" }], "links": ["SY-001"], "createdAt": "2026-10-01T09:00:00.000Z", "updatedAt": "2026-10-01T09:00:00.000Z" },
+    { "id": "CN-002", "kind": "constraint", "title": "予算の上限は税抜8,000万円", "category": "budget", "status": "active", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "キックオフ", "date": "2026-10-05", "speaker": "SH-005" }], "links": [], "createdAt": "2026-10-05T09:00:00.000Z", "updatedAt": "2026-10-05T09:00:00.000Z" },
+    { "id": "CN-003", "kind": "constraint", "title": "会計システムの取込形式は変更できない", "category": "technical", "status": "active", "confidence": "guess", "sources": [{ "type": "meeting", "ref": "第1回ヒヤリング", "date": "2026-10-14", "speaker": "SH-001" }], "links": ["SY-003"], "createdAt": "2026-10-14T09:00:00.000Z", "updatedAt": "2026-10-14T09:00:00.000Z" },
+
+    { "id": "RE-001", "kind": "requirement", "title": "得意先向けの Web 発注画面を提供する", "category": "functional", "priority": "Must", "status": "agreed", "confidence": "confirmed", "sources": [{ "type": "meeting", "ref": "第3回定例", "date": "2026-10-28" }], "links": ["RQ-001", "SY-002"], "createdAt": "2026-10-28T09:00:00.000Z", "updatedAt": "2026-10-28T09:00:00.000Z" },
+    { "id": "RE-002", "kind": "requirement", "title": "受注確定時に出荷指示データを倉庫管理システムへ送る", "category": "functional", "priority": "Must", "status": "draft", "confidence": "guess", "sources": [{ "type": "meeting", "ref": "第3回定例", "date": "2026-10-28" }], "links": ["RQ-002", "SY-004"], "createdAt": "2026-10-28T09:00:00.000Z", "updatedAt": "2026-10-28T09:00:00.000Z" },
+    { "id": "RE-003", "kind": "requirement", "title": "売上データを会計システムの取込形式（CSV）で日次出力する", "category": "functional", "priority": "Must", "status": "draft", "confidence": "fact", "sources": [{ "type": "doc", "ref": "会計システム 取込仕様書" }], "links": ["CN-003", "SY-003"], "createdAt": "2026-11-04T09:00:00.000Z", "updatedAt": "2026-11-04T09:00:00.000Z" },
+    { "id": "RE-004", "kind": "requirement", "title": "受注画面は3秒以内に表示する", "category": "nonfunctional", "priority": "Should", "status": "draft", "confidence": "guess", "sources": [], "links": [], "createdAt": "2026-11-04T09:00:00.000Z", "updatedAt": "2026-11-04T09:00:00.000Z" },
+
+    { "id": "DC-001", "kind": "decision", "title": "基盤はオンプレミスで構築する", "decidedAt": "2026-10-14", "decidedBy": ["SH-001"], "reason": "既存の社内サーバー室を使える", "alternatives": ["パブリッククラウド"], "status": "superseded", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第1回ヒヤリング", "date": "2026-10-14", "speaker": "SH-001" }], "links": [], "createdAt": "2026-10-14T09:00:00.000Z", "updatedAt": "2026-11-11T09:00:00.000Z" },
+    { "id": "DC-002", "kind": "decision", "title": "得意先ごとの専用単価は新システムでも維持する", "decidedAt": "2026-10-28", "decidedBy": ["SH-002", "SH-005"], "reason": "取引条件の変更は営業上できない", "alternatives": ["標準単価への統一", "得意先ランク別の単価"], "status": "valid", "confidence": "confirmed", "sources": [{ "type": "meeting", "ref": "第3回定例", "date": "2026-10-28", "speaker": "SH-005" }], "links": ["RE-001"], "createdAt": "2026-10-28T09:00:00.000Z", "updatedAt": "2026-10-28T09:00:00.000Z" },
+    { "id": "DC-003", "kind": "decision", "title": "基盤はパブリッククラウドで構築する", "decidedAt": "2026-11-11", "decidedBy": ["SH-001", "SH-005"], "reason": "サーバー室の移転が2027年に決まり、オンプレミスの前提が崩れた", "alternatives": ["オンプレミス（移転先で再構築）"], "supersedes": "DC-001", "status": "valid", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第5回定例", "date": "2026-11-11", "speaker": "SH-001" }], "links": ["SY-002"], "createdAt": "2026-11-11T09:00:00.000Z", "updatedAt": "2026-11-11T09:00:00.000Z" },
+
+    { "id": "IS-001", "kind": "issue", "title": "得意先専用単価のデータが Excel に分散している", "owner": "SH-002", "due": "2026-11-20", "severity": "high", "status": "open", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第3回定例", "date": "2026-10-28", "speaker": "SH-002" }], "links": ["DC-002"], "createdAt": "2026-10-28T09:00:00.000Z", "updatedAt": "2026-10-28T09:00:00.000Z" },
+    { "id": "IS-002", "kind": "issue", "title": "倉庫管理システム側の改修費用の負担者が決まっていない", "severity": "high", "status": "open", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第5回定例", "date": "2026-11-11" }], "links": ["RE-002", "SY-004"], "createdAt": "2026-11-11T09:00:00.000Z", "updatedAt": "2026-11-11T09:00:00.000Z" },
+    { "id": "IS-003", "kind": "issue", "title": "クラウド基盤の見積を取り直す", "owner": "SH-006", "due": "2026-12-04", "severity": "mid", "status": "in_progress", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第5回定例", "date": "2026-11-11" }], "links": ["DC-003"], "createdAt": "2026-11-11T09:00:00.000Z", "updatedAt": "2026-11-18T09:00:00.000Z" },
+    { "id": "IS-004", "kind": "issue", "title": "帳票ツールのライセンス形態を確認する", "owner": "SH-007", "due": "2026-11-15", "severity": "low", "status": "closed", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "社内定例", "date": "2026-10-21" }], "links": [], "createdAt": "2026-10-21T09:00:00.000Z", "updatedAt": "2026-11-14T09:00:00.000Z" },
+
+    { "id": "QA-001", "kind": "question", "title": "Web 発注を使う得意先は何社か", "askTo": "SH-002", "due": "2026-11-18", "status": "open", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第3回定例", "date": "2026-10-28" }], "links": ["RQ-001"], "createdAt": "2026-10-28T09:00:00.000Z", "updatedAt": "2026-10-28T09:00:00.000Z" },
+    { "id": "QA-002", "kind": "question", "title": "会計システムの取込は日次でよいか、随時が必要か", "askTo": "SH-004", "due": "2026-12-02", "status": "open", "confidence": "fact", "sources": [{ "type": "meeting", "ref": "第5回定例", "date": "2026-11-11" }], "links": ["RE-003"], "createdAt": "2026-11-11T09:00:00.000Z", "updatedAt": "2026-11-11T09:00:00.000Z" },
+    { "id": "QA-003", "kind": "question", "title": "繁忙期（3月）の1日あたりの最大受注件数", "status": "open", "confidence": "fact", "sources": [{ "type": "template", "ref": "業務システム新規" }], "links": ["RE-004"], "createdAt": "2026-10-01T09:00:00.000Z", "updatedAt": "2026-10-01T09:00:00.000Z" },
+    { "id": "QA-004", "kind": "question", "title": "現行システムのデータはいつまで遡って移行するか", "askTo": "SH-001", "due": "2026-11-30", "answer": "過去3年分。それ以前は参照用に CSV で保管する。", "status": "answered", "confidence": "fact", "sources": [{ "type": "mail", "ref": "Re: 移行範囲について", "date": "2026-11-19", "speaker": "SH-001" }], "links": ["SY-001"], "createdAt": "2026-10-28T09:00:00.000Z", "updatedAt": "2026-11-19T09:00:00.000Z" }
+  ],
+  "relations": [
+    { "id": "RL-001", "from": "SH-005", "to": "SH-008", "label": "発注" },
+    { "id": "RL-002", "from": "SH-001", "to": "SH-006", "label": "窓口" },
+    { "id": "RL-003", "from": "SH-006", "to": "SH-007", "label": "指示" },
+    { "id": "RL-004", "from": "SH-006", "to": "SH-009", "label": "委託" },
+    { "id": "RL-005", "from": "SH-007", "to": "SH-010", "label": "委託" },
+    { "id": "RL-006", "from": "SH-002", "to": "SY-001", "label": "利用" },
+    { "id": "RL-007", "from": "SH-003", "to": "SY-004", "label": "利用" },
+    { "id": "RL-008", "from": "SH-004", "to": "SY-003", "label": "利用" },
+    { "id": "RL-009", "from": "SY-001", "to": "SY-003", "label": "連携" },
+    { "id": "RL-010", "from": "SY-002", "to": "SY-003", "label": "連携" },
+    { "id": "RL-011", "from": "SY-002", "to": "SY-004", "label": "連携" },
+    { "id": "RL-012", "from": "SH-009", "to": "SY-002", "label": "基盤構築" }
+  ],
+  "counters": { "SH": 10, "SY": 4, "RQ": 4, "CN": 3, "RE": 4, "DC": 3, "IS": 4, "QA": 4, "RL": 12 },
+  "updatedAt": "2026-11-19T09:00:00.000Z"
+}

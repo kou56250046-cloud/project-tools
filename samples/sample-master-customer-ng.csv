@@ -1,0 +1,6 @@
+customer_code,customer_name,price_rank,memo
+C0000001,株式会社あおば商事,A1,
+C0000001,重複した得意先,A1,
+C0000004,,B2,
+C0000005,ながい商会,ABC,
+C12,形の違う得意先,A1,
