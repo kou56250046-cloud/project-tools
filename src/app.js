@@ -1,7 +1,7 @@
 // 起動・画面切替・上部の状態表示
 
-import { h, clear, toast, download } from './ui/dom.js';
-import { store } from './ui/store.js';
+import { h, clear, toast, download, confirmDialog, fmtDateTime } from './ui/dom.js';
+import { store, UNDO_LIMIT } from './ui/store.js';
 import { renderLock } from './ui/lock.js';
 import { runHealth } from './core/health.js';
 import { createLedger } from './core/starter.js';
@@ -16,7 +16,7 @@ import { renderDecisions } from './ui/views/decisions.js';
 import { renderHealth } from './ui/views/health.js';
 import { renderImport } from './ui/views/import.js';
 import { renderPrompts } from './ui/views/prompts.js';
-import { renderSettings } from './ui/views/settings.js';
+import { renderSettings, newProjectDialog } from './ui/views/settings.js';
 import { renderHearing } from './ui/views/hearing.js';
 import { renderIssues } from './ui/views/issues.js';
 import { renderNfr } from './ui/views/nfr.js';
@@ -168,6 +168,36 @@ function renderTabs() {
   }
 }
 
+// 取り消しの段の種類の表示名
+const STEP_LABELS = { import: '取込', local: '画面での変更', hearing: 'ヒヤリング', settings: '設定', baseline: 'ベースライン', reset: '中身を空に戻す' };
+
+// 取り消しの履歴: 新しい順に出し、「ここまで戻す」でその変更の前まで一度に戻す
+function historyDialog() {
+  const steps = store.history();
+  const total = steps.length;
+  const dlg = h('dialog', { class: 'dialog history-dialog', id: 'history-dialog', 'aria-labelledby': 'history-title' },
+    h('h2', { id: 'history-title', text: '取り消しの履歴' }),
+    h('p', { class: 'small muted', text: `直近 ${total} 件（最大 ${UNDO_LIMIT} 件）。再読み込み・ロックで消えます。案件を切り替えても残ります。` }),
+    h('div', { class: 'table-wrap' }, h('table', { class: 'list' },
+      h('thead', null, h('tr', null, ['いつ', 'どこから', '件数', ''].map((t) => h('th', { scope: 'col', text: t })))),
+      h('tbody', null, steps.map((st, n) => h('tr', { class: 'nocursor', 'data-step': String(st.index) },
+        h('td', { class: 'mono small', text: fmtDateTime(st.at) }),
+        h('td', { text: STEP_LABELS[st.kind] || st.kind }),
+        h('td', { class: 'num', text: st.kind === 'reset' ? '—' : `${st.count} 件` }),
+        h('td', null, h('button', { class: 'btn small', type: 'button', 'data-fk': 'undo-to-' + st.index, onclick: async () => {
+          const lost = total - st.index;
+          close();
+          const ok = await confirmDialog('この変更の前まで戻します。', 'ここまで戻す',
+            `この変更を含め、新しい方から ${lost} 段の変更が失われ、やり直せません。`);
+          if (ok && store.undoTo(st.index)) toast(`${lost} 段取り消しました`);
+        } }, n === 0 ? 'これを取り消す' : 'ここまで戻す'))))))),
+    h('div', { class: 'row dialog-actions' }, h('button', { class: 'btn', type: 'button', 'data-act': 'cancel', onclick: () => close() }, '閉じる')));
+  function close() { dlg.close(); dlg.remove(); }
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
+  document.body.appendChild(dlg);
+  dlg.showModal();
+}
+
 function renderTopbar() {
   const name = clear(document.getElementById('project-name'));
   const projects = store.projects();
@@ -177,8 +207,12 @@ function renderTopbar() {
       projects.map((p) => h('option', { value: p.id, selected: p.id === store.activeId, text: p.name + (p.dirty ? '（未書き出し）' : '') })));
     sel.addEventListener('change', () => { store.switchProject(sel.value); toast('案件を切り替えました'); });
     name.appendChild(sel);
-  } else {
-    name.textContent = store.ledger ? store.ledger.project.name : '';
+  } else if (store.ledger) {
+    name.appendChild(h('span', { class: 'project-title', text: store.ledger.project.name }));
+  }
+  // 上部からの新しい案件（ロック中と説明用の表示では出さない。台帳が無いときも出す）
+  if (!locked() && !store.presentation) {
+    name.appendChild(h('button', { class: 'btn small', type: 'button', id: 'btn-new-project', title: '新しい案件を作る（今の案件はそのまま残る）', onclick: () => newProjectDialog(app) }, '＋ 新しい案件'));
   }
   const status = clear(document.getElementById('topbar-status'));
   if (store.saveError) status.appendChild(h('span', { class: 'badge high', text: '保存に失敗', title: store.saveError }));
@@ -199,9 +233,13 @@ function renderTopbar() {
   }
   if (store.ledger && !store.presentation) {
     actions.appendChild(h('button', {
-      class: 'btn', type: 'button', id: 'btn-undo', disabled: !store.canUndo(), title: '直前の1回の変更を取り消す',
-      onclick: () => { if (store.undo()) toast('直前の変更を取り消しました'); },
+      class: 'btn', type: 'button', id: 'btn-undo', disabled: !store.canUndo(), title: `直前の変更を1段ずつ取り消す（${UNDO_LIMIT}段まで）`,
+      onclick: () => { if (store.undo()) toast(`1段取り消しました（あと ${store.history().length} 段）`); },
     }, '取り消し'));
+    actions.appendChild(h('button', {
+      class: 'btn', type: 'button', id: 'btn-history', disabled: !store.canUndo(), title: '直近の変更の一覧から、まとめて戻す',
+      onclick: () => historyDialog(),
+    }, '履歴'));
     actions.appendChild(h('button', {
       class: 'btn primary', type: 'button', id: 'btn-export', title: '台帳を JSON ファイルに保存する',
       onclick: () => { download(store.exportFilename(), store.exportText()); store.markExported(); toast('書き出しました（保存ダイアログを閉じた場合は保存されていません）'); },
@@ -209,7 +247,7 @@ function renderTopbar() {
   }
   if (store.vaultState === 'unlocked') {
     actions.appendChild(h('button', {
-      class: 'btn', type: 'button', id: 'btn-lock', title: '台帳と鍵をメモリから消し、合言葉を入れるまで開けないようにする',
+      class: 'btn', type: 'button', id: 'btn-lock', disabled: store.passChanging, title: store.passChanging ? '合言葉を変えている間はロックできません' : '台帳と鍵をメモリから消し、合言葉を入れるまで開けないようにする',
       onclick: () => { store.lock(); toast('ロックしました'); },
     }, 'ロック'));
   }
@@ -238,7 +276,7 @@ function renderView() {
 function renderWelcome(root) {
   root.appendChild(h('div', { class: 'card stack welcome' },
     h('h2', { text: '案件ワークベンチへようこそ' }),
-    h('p', { text: 'まだ台帳がありません。「設定」から新しい案件を作るか、書き出した台帳ファイルを読み込んでください。' }),
+    h('p', { text: 'まだ台帳がありません。上の「＋ 新しい案件」か「設定」から新しい案件を作るか、「設定」で書き出した台帳ファイルを読み込んでください。' }),
     h('p', { class: 'muted small', text: '台帳は合言葉で暗号化してこのブラウザの中に保存し、書き出したファイルにも保存できます。外部へは一切送信しません。' }),
     h('div', { class: 'row' },
       h('button', { class: 'btn primary', type: 'button', onclick: () => app.go('settings') }, '設定を開く'),

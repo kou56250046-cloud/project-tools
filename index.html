@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-vGU/WNcFZh21M0jeR9mrUwsdITcXmkdBIIKkNqbgi7k='; style-src 'sha256-ea3JsyiKGQT82zAcCdrj5/mqFGEFYNCmEEYBgsjG+V8='; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-nWu5Kp03/JCZTHoMV1FiPIWCbRhJoKqFRkmU+Cyo79Y='; style-src 'sha256-wmc+6DESCUf4ou6oyx0OBEWIkrVWcaMRdPakqQm7IWk='; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:,">
@@ -57,7 +57,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--line);
 }
 .brand { font-size: 15px; margin: 0; color: var(--accent); letter-spacing: .04em; white-space: nowrap; }
-.project-name { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-name { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.project-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-name .btn { flex: none; font-weight: 400; }
+.history-dialog { width: min(640px, 92vw); }
 .topbar-status { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .topbar-actions { display: flex; gap: 8px; }
 
@@ -1370,8 +1373,8 @@ const INTRO = {
 
 // 2章 最初の 10 分
 const FIRST_STEPS = [
-  { title: '合言葉を決める', desc: '「設定」で案件を作ると、最初に合言葉を決める画面が出ます。8 文字以上。次から開くたびに入れます。', screen: 'settings' },
-  { title: '案件を作る', desc: '「設定」の「新しい案件を作る」で案件名と型（業務システム新規・基幹システム刷新・パッケージ導入）を選びます。型の標準のヒヤリング質問が入った状態で始まります。', screen: 'settings' },
+  { title: '合言葉を決める', desc: '上部の「＋ 新しい案件」か「設定」で案件を作ると、最初に合言葉を決める画面が出ます。8 文字以上。次から開くたびに入れます。あとから「設定」で変えられます。', screen: 'settings' },
+  { title: '案件を作る', desc: '上部の「＋ 新しい案件」（または「設定」の「新しい案件を作る」）で案件名と型（業務システム新規・基幹システム刷新・パッケージ導入）を選びます。型の標準のヒヤリング質問が入った状態で始まります。', screen: 'settings' },
   { title: '資料から最初の台帳を作る', desc: '「指示文」で「初期作成」を選んでコピーし、Gemini に貼ります。指示文の末尾の「ここから資料」の下に、提案依頼書やメモを貼って送ります。', purpose: 'initial' },
   { title: '返事を取り込む', desc: 'Gemini の返事をまるごとコピーして「取込」に貼り、「読み取る」。カードを確かめ、要らないものは「却下」にして「適用」します。', screen: 'import' },
 ];
@@ -1381,7 +1384,7 @@ const ROUND_TRIP = [
   { title: '指示文を作る', desc: '「指示文」で目的を選び、「指示文をコピー」。台帳の今の状態と、返事の形の決まりが入っています。' },
   { title: 'Gemini に貼る', desc: '指示文を貼り、末尾の「ここから資料」の下に資料・議事録・メモを貼って送ります。' },
   { title: '返事を取り込む', desc: '返事をまるごと「取込」に貼ります。```json の囲みや説明文が付いていてもかまいません。' },
-  { title: '確かめて適用', desc: '1 件ずつカードで確かめ、要らないものは「却下」。「適用」で台帳に入ります。間違えたら上部の「取り消し」。' },
+  { title: '確かめて適用', desc: '1 件ずつカードで確かめ、要らないものは「却下」。「適用」で台帳に入ります。間違えたら上部の「取り消し」（20 段まで。「履歴」からまとめて戻せます）。' },
 ];
 const ROUND_TRIP_TIPS = [
   { title: '誤りが出たとき', desc: '形の誤りがある操作は自動で却下されます。「修正依頼文をコピー」を Gemini に貼ると、直した差分を出し直させられます。' },
@@ -1425,14 +1428,16 @@ const SCREEN_HELP = {
   tests: { what: 'テストの一覧と工程ごとの合格率。状態と実施日を表で直接変えられる', when: 'テストの実施中' },
   prompts: { what: 'Gemini・NotebookLM に貼る指示文を、目的を選んで作る', when: 'Gemini に何か頼むとき（いつでも）' },
   import: { what: 'Gemini の返事を貼り、1 件ずつ確かめて台帳に適用する', when: 'Gemini から返事が来たとき' },
-  settings: { what: '案件の作成・読み込み・切り替え・外す、この案件の設定（自分・日数・生産性など）、書き出し', when: '案件を始めるとき、区切りごとの書き出し' },
+  settings: { what: '案件の作成・読み込み・切り替え・外す、この案件の設定（自分・日数・生産性など）、中身を空に戻す、合言葉を変える、書き出し', when: '案件を始めるとき、区切りごとの書き出し、やり直したいとき' },
   guide: { what: 'この画面。使い方の説明', when: '迷ったとき' },
 };
 
 // 6章 よくある困りごと
 const FAQ = [
   { q: '合言葉を忘れました', a: '合言葉は復元できません。書き出したファイルがあれば、合言葉の画面の「合言葉を忘れたとき」からブラウザ内の台帳を消し、新しい合言葉を決めてファイルを読み込み直してください。' },
-  { q: '取り込んだ内容を間違えました', a: '上部の「取り消し」で、直前の 1 回の適用を元に戻せます。案件ごとに 1 回分です。再読み込みすると戻せなくなります。' },
+  { q: '取り込んだ内容を間違えました', a: '上部の「取り消し」を押すたびに 1 段ずつ戻ります（案件ごとに直近 20 段）。「履歴」を押すと、いつ・どこからの変更かの一覧から「ここまで戻す」でまとめて戻せます。戻した変更をやり直すことはできません。再読み込みやロックをすると戻せなくなります（案件の切り替えでは消えません）。' },
+  { q: '案件を最初からやり直したい', a: '「設定」の「この案件の中身を空に戻す」で、案件名などの案件情報と設定は残したまま、項目・関係・ベースライン・変更の記録を消せます。型も選び直せます。直後なら「取り消し」で戻せますが、念のため先に書き出してください。' },
+  { q: '合言葉を変えたい', a: '「設定」の「合言葉を変える」で、今の合言葉と新しい合言葉（2 回）を入れます。すべての案件と退避データが新しい合言葉で暗号化し直されます。同じツールを別のタブで開いているときは、先に閉じてください。' },
   { q: '「JSON として読めません」と出ます', a: 'Gemini の返事が途中で切れているか、形が崩れています。「Gemini への修正依頼文をコピー」を Gemini に貼るか、資料を分けて送り直してください。' },
   { q: 'カードが「却下」から変えられません', a: 'そのカードには形の誤りがあります。赤い文字の理由を見て、修正依頼文で Gemini に直させてください。正しいカードだけ先に適用することもできます。' },
   { q: '「未書き出しの変更あり」と出続けます', a: 'ブラウザには保存されていますが、ファイルにはまだ残っていない状態です。上部の「書き出し」を押すと消えます。保存ダイアログで取り消した場合は、ファイルは保存されていません。' },
@@ -4042,6 +4047,19 @@ function choiceDialog(message, choices, detail) {
 // 「今開いている案件」の値を返す getter にしてあり、画面側は今までどおり store.ledger を読めばよい
 
 
+const UNDO_LIMIT = 20;
+const STEP_OPS = new Set(['settings', 'baseline', 'reset']);
+
+// 取り消しの段の表示用の種類と件数を、適用後の台帳の最後の記録から作る
+function stepInfo(after) {
+  const log = after && after.changelog;
+  const e = log && log.length ? log[log.length - 1] : null;
+  if (!e || e.rev !== after.revision) return { kind: 'local', count: 0 };
+  const changes = e.changes || [];
+  const op = changes[0] && changes[0].op;
+  return { kind: STEP_OPS.has(op) ? op : (e.source || 'local'), count: changes.length };
+}
+
 const KEY_VAULT = 'anken-workbench:v1:vault';
 const KEY_RECOVERY = 'anken-workbench:v1:recovery';
 const KEY_LEGACY = 'anken-workbench:v1:ledger';
@@ -4081,7 +4099,7 @@ function readLedgerText(text) {
 
 const store = {
   workspace: emptyWorkspace(),
-  undoById: new Map(),     // 案件ごとの取り消し用の適用前の台帳（メモリのみ）
+  undoById: new Map(),     // 案件ごとの取り消しの段 [{ ledger: 適用前, at, kind, count }]（古い順・最大 UNDO_LIMIT・メモリのみ）
   legacyExported: null,    // P4 までの書き出し状態（移行で使う）
   recovery: {},            // 読めなかった案件の元の文字列 { 案件ID: 文字列 }（暗号化して退避する）
   gen: 0,                  // 台帳が変わるたびに増える世代（revision は取り消しや新規作成で重なるため別に持つ）
@@ -4089,6 +4107,8 @@ const store = {
   vaultState: 'empty',
   key: null,
   salt: null,
+  passChanging: false,     // 合言葉の変更中（ロックを押せなくする）
+  keyRef: null,            // 書き込みに使う鍵 { key, salt }。保存の列に並んだ処理は、実行する時点でこれを読む（合言葉の変更が後から効くように）
   saving: Promise.resolve(),
   saveError: null,
   loadError: null,
@@ -4111,11 +4131,15 @@ const store = {
     }
     this.workspace.ledgers[this.workspace.activeId] = v;
   },
-  get undoLedger() { return this.undoById.get(this.workspace.activeId) || null; },
-  set undoLedger(v) {
+  get undoSteps() { return this.undoById.get(this.workspace.activeId) || []; },
+  // 変更を1段積む（before: 適用前、after: 適用後）
+  pushUndo(before, after) {
     const id = this.workspace.activeId;
-    if (!id) return;
-    if (v) this.undoById.set(id, v); else this.undoById.delete(id);
+    if (!id || !before) return;
+    const steps = this.undoById.get(id) || [];
+    steps.push({ ledger: before, at: after.updatedAt || nowIso(), ...stepInfo(after) });
+    if (steps.length > UNDO_LIMIT) steps.splice(0, steps.length - UNDO_LIMIT);
+    this.undoById.set(id, steps);
   },
   get exportedRevision() { const e = this.workspace.exported[this.workspace.activeId]; return e ? e.revision : null; },
   get exportedAt() { const e = this.workspace.exported[this.workspace.activeId]; return e ? e.at : null; },
@@ -4154,6 +4178,7 @@ const store = {
   async setPassphrase(pass) {
     this.salt = newSalt();
     this.key = await deriveKey(pass, this.salt);
+    this.keyRef = { key: this.key, salt: this.salt };
     this.vaultState = 'unlocked';
     if (this.recoveryText) await this.saveRecovery();
     lsRemove(KEY_LEGACY);
@@ -4171,6 +4196,7 @@ const store = {
     try { text = await openBox(key, box); } catch (e) { return { ok: false, error: '合言葉が違います' }; }
     this.key = key;
     this.salt = box.salt;
+    this.keyRef = { key, salt: box.salt };
     this.vaultState = 'unlocked';
     this.undoById.clear();
     this.loadError = null;
@@ -4218,7 +4244,7 @@ const store = {
   // 鍵と台帳をメモリから消す
   lock() {
     if (this.vaultState !== 'unlocked') return;
-    this.workspace = emptyWorkspace(); this.undoById.clear(); this.key = null; this.selectedId = null; this.recovery = {};
+    this.workspace = emptyWorkspace(); this.undoById.clear(); this.key = null; this.keyRef = null; this.selectedId = null; this.recovery = {};
     this.vaultState = lsGet(KEY_VAULT) ? 'locked' : 'empty';
     this.gen++;
     this.emit('vault');
@@ -4227,16 +4253,22 @@ const store = {
   // 合言葉を忘れたとき: ブラウザ内の暗号化データを消して始め直す
   resetVault() {
     lsRemove(KEY_VAULT); lsRemove(KEY_RECOVERY);
-    this.workspace = emptyWorkspace(); this.undoById.clear(); this.key = null; this.salt = null; this.recovery = {}; this.loadError = null;
+    this.workspace = emptyWorkspace(); this.undoById.clear(); this.key = null; this.salt = null; this.keyRef = null; this.recovery = {}; this.loadError = null;
     this.vaultState = 'empty';
     this.gen++;
     this.emit('vault');
   },
 
-  async saveRecovery() {
-    if (!this.key) return;
-    if (!Object.keys(this.recovery).length) { lsRemove(KEY_RECOVERY); return; }
-    lsSet(KEY_RECOVERY, await sealText(this.key, this.salt, PBKDF2_ITERATIONS, JSON.stringify({ type: 'recovery', items: this.recovery })));
+  // 退避データを暗号化して保存する（保存の列に並べ、合言葉の変更と入れ替わらないようにする）
+  saveRecovery() {
+    const ref = this.keyRef;
+    if (!ref) return this.saving;
+    const items = { ...this.recovery };
+    this.saving = this.saving.then(async () => {
+      if (!Object.keys(items).length) { lsRemove(KEY_RECOVERY); return; }
+      try { lsSet(KEY_RECOVERY, await sealText(ref.key, ref.salt, PBKDF2_ITERATIONS, JSON.stringify({ type: 'recovery', items }))); } catch (e) { /* 次の保存で書き直す */ }
+    });
+    return this.saving;
   },
   // id を省くとすべて消す
   async discardRecovery(id) {
@@ -4249,11 +4281,10 @@ const store = {
   persist() {
     if (this.vaultState !== 'unlocked' || !this.key) return this.saving;
     const text = JSON.stringify(this.workspace);
-    const key = this.key;
-    const salt = this.salt;
+    const ref = this.keyRef;
     this.saving = this.saving.then(async () => {
       try {
-        const ok = lsSet(KEY_VAULT, await sealText(key, salt, PBKDF2_ITERATIONS, text));
+        const ok = lsSet(KEY_VAULT, await sealText(ref.key, ref.salt, PBKDF2_ITERATIONS, text));
         this.saveError = ok ? null : 'ブラウザへの保存に失敗しました。容量不足の可能性があります。今すぐ「書き出し」で JSON を保存してください';
       } catch (e) {
         this.saveError = 'ブラウザへの保存（暗号化）に失敗しました。今すぐ「書き出し」で JSON を保存してください';
@@ -4261,6 +4292,53 @@ const store = {
       if (this.saveError) this.emit('save-error');
     });
     return this.saving;
+  },
+
+  // 合言葉を変える。全案件と退避データを新しい合言葉で暗号化し直す。戻り値: { ok } / { ok: false, error }
+  // 保存の列の中で、確かめる → 暗号化 → 書き込み → 鍵の差し替え を行う。失敗したら元の保存に書き戻す
+  changePassphrase(current, next) {
+    const run = async () => {
+      const ref = this.keyRef;
+      if (this.vaultState !== 'unlocked' || !ref) return { ok: false, error: '台帳が開いていません' };
+      // 待ちの間にロックされても空の入れ物を書かないよう、中身は先に写し取る
+      const wsText = JSON.stringify(this.workspace);
+      const items = { ...this.recovery };
+      const alive = () => this.keyRef === ref && this.vaultState === 'unlocked';
+      const aborted = { ok: false, error: '途中でロックされたため、合言葉は変えていません' };
+      const oldVault = lsGet(KEY_VAULT);
+      const oldRec = lsGet(KEY_RECOVERY);
+      const box = parseBox(oldVault);
+      if (!box) return { ok: false, error: '保存されたデータの形式が正しくありません' };
+      try { await openBox(await deriveKey(current, box.salt, box.iter), box); } catch (e) { return { ok: false, error: '今の合言葉が違います' }; }
+      if (!alive()) return aborted;
+      const hasItems = Object.keys(items).length > 0;
+      if (oldRec && !hasItems) return { ok: false, error: '開けない退避データがあります。先に「設定」から消すか、元の合言葉で開いて書き出してください' };
+      let salt, key, vaultText, recText = null;
+      try {
+        salt = newSalt();
+        key = await deriveKey(next, salt);
+        vaultText = await sealText(key, salt, PBKDF2_ITERATIONS, wsText);
+        if (hasItems) recText = await sealText(key, salt, PBKDF2_ITERATIONS, JSON.stringify({ type: 'recovery', items }));
+      } catch (e) {
+        return { ok: false, error: '暗号化に失敗しました。合言葉は変わっていません' };
+      }
+      if (!alive()) return aborted;
+      if (!lsSet(KEY_VAULT, vaultText) || (recText !== null && !lsSet(KEY_RECOVERY, recText))) {
+        lsSet(KEY_VAULT, oldVault);
+        if (oldRec === null) lsRemove(KEY_RECOVERY); else lsSet(KEY_RECOVERY, oldRec);
+        return { ok: false, error: '保存に失敗しました（容量不足の可能性）。合言葉は変わっていません' };
+      }
+      // 列に並んでいる保存も新しい鍵で書くよう、同じ入れ物の中身を差し替える
+      ref.key = key; ref.salt = salt;
+      this.key = key; this.salt = salt;
+      this.saveError = null;
+      return { ok: true };
+    };
+    this.passChanging = true;
+    this.emit('pass');
+    const p = this.saving.then(run).finally(() => { this.passChanging = false; this.emit('pass'); });
+    this.saving = p.then(() => {}, () => {});
+    return p.catch(() => ({ ok: false, error: '合言葉の変更に失敗しました。合言葉は変わっていません' }));
   },
 
   setExported(rev, at) {
@@ -4332,7 +4410,7 @@ const store = {
   applyValidated(validated, accepted) {
     const before = this.ledger;
     const r = applyPatch(before, validated, accepted, nowIso(), 'import');
-    this.undoLedger = before;
+    this.pushUndo(before, r.ledger);
     this.ledger = r.ledger;
     this.gen++;
     this.persist();
@@ -4345,7 +4423,7 @@ const store = {
     const before = this.ledger;
     const r = applyLocalOps(before, ops, nowIso(), source);
     if (!r.ok) return r;
-    this.undoLedger = before;
+    this.pushUndo(before, r.ledger);
     this.ledger = r.ledger;
     this.gen++;
     this.persist();
@@ -4362,7 +4440,7 @@ const store = {
     next.revision = before.revision + 1;
     next.updatedAt = now;
     appendChange(next, { rev: next.revision, at: now, source: 'local', changes: [change] });
-    this.undoLedger = before;
+    this.pushUndo(before, next);
     this.ledger = next;
     this.gen++;
     this.persist();
@@ -4392,14 +4470,49 @@ const store = {
     return id;
   },
 
-  canUndo() { return !!this.undoLedger; },
-  undo() {
-    if (!this.undoLedger) return false;
-    this.ledger = this.undoLedger;
-    this.undoLedger = null;
+  // 案件の中身を空に戻す。案件情報と設定は残し、型を選び直す（null は型を使わない）。取り消しの1段になる
+  resetProject(starterId) {
+    const before = this.ledger;
+    if (!before) return null;
+    const now = nowIso();
+    const next = createLedger(before.project.name, starterId || null, now);
+    next.project = { ...structuredClone(before.project), starter: starterId || null };
+    next.settings = structuredClone(before.settings || next.settings);
+    // 関係者などを指す設定は、採番し直した別の項目を指さないよう、無くなった ID なら外す
+    for (const [k, d] of Object.entries(SETTINGS)) {
+      const v = next.settings[k];
+      if (d.type === 'ref' && v && !next.items.some((it) => it.id === v)) next.settings[k] = null;
+    }
+    next.revision = before.revision + 1;
+    next.updatedAt = now;
+    next.changelog = [];
+    appendChange(next, { rev: next.revision, at: now, source: 'local', changes: [{ id: 'reset', op: 'reset', starter: starterId || null }] });
+    this.pushUndo(before, next);
+    this.ledger = next;
+    this.selectedId = null;
+    this.token = Math.random().toString(36).slice(2);   // 取込の下書きを捨てる
     this.gen++;
-    // 書き出したものより前に戻ったら、同じ revision でも中身が違いうるので未書き出し扱いにする
-    if (this.exportedRevision !== null && this.exportedRevision > this.ledger.revision) this.setExported(null, null);
+    this.persist();
+    this.emit('apply');
+    return next;
+  },
+
+  canUndo() { return this.undoSteps.length > 0; },
+  // 取り消しの段の一覧（新しい順）。index は undoTo に渡す配列の位置
+  history() {
+    return this.undoSteps.map((s, index) => ({ index, at: s.at, kind: s.kind, count: s.count })).reverse();
+  },
+  undo() { return this.undoTo(this.undoSteps.length - 1); },
+  // 段の配列の i 番目の適用前に戻し、i 番目以降をすべて捨てる（失われる段の数 = 長さ − i）
+  undoTo(i) {
+    const steps = this.undoSteps;
+    if (!Number.isInteger(i) || i < 0 || i >= steps.length) return false;
+    this.ledger = steps[i].ledger;
+    steps.splice(i);
+    if (!steps.length) this.undoById.delete(this.workspace.activeId);
+    this.gen++;
+    // 書き出したものより前に戻ったら、同じ revision でも中身が違いうるので未書き出し扱いにする（日時は事実なので残す）
+    if (this.exportedRevision !== null && this.exportedRevision > this.ledger.revision) this.setExported(null);
     if (this.selectedId && !this.ledger.items.some((it) => it.id === this.selectedId)) this.selectedId = null;
     this.persist();
     this.emit('undo');
@@ -5793,7 +5906,83 @@ function renderPrompts(root, app, opts) {
 // 設定画面: 案件の一覧（切り替え・外す）・新規案件・読み込み・この案件の設定・書き出し・HTML のダウンロード・保存の大きさ
 
 
-const settingsState = { loadErrors: null };
+const settingsState = { loadErrors: null, changingPass: false, passError: null };
+
+// 案件の型の選択（新規・中身を空に戻す で共通）
+function starterSelect(id, selected) {
+  return h('select', { id, 'aria-label': '案件の型' },
+    Object.entries(STARTERS).map(([sid, st]) => h('option', { value: sid, selected: sid === selected, text: st.label })),
+    h('option', { value: '', selected: selected === null, text: '型を使わない（空の台帳）' }));
+}
+function starterDesc(v) { return v ? STARTERS[v].desc : '項目のない台帳から始めます'; }
+
+// 新しい案件を作って開く（設定画面と上部の「＋ 新しい案件」で共通）。作れたら true
+async function createProject(n, starterId, app) {
+  if (!n) { toast('案件名を入れてください'); return false; }
+  if (!(await ensureVaultReady())) return false;
+  store.addProject(createLedger(n, starterId || null, nowIso()));
+  toast(`「${n}」を作りました`);
+  app.go('overview');
+  return true;
+}
+
+// 上部の「＋ 新しい案件」: 案件名と型を入れる小さな画面
+function newProjectDialog(app) {
+  const name = h('input', { type: 'text', id: 'dlg-new-name', placeholder: '例: ○○社 受発注システム刷新', 'aria-label': '案件名' });
+  const starter = starterSelect('dlg-new-starter', Object.keys(STARTERS)[0]);
+  const desc = h('p', { class: 'muted small', text: starterDesc(starter.value) });
+  starter.addEventListener('change', () => { desc.textContent = starterDesc(starter.value); });
+  const err = h('p', { class: 'notice error', role: 'alert', hidden: true });
+  const dlg = h('dialog', { class: 'dialog', id: 'new-project-dialog', 'aria-labelledby': 'new-project-title' },
+    h('form', { method: 'dialog', class: 'stack', onsubmit: async (e) => {
+      e.preventDefault();
+      const n = name.value.trim();
+      if (!n) { err.textContent = '案件名を入れてください'; err.hidden = false; name.focus(); return; }
+      close();
+      await createProject(n, starter.value, app);
+    } },
+      h('h2', { id: 'new-project-title', text: '新しい案件を作る' }),
+      h('p', { class: 'small', text: '今の案件はそのまま残り、新しい案件が追加されます。' }),
+      h('label', { class: 'field' }, '案件名', name),
+      h('label', { class: 'field' }, '案件の型', starter),
+      desc,
+      err,
+      h('div', { class: 'row dialog-actions' },
+        h('button', { class: 'btn', type: 'button', 'data-act': 'cancel', onclick: () => close() }, 'やめる'),
+        h('button', { class: 'btn primary', type: 'submit', 'data-act': 'ok' }, '作る'))));
+  function close() { dlg.close(); dlg.remove(); }
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  name.focus();
+}
+
+// この案件の中身を空に戻す（案件情報と設定は残す。取り消しで戻せる）
+async function resetCurrent(starterId) {
+  const l = store.ledger;
+  const p = store.projects().find((x) => x.id === store.activeId);
+  const ok = await confirmDialog(`「${l.project.name}」の中身を空に戻します。`, '空に戻す',
+    `項目 ${l.items.length} 件・関係 ${l.relations.length} 件・ベースライン ${l.baselines.length} 件と変更の記録が消えます。案件情報とこの案件の設定は残ります（「自分」の設定は外れます）。` +
+    `「取り消し」で元に戻せます（再読み込みやロックの後は戻せません）。${lastExportText(p)}。` +
+    (p.dirty ? '最後の書き出しより後の変更があります。先に書き出してください。' : ''));
+  if (!ok) return;
+  store.resetProject(starterId || null);
+  toast('中身を空に戻しました（取り消し可）');
+}
+
+// 合言葉を変える
+async function changePass(cur, p1, p2, app) {
+  const fail = (msg) => { settingsState.passError = msg; app.refresh(); };
+  if (p1.length < MIN_PASSPHRASE) return fail(`新しい合言葉は ${MIN_PASSPHRASE} 文字以上にしてください`);
+  if (p1 !== p2) return fail('新しい合言葉の 2 回の入力が一致しません');
+  settingsState.changingPass = true; settingsState.passError = null;
+  app.refresh();
+  const r = await store.changePassphrase(cur, p1);
+  settingsState.changingPass = false;
+  if (!r.ok) return fail(r.error);
+  toast('合言葉を変えました。次からは新しい合言葉で開きます');
+  app.refresh();
+}
 // localStorage はおよそ 5MB（文字数で約 500 万）。4MB を超えたら知らせる
 const STORAGE_WARN = 4 * 1024 * 1024;
 
@@ -5884,24 +6073,15 @@ function renderSettings(root, app) {
 
   // 新規案件
   const name = h('input', { type: 'text', id: 'new-name', placeholder: '例: ○○社 受発注システム刷新', 'aria-label': '案件名' });
-  const starter = h('select', { id: 'new-starter', 'aria-label': '案件の型' },
-    Object.entries(STARTERS).map(([id, st]) => h('option', { value: id, text: st.label })),
-    h('option', { value: '', text: '型を使わない（空の台帳）' }));
-  const desc = h('p', { class: 'muted small' });
-  const updateDesc = () => { desc.textContent = starter.value ? STARTERS[starter.value].desc : '項目のない台帳から始めます'; };
-  starter.addEventListener('change', updateDesc);
-  updateDesc();
+  const starter = starterSelect('new-starter', Object.keys(STARTERS)[0]);
+  const desc = h('p', { class: 'muted small', text: starterDesc(starter.value) });
+  starter.addEventListener('change', () => { desc.textContent = starterDesc(starter.value); });
   root.appendChild(h('section', { class: 'card stack' },
     h('h3', { text: '新しい案件を作る' }),
     h('p', { class: 'muted small', text: '今の案件はそのまま残り、新しい案件が追加されます。' }),
     h('div', { class: 'row' }, name, starter,
       h('button', { class: 'btn primary', type: 'button', id: 'new-create', onclick: async () => {
-        const n = name.value.trim();
-        if (!n) { toast('案件名を入れてください'); name.focus(); return; }
-        if (!(await ensureVaultReady())) return;
-        store.addProject(createLedger(n, starter.value || null, nowIso()));
-        toast(`「${n}」を作りました`);
-        app.go('overview');
+        if (!(await createProject(name.value.trim(), starter.value, app))) name.focus();
       } }, '作る')),
     desc));
 
@@ -5947,6 +6127,35 @@ function renderSettings(root, app) {
     root.appendChild(h('section', { class: 'card stack' },
       h('h3', { text: 'この案件の設定' }),
       h('div', { class: 'row settings-row' }, rows)));
+
+    // この案件の中身を空に戻す
+    const rs = starterSelect('reset-starter', store.ledger.project.starter || null);
+    const rsDesc = h('p', { class: 'muted small', text: starterDesc(rs.value) });
+    rs.addEventListener('change', () => { rsDesc.textContent = starterDesc(rs.value); });
+    root.appendChild(h('section', { class: 'card stack', id: 'reset-project' },
+      h('h3', { text: 'この案件の中身を空に戻す' }),
+      h('p', { class: 'muted small', text: '案件名・顧客・目的などの案件情報と、この案件の設定は残したまま、項目・関係・ベースライン・変更の記録を消して最初からやり直します。型を選び直せます。' }),
+      h('div', { class: 'row' }, rs,
+        h('button', { class: 'btn danger', type: 'button', id: 'reset-run', onclick: () => resetCurrent(rs.value) }, '中身を空に戻す')),
+      rsDesc));
+  }
+
+  // 合言葉を変える（全案件で共通）
+  if (store.vaultState === 'unlocked') {
+    const pw = (id, label, ac) => h('input', { type: 'password', id, autocomplete: ac, 'aria-label': label });
+    const cur = pw('pass-cur', '今の合言葉', 'current-password');
+    const n1 = pw('pass-next-1', '新しい合言葉', 'new-password');
+    const n2 = pw('pass-next-2', '新しい合言葉（確認）', 'new-password');
+    const busy = settingsState.changingPass;
+    root.appendChild(h('section', { class: 'card stack', id: 'change-pass' },
+      h('h3', { text: '合言葉を変える' }),
+      h('p', { class: 'muted small', text: `すべての案件と退避データを、新しい合言葉で暗号化し直します。新しい合言葉は ${MIN_PASSPHRASE} 文字以上。同じツールを別のタブで開いているときは、先に閉じてください。` }),
+      h('form', { class: 'row', onsubmit: (e) => { e.preventDefault(); if (!busy) changePass(cur.value, n1.value, n2.value, app); } },
+        h('label', { class: 'field' }, '今の合言葉', cur),
+        h('label', { class: 'field' }, '新しい合言葉', n1),
+        h('label', { class: 'field' }, 'もう一度', n2),
+        h('button', { class: 'btn', type: 'submit', id: 'pass-change', disabled: busy }, busy ? '変えています…' : '変える')),
+      settingsState.passError ? h('p', { class: 'notice error', role: 'alert', id: 'pass-error', text: settingsState.passError }) : null));
   }
 
   // 書き出し
@@ -7253,6 +7462,36 @@ function renderTabs() {
   }
 }
 
+// 取り消しの段の種類の表示名
+const STEP_LABELS = { import: '取込', local: '画面での変更', hearing: 'ヒヤリング', settings: '設定', baseline: 'ベースライン', reset: '中身を空に戻す' };
+
+// 取り消しの履歴: 新しい順に出し、「ここまで戻す」でその変更の前まで一度に戻す
+function historyDialog() {
+  const steps = store.history();
+  const total = steps.length;
+  const dlg = h('dialog', { class: 'dialog history-dialog', id: 'history-dialog', 'aria-labelledby': 'history-title' },
+    h('h2', { id: 'history-title', text: '取り消しの履歴' }),
+    h('p', { class: 'small muted', text: `直近 ${total} 件（最大 ${UNDO_LIMIT} 件）。再読み込み・ロックで消えます。案件を切り替えても残ります。` }),
+    h('div', { class: 'table-wrap' }, h('table', { class: 'list' },
+      h('thead', null, h('tr', null, ['いつ', 'どこから', '件数', ''].map((t) => h('th', { scope: 'col', text: t })))),
+      h('tbody', null, steps.map((st, n) => h('tr', { class: 'nocursor', 'data-step': String(st.index) },
+        h('td', { class: 'mono small', text: fmtDateTime(st.at) }),
+        h('td', { text: STEP_LABELS[st.kind] || st.kind }),
+        h('td', { class: 'num', text: st.kind === 'reset' ? '—' : `${st.count} 件` }),
+        h('td', null, h('button', { class: 'btn small', type: 'button', 'data-fk': 'undo-to-' + st.index, onclick: async () => {
+          const lost = total - st.index;
+          close();
+          const ok = await confirmDialog('この変更の前まで戻します。', 'ここまで戻す',
+            `この変更を含め、新しい方から ${lost} 段の変更が失われ、やり直せません。`);
+          if (ok && store.undoTo(st.index)) toast(`${lost} 段取り消しました`);
+        } }, n === 0 ? 'これを取り消す' : 'ここまで戻す'))))))),
+    h('div', { class: 'row dialog-actions' }, h('button', { class: 'btn', type: 'button', 'data-act': 'cancel', onclick: () => close() }, '閉じる')));
+  function close() { dlg.close(); dlg.remove(); }
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
+  document.body.appendChild(dlg);
+  dlg.showModal();
+}
+
 function renderTopbar() {
   const name = clear(document.getElementById('project-name'));
   const projects = store.projects();
@@ -7262,8 +7501,12 @@ function renderTopbar() {
       projects.map((p) => h('option', { value: p.id, selected: p.id === store.activeId, text: p.name + (p.dirty ? '（未書き出し）' : '') })));
     sel.addEventListener('change', () => { store.switchProject(sel.value); toast('案件を切り替えました'); });
     name.appendChild(sel);
-  } else {
-    name.textContent = store.ledger ? store.ledger.project.name : '';
+  } else if (store.ledger) {
+    name.appendChild(h('span', { class: 'project-title', text: store.ledger.project.name }));
+  }
+  // 上部からの新しい案件（ロック中と説明用の表示では出さない。台帳が無いときも出す）
+  if (!locked() && !store.presentation) {
+    name.appendChild(h('button', { class: 'btn small', type: 'button', id: 'btn-new-project', title: '新しい案件を作る（今の案件はそのまま残る）', onclick: () => newProjectDialog(app) }, '＋ 新しい案件'));
   }
   const status = clear(document.getElementById('topbar-status'));
   if (store.saveError) status.appendChild(h('span', { class: 'badge high', text: '保存に失敗', title: store.saveError }));
@@ -7284,9 +7527,13 @@ function renderTopbar() {
   }
   if (store.ledger && !store.presentation) {
     actions.appendChild(h('button', {
-      class: 'btn', type: 'button', id: 'btn-undo', disabled: !store.canUndo(), title: '直前の1回の変更を取り消す',
-      onclick: () => { if (store.undo()) toast('直前の変更を取り消しました'); },
+      class: 'btn', type: 'button', id: 'btn-undo', disabled: !store.canUndo(), title: `直前の変更を1段ずつ取り消す（${UNDO_LIMIT}段まで）`,
+      onclick: () => { if (store.undo()) toast(`1段取り消しました（あと ${store.history().length} 段）`); },
     }, '取り消し'));
+    actions.appendChild(h('button', {
+      class: 'btn', type: 'button', id: 'btn-history', disabled: !store.canUndo(), title: '直近の変更の一覧から、まとめて戻す',
+      onclick: () => historyDialog(),
+    }, '履歴'));
     actions.appendChild(h('button', {
       class: 'btn primary', type: 'button', id: 'btn-export', title: '台帳を JSON ファイルに保存する',
       onclick: () => { download(store.exportFilename(), store.exportText()); store.markExported(); toast('書き出しました（保存ダイアログを閉じた場合は保存されていません）'); },
@@ -7294,7 +7541,7 @@ function renderTopbar() {
   }
   if (store.vaultState === 'unlocked') {
     actions.appendChild(h('button', {
-      class: 'btn', type: 'button', id: 'btn-lock', title: '台帳と鍵をメモリから消し、合言葉を入れるまで開けないようにする',
+      class: 'btn', type: 'button', id: 'btn-lock', disabled: store.passChanging, title: store.passChanging ? '合言葉を変えている間はロックできません' : '台帳と鍵をメモリから消し、合言葉を入れるまで開けないようにする',
       onclick: () => { store.lock(); toast('ロックしました'); },
     }, 'ロック'));
   }
@@ -7323,7 +7570,7 @@ function renderView() {
 function renderWelcome(root) {
   root.appendChild(h('div', { class: 'card stack welcome' },
     h('h2', { text: '案件ワークベンチへようこそ' }),
-    h('p', { text: 'まだ台帳がありません。「設定」から新しい案件を作るか、書き出した台帳ファイルを読み込んでください。' }),
+    h('p', { text: 'まだ台帳がありません。上の「＋ 新しい案件」か「設定」から新しい案件を作るか、「設定」で書き出した台帳ファイルを読み込んでください。' }),
     h('p', { class: 'muted small', text: '台帳は合言葉で暗号化してこのブラウザの中に保存し、書き出したファイルにも保存できます。外部へは一切送信しません。' }),
     h('div', { class: 'row' },
       h('button', { class: 'btn primary', type: 'button', onclick: () => app.go('settings') }, '設定を開く'),

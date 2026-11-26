@@ -4,9 +4,85 @@ import { STARTERS, createLedger } from '../../core/starter.js';
 import { SETTINGS, settingOf } from '../../core/schema.js';
 import { h, toast, download, confirmDialog, choiceDialog, nowIso, fmtDateTime } from '../dom.js';
 import { store } from '../store.js';
-import { ensureVaultReady } from '../lock.js';
+import { ensureVaultReady, MIN_PASSPHRASE } from '../lock.js';
 
-const settingsState = { loadErrors: null };
+const settingsState = { loadErrors: null, changingPass: false, passError: null };
+
+// 案件の型の選択（新規・中身を空に戻す で共通）
+function starterSelect(id, selected) {
+  return h('select', { id, 'aria-label': '案件の型' },
+    Object.entries(STARTERS).map(([sid, st]) => h('option', { value: sid, selected: sid === selected, text: st.label })),
+    h('option', { value: '', selected: selected === null, text: '型を使わない（空の台帳）' }));
+}
+function starterDesc(v) { return v ? STARTERS[v].desc : '項目のない台帳から始めます'; }
+
+// 新しい案件を作って開く（設定画面と上部の「＋ 新しい案件」で共通）。作れたら true
+async function createProject(n, starterId, app) {
+  if (!n) { toast('案件名を入れてください'); return false; }
+  if (!(await ensureVaultReady())) return false;
+  store.addProject(createLedger(n, starterId || null, nowIso()));
+  toast(`「${n}」を作りました`);
+  app.go('overview');
+  return true;
+}
+
+// 上部の「＋ 新しい案件」: 案件名と型を入れる小さな画面
+export function newProjectDialog(app) {
+  const name = h('input', { type: 'text', id: 'dlg-new-name', placeholder: '例: ○○社 受発注システム刷新', 'aria-label': '案件名' });
+  const starter = starterSelect('dlg-new-starter', Object.keys(STARTERS)[0]);
+  const desc = h('p', { class: 'muted small', text: starterDesc(starter.value) });
+  starter.addEventListener('change', () => { desc.textContent = starterDesc(starter.value); });
+  const err = h('p', { class: 'notice error', role: 'alert', hidden: true });
+  const dlg = h('dialog', { class: 'dialog', id: 'new-project-dialog', 'aria-labelledby': 'new-project-title' },
+    h('form', { method: 'dialog', class: 'stack', onsubmit: async (e) => {
+      e.preventDefault();
+      const n = name.value.trim();
+      if (!n) { err.textContent = '案件名を入れてください'; err.hidden = false; name.focus(); return; }
+      close();
+      await createProject(n, starter.value, app);
+    } },
+      h('h2', { id: 'new-project-title', text: '新しい案件を作る' }),
+      h('p', { class: 'small', text: '今の案件はそのまま残り、新しい案件が追加されます。' }),
+      h('label', { class: 'field' }, '案件名', name),
+      h('label', { class: 'field' }, '案件の型', starter),
+      desc,
+      err,
+      h('div', { class: 'row dialog-actions' },
+        h('button', { class: 'btn', type: 'button', 'data-act': 'cancel', onclick: () => close() }, 'やめる'),
+        h('button', { class: 'btn primary', type: 'submit', 'data-act': 'ok' }, '作る'))));
+  function close() { dlg.close(); dlg.remove(); }
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  name.focus();
+}
+
+// この案件の中身を空に戻す（案件情報と設定は残す。取り消しで戻せる）
+async function resetCurrent(starterId) {
+  const l = store.ledger;
+  const p = store.projects().find((x) => x.id === store.activeId);
+  const ok = await confirmDialog(`「${l.project.name}」の中身を空に戻します。`, '空に戻す',
+    `項目 ${l.items.length} 件・関係 ${l.relations.length} 件・ベースライン ${l.baselines.length} 件と変更の記録が消えます。案件情報とこの案件の設定は残ります（「自分」の設定は外れます）。` +
+    `「取り消し」で元に戻せます（再読み込みやロックの後は戻せません）。${lastExportText(p)}。` +
+    (p.dirty ? '最後の書き出しより後の変更があります。先に書き出してください。' : ''));
+  if (!ok) return;
+  store.resetProject(starterId || null);
+  toast('中身を空に戻しました（取り消し可）');
+}
+
+// 合言葉を変える
+async function changePass(cur, p1, p2, app) {
+  const fail = (msg) => { settingsState.passError = msg; app.refresh(); };
+  if (p1.length < MIN_PASSPHRASE) return fail(`新しい合言葉は ${MIN_PASSPHRASE} 文字以上にしてください`);
+  if (p1 !== p2) return fail('新しい合言葉の 2 回の入力が一致しません');
+  settingsState.changingPass = true; settingsState.passError = null;
+  app.refresh();
+  const r = await store.changePassphrase(cur, p1);
+  settingsState.changingPass = false;
+  if (!r.ok) return fail(r.error);
+  toast('合言葉を変えました。次からは新しい合言葉で開きます');
+  app.refresh();
+}
 // localStorage はおよそ 5MB（文字数で約 500 万）。4MB を超えたら知らせる
 const STORAGE_WARN = 4 * 1024 * 1024;
 
@@ -97,24 +173,15 @@ export function renderSettings(root, app) {
 
   // 新規案件
   const name = h('input', { type: 'text', id: 'new-name', placeholder: '例: ○○社 受発注システム刷新', 'aria-label': '案件名' });
-  const starter = h('select', { id: 'new-starter', 'aria-label': '案件の型' },
-    Object.entries(STARTERS).map(([id, st]) => h('option', { value: id, text: st.label })),
-    h('option', { value: '', text: '型を使わない（空の台帳）' }));
-  const desc = h('p', { class: 'muted small' });
-  const updateDesc = () => { desc.textContent = starter.value ? STARTERS[starter.value].desc : '項目のない台帳から始めます'; };
-  starter.addEventListener('change', updateDesc);
-  updateDesc();
+  const starter = starterSelect('new-starter', Object.keys(STARTERS)[0]);
+  const desc = h('p', { class: 'muted small', text: starterDesc(starter.value) });
+  starter.addEventListener('change', () => { desc.textContent = starterDesc(starter.value); });
   root.appendChild(h('section', { class: 'card stack' },
     h('h3', { text: '新しい案件を作る' }),
     h('p', { class: 'muted small', text: '今の案件はそのまま残り、新しい案件が追加されます。' }),
     h('div', { class: 'row' }, name, starter,
       h('button', { class: 'btn primary', type: 'button', id: 'new-create', onclick: async () => {
-        const n = name.value.trim();
-        if (!n) { toast('案件名を入れてください'); name.focus(); return; }
-        if (!(await ensureVaultReady())) return;
-        store.addProject(createLedger(n, starter.value || null, nowIso()));
-        toast(`「${n}」を作りました`);
-        app.go('overview');
+        if (!(await createProject(name.value.trim(), starter.value, app))) name.focus();
       } }, '作る')),
     desc));
 
@@ -160,6 +227,35 @@ export function renderSettings(root, app) {
     root.appendChild(h('section', { class: 'card stack' },
       h('h3', { text: 'この案件の設定' }),
       h('div', { class: 'row settings-row' }, rows)));
+
+    // この案件の中身を空に戻す
+    const rs = starterSelect('reset-starter', store.ledger.project.starter || null);
+    const rsDesc = h('p', { class: 'muted small', text: starterDesc(rs.value) });
+    rs.addEventListener('change', () => { rsDesc.textContent = starterDesc(rs.value); });
+    root.appendChild(h('section', { class: 'card stack', id: 'reset-project' },
+      h('h3', { text: 'この案件の中身を空に戻す' }),
+      h('p', { class: 'muted small', text: '案件名・顧客・目的などの案件情報と、この案件の設定は残したまま、項目・関係・ベースライン・変更の記録を消して最初からやり直します。型を選び直せます。' }),
+      h('div', { class: 'row' }, rs,
+        h('button', { class: 'btn danger', type: 'button', id: 'reset-run', onclick: () => resetCurrent(rs.value) }, '中身を空に戻す')),
+      rsDesc));
+  }
+
+  // 合言葉を変える（全案件で共通）
+  if (store.vaultState === 'unlocked') {
+    const pw = (id, label, ac) => h('input', { type: 'password', id, autocomplete: ac, 'aria-label': label });
+    const cur = pw('pass-cur', '今の合言葉', 'current-password');
+    const n1 = pw('pass-next-1', '新しい合言葉', 'new-password');
+    const n2 = pw('pass-next-2', '新しい合言葉（確認）', 'new-password');
+    const busy = settingsState.changingPass;
+    root.appendChild(h('section', { class: 'card stack', id: 'change-pass' },
+      h('h3', { text: '合言葉を変える' }),
+      h('p', { class: 'muted small', text: `すべての案件と退避データを、新しい合言葉で暗号化し直します。新しい合言葉は ${MIN_PASSPHRASE} 文字以上。同じツールを別のタブで開いているときは、先に閉じてください。` }),
+      h('form', { class: 'row', onsubmit: (e) => { e.preventDefault(); if (!busy) changePass(cur.value, n1.value, n2.value, app); } },
+        h('label', { class: 'field' }, '今の合言葉', cur),
+        h('label', { class: 'field' }, '新しい合言葉', n1),
+        h('label', { class: 'field' }, 'もう一度', n2),
+        h('button', { class: 'btn', type: 'submit', id: 'pass-change', disabled: busy }, busy ? '変えています…' : '変える')),
+      settingsState.passError ? h('p', { class: 'notice error', role: 'alert', id: 'pass-error', text: settingsState.passError }) : null));
   }
 
   // 書き出し

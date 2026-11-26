@@ -10,12 +10,26 @@
 // P5 から箱の中身は複数案件の入れ物（workspace）。ledger・undoLedger・exportedRevision・exportedAt は
 // 「今開いている案件」の値を返す getter にしてあり、画面側は今までどおり store.ledger を読めばよい
 
-import { validateLedger, normalizeCounters, migrateLedger, validateSettings, formatId, BASELINE_PREFIX, visibleLedger } from '../core/schema.js';
+import { validateLedger, normalizeCounters, migrateLedger, validateSettings, formatId, BASELINE_PREFIX, visibleLedger, SETTINGS } from '../core/schema.js';
 import { applyPatch, applyLocalOps, appendChange } from '../core/patch.js';
 import { safeParse } from '../core/extract.js';
 import { cryptoAvailable, newSalt, deriveKey, sealText, parseBox, openBox, PBKDF2_ITERATIONS } from '../core/vault.js';
 import { nowIso } from './dom.js';
 import { emptyWorkspace, migrateWorkspace, openWorkspace, newProjectId, findByName } from '../core/workspace.js';
+import { createLedger } from '../core/starter.js';
+
+export const UNDO_LIMIT = 20;
+const STEP_OPS = new Set(['settings', 'baseline', 'reset']);
+
+// 取り消しの段の表示用の種類と件数を、適用後の台帳の最後の記録から作る
+function stepInfo(after) {
+  const log = after && after.changelog;
+  const e = log && log.length ? log[log.length - 1] : null;
+  if (!e || e.rev !== after.revision) return { kind: 'local', count: 0 };
+  const changes = e.changes || [];
+  const op = changes[0] && changes[0].op;
+  return { kind: STEP_OPS.has(op) ? op : (e.source || 'local'), count: changes.length };
+}
 
 const KEY_VAULT = 'anken-workbench:v1:vault';
 const KEY_RECOVERY = 'anken-workbench:v1:recovery';
@@ -56,7 +70,7 @@ function readLedgerText(text) {
 
 export const store = {
   workspace: emptyWorkspace(),
-  undoById: new Map(),     // 案件ごとの取り消し用の適用前の台帳（メモリのみ）
+  undoById: new Map(),     // 案件ごとの取り消しの段 [{ ledger: 適用前, at, kind, count }]（古い順・最大 UNDO_LIMIT・メモリのみ）
   legacyExported: null,    // P4 までの書き出し状態（移行で使う）
   recovery: {},            // 読めなかった案件の元の文字列 { 案件ID: 文字列 }（暗号化して退避する）
   gen: 0,                  // 台帳が変わるたびに増える世代（revision は取り消しや新規作成で重なるため別に持つ）
@@ -64,6 +78,8 @@ export const store = {
   vaultState: 'empty',
   key: null,
   salt: null,
+  passChanging: false,     // 合言葉の変更中（ロックを押せなくする）
+  keyRef: null,            // 書き込みに使う鍵 { key, salt }。保存の列に並んだ処理は、実行する時点でこれを読む（合言葉の変更が後から効くように）
   saving: Promise.resolve(),
   saveError: null,
   loadError: null,
@@ -86,11 +102,15 @@ export const store = {
     }
     this.workspace.ledgers[this.workspace.activeId] = v;
   },
-  get undoLedger() { return this.undoById.get(this.workspace.activeId) || null; },
-  set undoLedger(v) {
+  get undoSteps() { return this.undoById.get(this.workspace.activeId) || []; },
+  // 変更を1段積む（before: 適用前、after: 適用後）
+  pushUndo(before, after) {
     const id = this.workspace.activeId;
-    if (!id) return;
-    if (v) this.undoById.set(id, v); else this.undoById.delete(id);
+    if (!id || !before) return;
+    const steps = this.undoById.get(id) || [];
+    steps.push({ ledger: before, at: after.updatedAt || nowIso(), ...stepInfo(after) });
+    if (steps.length > UNDO_LIMIT) steps.splice(0, steps.length - UNDO_LIMIT);
+    this.undoById.set(id, steps);
   },
   get exportedRevision() { const e = this.workspace.exported[this.workspace.activeId]; return e ? e.revision : null; },
   get exportedAt() { const e = this.workspace.exported[this.workspace.activeId]; return e ? e.at : null; },
@@ -129,6 +149,7 @@ export const store = {
   async setPassphrase(pass) {
     this.salt = newSalt();
     this.key = await deriveKey(pass, this.salt);
+    this.keyRef = { key: this.key, salt: this.salt };
     this.vaultState = 'unlocked';
     if (this.recoveryText) await this.saveRecovery();
     lsRemove(KEY_LEGACY);
@@ -146,6 +167,7 @@ export const store = {
     try { text = await openBox(key, box); } catch (e) { return { ok: false, error: '合言葉が違います' }; }
     this.key = key;
     this.salt = box.salt;
+    this.keyRef = { key, salt: box.salt };
     this.vaultState = 'unlocked';
     this.undoById.clear();
     this.loadError = null;
@@ -193,7 +215,7 @@ export const store = {
   // 鍵と台帳をメモリから消す
   lock() {
     if (this.vaultState !== 'unlocked') return;
-    this.workspace = emptyWorkspace(); this.undoById.clear(); this.key = null; this.selectedId = null; this.recovery = {};
+    this.workspace = emptyWorkspace(); this.undoById.clear(); this.key = null; this.keyRef = null; this.selectedId = null; this.recovery = {};
     this.vaultState = lsGet(KEY_VAULT) ? 'locked' : 'empty';
     this.gen++;
     this.emit('vault');
@@ -202,16 +224,22 @@ export const store = {
   // 合言葉を忘れたとき: ブラウザ内の暗号化データを消して始め直す
   resetVault() {
     lsRemove(KEY_VAULT); lsRemove(KEY_RECOVERY);
-    this.workspace = emptyWorkspace(); this.undoById.clear(); this.key = null; this.salt = null; this.recovery = {}; this.loadError = null;
+    this.workspace = emptyWorkspace(); this.undoById.clear(); this.key = null; this.salt = null; this.keyRef = null; this.recovery = {}; this.loadError = null;
     this.vaultState = 'empty';
     this.gen++;
     this.emit('vault');
   },
 
-  async saveRecovery() {
-    if (!this.key) return;
-    if (!Object.keys(this.recovery).length) { lsRemove(KEY_RECOVERY); return; }
-    lsSet(KEY_RECOVERY, await sealText(this.key, this.salt, PBKDF2_ITERATIONS, JSON.stringify({ type: 'recovery', items: this.recovery })));
+  // 退避データを暗号化して保存する（保存の列に並べ、合言葉の変更と入れ替わらないようにする）
+  saveRecovery() {
+    const ref = this.keyRef;
+    if (!ref) return this.saving;
+    const items = { ...this.recovery };
+    this.saving = this.saving.then(async () => {
+      if (!Object.keys(items).length) { lsRemove(KEY_RECOVERY); return; }
+      try { lsSet(KEY_RECOVERY, await sealText(ref.key, ref.salt, PBKDF2_ITERATIONS, JSON.stringify({ type: 'recovery', items }))); } catch (e) { /* 次の保存で書き直す */ }
+    });
+    return this.saving;
   },
   // id を省くとすべて消す
   async discardRecovery(id) {
@@ -224,11 +252,10 @@ export const store = {
   persist() {
     if (this.vaultState !== 'unlocked' || !this.key) return this.saving;
     const text = JSON.stringify(this.workspace);
-    const key = this.key;
-    const salt = this.salt;
+    const ref = this.keyRef;
     this.saving = this.saving.then(async () => {
       try {
-        const ok = lsSet(KEY_VAULT, await sealText(key, salt, PBKDF2_ITERATIONS, text));
+        const ok = lsSet(KEY_VAULT, await sealText(ref.key, ref.salt, PBKDF2_ITERATIONS, text));
         this.saveError = ok ? null : 'ブラウザへの保存に失敗しました。容量不足の可能性があります。今すぐ「書き出し」で JSON を保存してください';
       } catch (e) {
         this.saveError = 'ブラウザへの保存（暗号化）に失敗しました。今すぐ「書き出し」で JSON を保存してください';
@@ -236,6 +263,53 @@ export const store = {
       if (this.saveError) this.emit('save-error');
     });
     return this.saving;
+  },
+
+  // 合言葉を変える。全案件と退避データを新しい合言葉で暗号化し直す。戻り値: { ok } / { ok: false, error }
+  // 保存の列の中で、確かめる → 暗号化 → 書き込み → 鍵の差し替え を行う。失敗したら元の保存に書き戻す
+  changePassphrase(current, next) {
+    const run = async () => {
+      const ref = this.keyRef;
+      if (this.vaultState !== 'unlocked' || !ref) return { ok: false, error: '台帳が開いていません' };
+      // 待ちの間にロックされても空の入れ物を書かないよう、中身は先に写し取る
+      const wsText = JSON.stringify(this.workspace);
+      const items = { ...this.recovery };
+      const alive = () => this.keyRef === ref && this.vaultState === 'unlocked';
+      const aborted = { ok: false, error: '途中でロックされたため、合言葉は変えていません' };
+      const oldVault = lsGet(KEY_VAULT);
+      const oldRec = lsGet(KEY_RECOVERY);
+      const box = parseBox(oldVault);
+      if (!box) return { ok: false, error: '保存されたデータの形式が正しくありません' };
+      try { await openBox(await deriveKey(current, box.salt, box.iter), box); } catch (e) { return { ok: false, error: '今の合言葉が違います' }; }
+      if (!alive()) return aborted;
+      const hasItems = Object.keys(items).length > 0;
+      if (oldRec && !hasItems) return { ok: false, error: '開けない退避データがあります。先に「設定」から消すか、元の合言葉で開いて書き出してください' };
+      let salt, key, vaultText, recText = null;
+      try {
+        salt = newSalt();
+        key = await deriveKey(next, salt);
+        vaultText = await sealText(key, salt, PBKDF2_ITERATIONS, wsText);
+        if (hasItems) recText = await sealText(key, salt, PBKDF2_ITERATIONS, JSON.stringify({ type: 'recovery', items }));
+      } catch (e) {
+        return { ok: false, error: '暗号化に失敗しました。合言葉は変わっていません' };
+      }
+      if (!alive()) return aborted;
+      if (!lsSet(KEY_VAULT, vaultText) || (recText !== null && !lsSet(KEY_RECOVERY, recText))) {
+        lsSet(KEY_VAULT, oldVault);
+        if (oldRec === null) lsRemove(KEY_RECOVERY); else lsSet(KEY_RECOVERY, oldRec);
+        return { ok: false, error: '保存に失敗しました（容量不足の可能性）。合言葉は変わっていません' };
+      }
+      // 列に並んでいる保存も新しい鍵で書くよう、同じ入れ物の中身を差し替える
+      ref.key = key; ref.salt = salt;
+      this.key = key; this.salt = salt;
+      this.saveError = null;
+      return { ok: true };
+    };
+    this.passChanging = true;
+    this.emit('pass');
+    const p = this.saving.then(run).finally(() => { this.passChanging = false; this.emit('pass'); });
+    this.saving = p.then(() => {}, () => {});
+    return p.catch(() => ({ ok: false, error: '合言葉の変更に失敗しました。合言葉は変わっていません' }));
   },
 
   setExported(rev, at) {
@@ -307,7 +381,7 @@ export const store = {
   applyValidated(validated, accepted) {
     const before = this.ledger;
     const r = applyPatch(before, validated, accepted, nowIso(), 'import');
-    this.undoLedger = before;
+    this.pushUndo(before, r.ledger);
     this.ledger = r.ledger;
     this.gen++;
     this.persist();
@@ -320,7 +394,7 @@ export const store = {
     const before = this.ledger;
     const r = applyLocalOps(before, ops, nowIso(), source);
     if (!r.ok) return r;
-    this.undoLedger = before;
+    this.pushUndo(before, r.ledger);
     this.ledger = r.ledger;
     this.gen++;
     this.persist();
@@ -337,7 +411,7 @@ export const store = {
     next.revision = before.revision + 1;
     next.updatedAt = now;
     appendChange(next, { rev: next.revision, at: now, source: 'local', changes: [change] });
-    this.undoLedger = before;
+    this.pushUndo(before, next);
     this.ledger = next;
     this.gen++;
     this.persist();
@@ -367,14 +441,49 @@ export const store = {
     return id;
   },
 
-  canUndo() { return !!this.undoLedger; },
-  undo() {
-    if (!this.undoLedger) return false;
-    this.ledger = this.undoLedger;
-    this.undoLedger = null;
+  // 案件の中身を空に戻す。案件情報と設定は残し、型を選び直す（null は型を使わない）。取り消しの1段になる
+  resetProject(starterId) {
+    const before = this.ledger;
+    if (!before) return null;
+    const now = nowIso();
+    const next = createLedger(before.project.name, starterId || null, now);
+    next.project = { ...structuredClone(before.project), starter: starterId || null };
+    next.settings = structuredClone(before.settings || next.settings);
+    // 関係者などを指す設定は、採番し直した別の項目を指さないよう、無くなった ID なら外す
+    for (const [k, d] of Object.entries(SETTINGS)) {
+      const v = next.settings[k];
+      if (d.type === 'ref' && v && !next.items.some((it) => it.id === v)) next.settings[k] = null;
+    }
+    next.revision = before.revision + 1;
+    next.updatedAt = now;
+    next.changelog = [];
+    appendChange(next, { rev: next.revision, at: now, source: 'local', changes: [{ id: 'reset', op: 'reset', starter: starterId || null }] });
+    this.pushUndo(before, next);
+    this.ledger = next;
+    this.selectedId = null;
+    this.token = Math.random().toString(36).slice(2);   // 取込の下書きを捨てる
     this.gen++;
-    // 書き出したものより前に戻ったら、同じ revision でも中身が違いうるので未書き出し扱いにする
-    if (this.exportedRevision !== null && this.exportedRevision > this.ledger.revision) this.setExported(null, null);
+    this.persist();
+    this.emit('apply');
+    return next;
+  },
+
+  canUndo() { return this.undoSteps.length > 0; },
+  // 取り消しの段の一覧（新しい順）。index は undoTo に渡す配列の位置
+  history() {
+    return this.undoSteps.map((s, index) => ({ index, at: s.at, kind: s.kind, count: s.count })).reverse();
+  },
+  undo() { return this.undoTo(this.undoSteps.length - 1); },
+  // 段の配列の i 番目の適用前に戻し、i 番目以降をすべて捨てる（失われる段の数 = 長さ − i）
+  undoTo(i) {
+    const steps = this.undoSteps;
+    if (!Number.isInteger(i) || i < 0 || i >= steps.length) return false;
+    this.ledger = steps[i].ledger;
+    steps.splice(i);
+    if (!steps.length) this.undoById.delete(this.workspace.activeId);
+    this.gen++;
+    // 書き出したものより前に戻ったら、同じ revision でも中身が違いうるので未書き出し扱いにする（日時は事実なので残す）
+    if (this.exportedRevision !== null && this.exportedRevision > this.ledger.revision) this.setExported(null);
     if (this.selectedId && !this.ledger.items.some((it) => it.id === this.selectedId)) this.selectedId = null;
     this.persist();
     this.emit('undo');
