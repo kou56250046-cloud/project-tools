@@ -3,15 +3,16 @@
 
 import { KINDS, enumLabel, BIZFLOW_NOTATION_MAX } from '../../core/schema.js';
 import { flowGeometry } from '../../core/flowsafe.js';
-import { renderFlowSvg } from '../flowsvg.js';
+import { renderFlowSvg, flowFrame } from '../flowsvg.js';
 import { h, toast } from '../dom.js';
 import { store } from '../store.js';
 import { statusBadge } from '../detail.js';
 
 const BF_TEMPLATE = 'title 業務の名前\nlane 担当\n\nstart S @担当 始まり\ntask A @担当 作業\nend Z @担当 終わり\n\nS -> A -> Z';
-let bizflowState = { selectedId: '', drafts: new Map(), newTitle: '', newPhase: 'asis' };
+// drafts: ID → { text: 書きかけ, base: 書き始めたときの台帳の記法 }。token: 書きかけを作った案件の印
+let bizflowState = { selectedId: '', drafts: new Map(), newTitle: '', newPhase: 'asis', token: null };
 export function clearBizflowState() {
-  bizflowState = { selectedId: '', drafts: new Map(), newTitle: '', newPhase: 'asis' };
+  bizflowState = { selectedId: '', drafts: new Map(), newTitle: '', newPhase: 'asis', token: null };
 }
 
 const bfPhases = () => KINDS.bizflow.fields.phase.values;
@@ -20,7 +21,7 @@ const bfPhases = () => KINDS.bizflow.fields.phase.values;
 function flowFigure(f, notation) {
   const r = flowGeometry(notation);
   const box = h('div', { class: 'stack' });
-  box.appendChild(r.geo ? h('div', { class: 'graph-wrap bf-figure', 'data-flow': f.id }, renderFlowSvg(r.geo)) : h('div', { class: 'empty small', text: '描ける行がありません。記法を確かめてください' }));
+  box.appendChild(r.geo ? flowFrame(renderFlowSvg(r.geo), 'bf-figure') : h('div', { class: 'empty small', text: '描ける行がありません。記法を確かめてください' }));
   if (r.errors.length) box.appendChild(h('div', { class: 'notice warn small', role: 'status' },
     h('strong', { text: `誤り ${r.errors.length} 件（この行は図に出ていません${r.dropped.length > r.errors.length ? '。消えた箱につながる行も外しています' : ''}）` }),
     h('ul', null, r.errors.map((e) => h('li', { text: `${e.line} 行目: ${e.message}` })))));
@@ -29,14 +30,22 @@ function flowFigure(f, notation) {
 }
 
 export function renderBizflow(root, app, opts) {
+  if (bizflowState.token !== store.token) { clearBizflowState(); bizflowState.token = store.token; }
   const ledger = store.view();
   const pres = store.presentation;
   if (opts && opts.flowId) { bizflowState.selectedId = opts.flowId; app.viewOpts = {}; }
   const flows = ledger.items.filter((it) => it.kind === 'bizflow');
   if (!flows.some((f) => f.id === bizflowState.selectedId)) bizflowState.selectedId = flows.length ? flows[0].id : '';
-  for (const id of [...bizflowState.drafts.keys()]) if (!flows.some((f) => f.id === id)) bizflowState.drafts.delete(id);
+  // 消えたフローの書きかけと、取込や取り消しで台帳の記法が書き始めから変わった書きかけは捨てる（古い書きかけで上書きしない）
+  const stale = [];
+  for (const [id, d] of [...bizflowState.drafts]) {
+    const f = flows.find((x) => x.id === id);
+    if (!f) bizflowState.drafts.delete(id);
+    else if (d.base !== String(f.notation || '')) { bizflowState.drafts.delete(id); stale.push(id); }
+  }
 
   root.appendChild(h('h2', { text: '業務フロー' }));
+  if (stale.length) root.appendChild(h('p', { class: 'notice warn small', role: 'status', text: `${stale.join('・')} の記法が取込か取り消しで変わったので、保存していない書きかけを捨てました。` }));
   root.appendChild(h('p', { class: 'muted small', text: '現行（As-Is）と導入後（To-Be）の業務の流れを、フロー記法で持ちます。図は記法から自動で配置します。フローは指示文「業務フローの作成」で Gemini に書かせて取り込むか、ここで記法を直して保存します。' }));
 
   // 左: 一覧と新しいフロー
@@ -68,7 +77,7 @@ export function renderBizflow(root, app, opts) {
   const right = h('div', { class: 'stack' });
   const f = flows.find((x) => x.id === bizflowState.selectedId);
   if (f) {
-    const notation = bizflowState.drafts.has(f.id) ? bizflowState.drafts.get(f.id) : String(f.notation || '');
+    const notation = bizflowState.drafts.has(f.id) ? bizflowState.drafts.get(f.id).text : String(f.notation || '');
     right.appendChild(h('div', { class: 'row' },
       h('h3', null, h('span', { class: ['badge', f.phase === 'tobe' ? 'accent' : 'low'], text: enumLabel(bfPhases(), f.phase) }), ' ', h('button', { class: 'linklike', type: 'button', onclick: () => store.select(f.id) }, `${f.id} ${f.title}`)),
       statusBadge(f.kind, f.status)));
@@ -77,12 +86,12 @@ export function renderBizflow(root, app, opts) {
       const ta = h('textarea', { class: 'mono', rows: '14', id: 'bf-notation', 'aria-label': 'フロー記法', spellcheck: 'false', 'data-fk': 'bf-notation-' + f.id });
       ta.value = notation;
       const count = h('span', { class: 'small muted', text: `${notation.length.toLocaleString()} / ${BIZFLOW_NOTATION_MAX.toLocaleString()} 字` });
-      ta.addEventListener('input', () => { bizflowState.drafts.set(f.id, ta.value); count.textContent = `${ta.value.length.toLocaleString()} / ${BIZFLOW_NOTATION_MAX.toLocaleString()} 字${ta.value !== f.notation ? '（未保存）' : ''}`; });
-      const dirty = bizflowState.drafts.has(f.id) && bizflowState.drafts.get(f.id) !== f.notation;
+      ta.addEventListener('input', () => { bizflowState.drafts.set(f.id, { text: ta.value, base: String(f.notation || '') }); count.textContent = `${ta.value.length.toLocaleString()} / ${BIZFLOW_NOTATION_MAX.toLocaleString()} 字${ta.value !== f.notation ? '（未保存）' : ''}`; });
+      const dirty = bizflowState.drafts.has(f.id) && bizflowState.drafts.get(f.id).text !== f.notation;
       right.appendChild(h('div', { class: 'stack' }, ta, h('div', { class: 'row' },
         h('button', { class: 'btn', type: 'button', id: 'bf-preview', onclick: () => app.refresh() }, '図を描き直す'),
         h('button', { class: 'btn primary', type: 'button', id: 'bf-save', onclick: () => {
-          const text = bizflowState.drafts.has(f.id) ? bizflowState.drafts.get(f.id) : f.notation;
+          const text = bizflowState.drafts.has(f.id) ? bizflowState.drafts.get(f.id).text : f.notation;
           if (!String(text).trim()) { toast('記法が空です'); return; }
           const r = store.applyLocal([{ op: 'update', id: f.id, set: { notation: text } }]);
           if (!r.ok) { toast(r.errors.join(' / ')); return; }

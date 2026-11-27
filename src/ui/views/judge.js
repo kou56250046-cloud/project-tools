@@ -6,7 +6,7 @@ import { JUDGE } from '../../core/judge.js';
 import { JUDGE_SAMPLE } from '../../core/judge-sample.js';
 import { TABLEDEF, toEntityPatch } from '../../core/table-def.js';
 import { flowGeometry } from '../../core/flowsafe.js';
-import { renderFlowSvg } from '../flowsvg.js';
+import { renderFlowSvg, flowFrame } from '../flowsvg.js';
 import { h, toast, download, confirmDialog, todayStr } from '../dom.js';
 import { store } from '../store.js';
 import { importDraftText } from './import.js';
@@ -18,7 +18,7 @@ const JD_INPUTS = [
   { key: 'cases', label: 'ケース', prompt: 'judge-cases', ph: '| ケース | 説明 | テーブル名.列名 | … | JDG-001 |（デモで流す入力の表）' },
 ];
 const JD_VIEWS = [['map', '図と確認事項'], ['check', '点検'], ['demo', 'デモ']];
-const freshJudge = () => ({ src: { flow: '', master: '', tables: '', cases: '' }, input: 'flow', view: 'map', sel: null, demo: null, caseKey: '0', sig: '' });
+const freshJudge = () => ({ src: { flow: '', master: '', tables: '', cases: '' }, input: 'flow', view: 'map', sel: null, demo: null, caseKey: '0', sig: '', token: null });
 let judgeState = freshJudge();
 export function clearJudgeState() { judgeState = freshJudge(); }
 
@@ -37,8 +37,8 @@ async function toImport(app, patch) {
 function inputPane(app) {
   const s = judgeState.src;
   const cur = JD_INPUTS.find((x) => x.key === judgeState.input);
-  const tabs = h('div', { class: 'jd-tabs', role: 'tablist', 'aria-label': '入力' }, JD_INPUTS.map((x) => h('button', {
-    type: 'button', role: 'tab', class: 'jd-tab', 'aria-selected': String(x.key === cur.key), id: `jd-in-${x.key}`,
+  const tabs = h('div', { class: 'jd-tabs', role: 'group', 'aria-label': '入力' }, JD_INPUTS.map((x) => h('button', {
+    type: 'button', class: 'jd-tab', 'aria-pressed': String(x.key === cur.key), id: `jd-in-${x.key}`,
     onclick: () => { judgeState.input = x.key; app.refresh(); },
   }, x.label, s[x.key].trim() ? h('span', { class: 'badge ok', text: '入力済み' }) : null)));
   const ta = h('textarea', { class: 'mono jd-src', rows: '18', id: `jd-src-${cur.key}`, 'aria-label': cur.label, placeholder: cur.ph, spellcheck: 'false' });
@@ -77,7 +77,7 @@ function figure(an, overlay) {
   if (!r.geo) return h('div', { class: 'empty small', text: judgeState.src.flow.trim() ? '描けるフローがありません。記法を確かめてください' : 'フローを貼ると、ここに図が出ます' });
   return h('div', { class: 'stack' },
     r.errors.length ? h('p', { class: 'notice warn small', text: `フロー記法に誤りが ${r.errors.length} 件あります。誤りの行を外して描いています（「点検」に行番号）。印は誤りを直すまで付きません` }) : null,
-    h('div', { class: 'graph-wrap jd-figure' }, renderFlowSvg(r.geo, overlay)));
+    flowFrame(renderFlowSvg(r.geo, overlay), 'jd-figure'));
 }
 
 function legend() {
@@ -168,6 +168,9 @@ function demoView(app, an) {
 }
 
 export function renderJudge(root, app) {
+  // 別の案件で作った入力は持ち込まない（切り替えの通知を取りこぼしても、案件の印で捨てる）
+  if (judgeState.token !== null && judgeState.token !== store.token) clearJudgeState();
+  judgeState.token = store.token;
   const ledger = store.ledger;
   const s = judgeState.src;
   // 入力が変わったら、選んだ箱とデモを最初に戻す
@@ -179,12 +182,12 @@ export function renderJudge(root, app) {
   root.appendChild(h('h2', { text: '判断・データ' }));
   root.appendChild(h('p', { class: 'muted small', text: '業務フローの分岐（判断）とデータの登録が決まっているかを、判断マスタ・テーブル定義・台帳の ID と突き合わせて点検します。入力は台帳に保存しません（ロックと案件の切り替えで消えます）。残すときは「まとめて保存」してください。' }));
   const c = an.counts;
-  const band = h('div', { class: 'row jd-band', role: 'status' },
+  const band = h('div', { class: 'row jd-band' },
     h('span', { class: 'badge ok', text: `✓ 確定 ${c.ok}` }), h('span', { class: 'badge mid', text: `? 未確定 ${c.open}` }), h('span', { class: 'badge high', text: `! マスタなし ${c.none}` }),
     h('span', { class: 'small muted', text: `判断 ${c.judges}・テーブル ${c.tables}（未確定の列 ${c.openCols}）・確認事項 ${an.items.length}・警告 ${c.warnings}` }));
-  const viewTabs = h('div', { class: 'jd-tabs', role: 'tablist', 'aria-label': '表示' }, JD_VIEWS.map(([k, label]) => h('button', {
-    type: 'button', role: 'tab', class: 'jd-tab', 'aria-selected': String(judgeState.view === k), id: `jd-v-${k}`, onclick: () => { judgeState.view = k; app.refresh(); },
+  const viewTabs = h('div', { class: 'jd-tabs', role: 'group', 'aria-label': '表示' }, JD_VIEWS.map(([k, label]) => h('button', {
+    type: 'button', class: 'jd-tab', 'aria-pressed': String(judgeState.view === k), id: `jd-v-${k}`, onclick: () => { judgeState.view = k; app.refresh(); },
   }, label)));
   const view = judgeState.view === 'check' ? checkView(app, an) : judgeState.view === 'demo' ? demoView(app, an) : mapView(app, an);
-  root.appendChild(h('div', { class: 'jd-layout' }, inputPane(app), h('div', { class: 'stack' }, band, viewTabs, h('div', { role: 'tabpanel', 'aria-labelledby': `jd-v-${judgeState.view}` }, view))));
+  root.appendChild(h('div', { class: 'jd-layout' }, inputPane(app), h('div', { class: 'stack' }, band, viewTabs, h('div', { 'aria-label': JD_VIEWS.find(([k]) => k === judgeState.view)[1] }, view))));
 }

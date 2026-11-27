@@ -64,3 +64,13 @@ test('0 件: システムも連携も無ければ empty。相手のシステム�
   assert.equal(g.empty, false);
   assert.deepEqual(g.inbound, []);
 });
+
+test('真ん中の箱は案件名の長さで広がり、長ければ 2 行に折る。右の列は箱の右に並ぶ（FIX-026）', () => {
+  const name = '【ダミー】みなと物産 受発注システム刷新プロジェクト第二期の基盤更改';
+  const L = archLayout({ project: { name }, items: [sys('SY-1', '会計'), itf('IF-1', 'SY-1', 'out')], relations: [] });
+  assert.ok(L.self.w > 200 && L.self.w <= 300);
+  assert.equal(L.self.lines.length, 2);
+  assert.ok(L.right[0].x > L.self.x + L.self.w, '送信先は真ん中の箱の右');
+  const short = archLayout(ledgerOf([sys('SY-1', '会計'), itf('IF-1', 'SY-1', 'out')]));
+  assert.deepEqual(short.self.lines, ['受注システム刷新']);
+});

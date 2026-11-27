@@ -242,7 +242,9 @@
   }
 
   function csvLink(headers, rows, name) {
-    const esc = (v) => { const s = v == null ? '' : String(v); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    // ワークベンチで足した: Excel が式として読む値の先頭に ' を付ける（core/csv.js の csvSafe と同じ規則）
+    const safe = (s) => (/^[=+@\t\r\n]/.test(s) || (s.startsWith('-') && s !== '-' && !/^-[\d,]*\.?\d+$/.test(s)) ? "'" + s : s);
+    const esc = (v) => { const s = safe(v == null ? '' : String(v)); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
     const text = '﻿' + [headers, ...rows].map((r) => r.map(esc).join(',')).join('\r\n');
     return el('a', { class: 'd-csv', href: URL.createObjectURL(new Blob([text], { type: 'text/csv' })), download: (name || 'data') + '.csv', text: 'CSV をダウンロード' });
   }

@@ -59,3 +59,11 @@ export function decodeBytes(buffer, encoding = 'auto') {
     return { text: new TextDecoder('shift_jis').decode(bytes), encoding: 'shift_jis' };
   }
 }
+
+// CSV・TSV に書き出す値を、Excel が式として読まない形にする（先頭が = + @ タブ 改行、または - の後が数値でないもの）
+export function csvSafe(v) {
+  const s = String(v == null ? '' : v);
+  if (/^[=+@\t\r\n]/.test(s)) return "'" + s;
+  if (s.startsWith('-') && !/^-[\d,]*\.?\d+$/.test(s) && s !== '-') return "'" + s;
+  return s;
+}

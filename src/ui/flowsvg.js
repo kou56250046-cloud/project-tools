@@ -3,7 +3,7 @@
 // overlay（判断・データの画面）: { marks: {ID: 'ok'|'open'|'none'}, visited: [ID], taken: ['A>B'], current: ID, focus: ID（選んでいる箱）, titles: {ID: 文字}, onSelect(id) }
 
 import { FLOWCHART } from '../core/flow.js';
-import { s } from './dom.js';
+import { s, h } from './dom.js';
 
 
 function flShape(n, attrs) {
@@ -115,4 +115,23 @@ export function renderFlowSvg(geo, overlay) {
     }
   }
   return svg;
+}
+
+// 図の枠: 「幅に合わせる／実寸」の切り替えと、右に続きがあるときの一言（切れた図を全体と読み違えないように）
+// 切り替えは画面をまたいで覚える（業務フロー・判断・データで共通）
+let flowFit = false;
+export function flowFrame(svg, cls) {
+  const wrap = h('div', { class: ['graph-wrap', 'bfl-frame', cls, flowFit && 'is-fit'] }, svg);
+  const hint = h('p', { class: 'small muted bfl-more', hidden: true, text: '→ 図は右に続きます（横にスクロールするか「幅に合わせる」）' });
+  const btn = h('button', { class: 'btn small', type: 'button', 'aria-pressed': String(flowFit), onclick: () => {
+    flowFit = !flowFit;
+    wrap.classList.toggle('is-fit', flowFit);
+    btn.setAttribute('aria-pressed', String(flowFit));
+    btn.textContent = flowFit ? '実寸で見る' : '幅に合わせる';
+    check();
+  } }, flowFit ? '実寸で見る' : '幅に合わせる');
+  // 画面に置かれてから、はみ出しているかを測る
+  const check = () => { hint.hidden = !(wrap.isConnected && wrap.scrollWidth > wrap.clientWidth + 2); };
+  setTimeout(check, 0);
+  return h('div', { class: 'stack bfl-figure-box' }, h('div', { class: 'row' }, btn, hint), wrap);
 }

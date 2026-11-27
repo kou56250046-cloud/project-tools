@@ -74,8 +74,13 @@ export function renderPreprocess(root, app) {
   root.appendChild(h('p', { class: 'muted small', text: 'Teams（VTT・txt）・Meet の文字起こしを、1 行 1 発言（時刻 話者｜本文）に整え、つなぎ言葉（えー・あのー など）を除きます。結果は保存しません（ロックすると消えます）。整えた本文を「議事録の取込」の指示文に貼るか、メモにします。' }));
   const input = h('input', { type: 'file', multiple: true, accept: '.txt,.vtt,text/plain,text/vtt', id: 'pp-file', 'aria-label': '文字起こしのファイルを選ぶ' });
   input.addEventListener('change', async () => {
+    const st = preprocessState;   // ロックで替わったら、読んだ結果を捨てる
     for (const f of [...input.files]) {
-      try { addResult(f.name, decodeText(new Uint8Array(await f.arrayBuffer())).text); } catch (e) { toast(`${f.name} を読めませんでした`); }
+      try {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        if (st !== preprocessState) return;
+        addResult(f.name, decodeText(bytes).text);
+      } catch (e) { toast(`${f.name} を読めませんでした`); }
     }
     input.value = '';
     app.refresh();

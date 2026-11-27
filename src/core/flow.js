@@ -35,14 +35,17 @@ export const FLOWCHART = (() => {
     ext: { name: "外部", decision: "外部の判断" },
   };
   const ROLE_ORDER = ["ai", "rule", "human", "ext"];
-  const roleOf = (w) => { const k = String(w).trim(); return ROLE_WORDS[k.toLowerCase()] || ROLE_WORDS[k] || null; };
+  // 書かれた語で表を引くときは、表そのものが持つキーだけを見る（constructor などで継承したものに当たらない。写し元から変えた）
+  const ownWord = (o, k) => (Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined);
+  const roleOf = (w) => { const k = String(w).trim(); return ownWord(ROLE_WORDS, k.toLowerCase()) || ownWord(ROLE_WORDS, k) || null; };
   // 末尾の {区分}（全角の ｛｝ も）
-  const TAG_RE = /\s*[{｛]([^}｝]*)[}｝]\s*$/;
+  // 先頭の \s* は付けない（空白が多いと照合が 2 乗で遅くなる。使う側で slice のあと trim する。写し元から変えた）
+  const TAG_RE = /[{｛]([^}｝]*)[}｝]\s*$/;
   // 末尾の参照 [JDG-001] [Q-04 TBL-001]（全角の ［］ も）。判断マスタ・テーブル定義・カルテの ID だけを対象にする
   // 写し元から変えたところ: 参照の接頭辞を JDG・TBL と台帳の全種別にする（カルテの Q・H・F・D は外す）
   const REF_PFX = ['JDG', 'TBL', ...Object.values(KINDS).map((k) => k.prefix)].join('|');
   const REF_ID = new RegExp(`(?:${REF_PFX})-\\d{1,4}(?![\\d-])`, 'g');
-  const REF_RE = new RegExp(`\\s*[[［]\\s*((?:(?:${REF_PFX})-\\d{1,4}(?![\\d-])[\\s,、，]*)+)[\\]］]\\s*$`);
+  const REF_RE = new RegExp(`[[［]\\s*((?:(?:${REF_PFX})-\\d{1,4}(?![\\d-])[\\s,、，]*)+)[\\]］]\\s*$`);
 
   // ---------- 文字幅 ----------
   // 全角は 1em、半角は 0.6em とみなす（メイリオ / Arial の近似）
@@ -122,10 +125,10 @@ export const FLOWCHART = (() => {
       if ((m = s.match(/^(?:note|注記)\s+([A-Za-z0-9_]+)\s*[:：]?\s*(.+)$/i))) { pendingNotes.push({ id: m[1], text: m[2].trim(), line: ln }); return; }
       // ノードの行は種類のキーワードで始まる。ラベルに -> が入っていても矢印の行とみなさない。全角の ＠ も受け付ける
       m = s.match(/^(\S+)\s+([A-Za-z0-9_]+)(?:\s+[@＠](\[[^\]]+\]|[^\s{｛]+))?(?:\s*[{｛]([^}｝]*)[}｝])?(?:\s+(.*))?$/);
-      const isNode = m && (TYPE_WORDS[m[1].toLowerCase()] || TYPE_WORDS[m[1]]);
+      const isNode = m && (ownWord(TYPE_WORDS, m[1].toLowerCase()) || ownWord(TYPE_WORDS, m[1]));
       if (!isNode && (s.includes("->") || s.includes("..>"))) { parseEdge(s, ln); return; }
       if (m) {
-        const type = TYPE_WORDS[m[1].toLowerCase()] || TYPE_WORDS[m[1]];
+        const type = ownWord(TYPE_WORDS, m[1].toLowerCase()) || ownWord(TYPE_WORDS, m[1]);
         if (type) {
           const id = m[2];
           if (byId.has(id)) { err(ln, `ID「${id}」が2回定義されています（最初は ${byId.get(id).line} 行目）`); return; }

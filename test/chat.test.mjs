@@ -71,3 +71,9 @@ test('本文と lines の行き来（空白のある名前・日時・時刻な�
     { text: '読めない行' },
   ]);
 });
+
+test('名前と時刻の見出しの直後の行は、末尾が時刻でも本文として読む（FIX-007）', () => {
+  const r = parseChat('山田 太郎 10:00\n集合は 9:30\n佐藤 花子 10:05\n了解です', { today: '2026-11-26' });
+  assert.equal(r.format, 'header');
+  assert.deepEqual(r.lines.map((x) => [x.speaker, x.text]), [['山田 太郎', '集合は 9:30'], ['佐藤 花子', '了解です']]);
+});

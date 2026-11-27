@@ -44,7 +44,8 @@ const PENDING_STATUS = { open: '未着手', in_progress: '対応中', closed: '�
 export function ledgerToKarte(ledger, { includeInternal = false, now, today } = {}) {
   const src = includeInternal ? ledger : visibleLedger(ledger, true);
   const items = src.items;
-  const byId = new Map(ledger.items.map((it) => [it.id, it]));
+  // 名前は書き出す範囲（社内のみを除いた後）から引く。社内のみの関係者の氏名を担当・質問先などに出さない
+  const byId = new Map(items.map((it) => [it.id, it]));
   const nameOf = (id) => { const p = id && byId.get(id); return p && p.kind === 'stakeholder' ? p.title : ''; };
   const names = (ids) => (ids || []).map(nameOf).filter(Boolean).join('、');
   const firstSource = (it) => (it.sources || []).find((s) => s && s.type !== 'template') || null;

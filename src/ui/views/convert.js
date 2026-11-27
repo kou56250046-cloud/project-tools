@@ -18,13 +18,16 @@ const sizeText = (n) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB`
 
 async function addFiles(list, app) {
   const today = todayStr();
+  const st = convertState;   // ロックで替わったら、残りのファイルを読まない（結果をロックの後に残さない）
   for (const f of list) {
+    if (st !== convertState) return;
     const id = ++convertState.seq;
     const entry = { id, name: f.name, size: f.size, kind: '', ok: false, reason: '', md: null, counts: '', tables: null };
     convertState.files.push(entry);
     try {
       const bytes = new Uint8Array(await f.arrayBuffer());
       const r = await convertFile(f.name, bytes, { today });
+      if (st !== convertState) return;
       Object.assign(entry, r);
       if (r.kind === 'pdf') entry.pages = pdfPageCount(bytes);
       if (r.kind === 'image') entry.pages = 1;
@@ -77,7 +80,8 @@ function bundleBox(entry, app) {
 
 function geminiBox(entry, app) {
   const pages = h('input', { type: 'number', min: '1', value: entry.pages ? String(entry.pages) : '', class: 'num-in', 'aria-label': 'ページ数', 'data-fk': `g-${entry.id}-pages` });
-  pages.addEventListener('change', () => { entry.pages = Math.max(1, Math.floor(+pages.value)) || null; });
+  // 空欄・0・数でない値は「ページ数なし」（空欄を 1 ページとして点検しない）
+  pages.addEventListener('change', () => { const n = Math.floor(Number(pages.value)); entry.pages = pages.value.trim() !== '' && n >= 1 ? n : null; });
   const reply = h('textarea', { rows: '6', 'aria-label': 'Gemini の返事', placeholder: 'Gemini の返事（```markdown の囲みごと）を貼ります。何回かに分かれたときは、つなげて貼ってください。', 'data-fk': `g-${entry.id}-reply` });
   reply.value = entry.reply || '';
   reply.addEventListener('input', () => { entry.reply = reply.value; });

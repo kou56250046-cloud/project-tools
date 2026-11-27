@@ -7,6 +7,8 @@ import { store } from '../store.js';
 import { idButton, itemTitle, statusBadge } from '../detail.js';
 
 const hearingState = { meetingId: null, picked: new Set(), drafts: {} };
+// ロックで回答の書きかけを消す（次に開いた人に見せない）
+export function clearHearingState() { hearingState.meetingId = null; hearingState.picked = new Set(); hearingState.drafts = {}; }
 const TYPE_VALUES = KINDS.meeting.fields.meetingType.values;
 
 function meetings(ledger) {

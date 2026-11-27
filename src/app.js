@@ -14,10 +14,10 @@ import { renderGraph } from './ui/views/graph.js';
 import { renderList } from './ui/views/list.js';
 import { renderDecisions } from './ui/views/decisions.js';
 import { renderHealth } from './ui/views/health.js';
-import { renderImport } from './ui/views/import.js';
-import { renderPrompts } from './ui/views/prompts.js';
+import { renderImport, clearImportDraft } from './ui/views/import.js';
+import { renderPrompts, clearPromptsState } from './ui/views/prompts.js';
 import { renderSettings, newProjectDialog } from './ui/views/settings.js';
-import { renderHearing } from './ui/views/hearing.js';
+import { renderHearing, clearHearingState } from './ui/views/hearing.js';
 import { renderIssues } from './ui/views/issues.js';
 import { renderNfr } from './ui/views/nfr.js';
 import { renderScope } from './ui/views/scope.js';
@@ -312,13 +312,17 @@ function boot() {
   store.subscribe((reason) => {
     if (reason === 'select') {
       // 選んだ項目を画面の中でも強調する画面は、描き直す
-      if (['graph', 'list', 'data', 'gantt', 'wbs', 'issues', 'scope', 'changes', 'functions', 'tests', 'arch'].includes(app.view)) app.refresh();
+      const sc = SCREENS.find((x) => x.id === app.view);
+      if (sc && sc.select) app.refresh();
       else renderDetail(document.getElementById('detail'), app);
       return;
     }
     if (reason === 'save-error') { renderTopbar(); return; }
-    if (reason === 'lock') { clearConvertState(); clearMemosState(); clearPreprocessState(); clearMaskState(); clearBizflowState(); clearJudgeState(); return; }   // ロックのときだけ、資料の変換の結果を消す（続く vault の通知で描き直す）
-    if (reason === 'vault') { clearMasterState(); clearJudgeState(); }   // 案件の切り替えでも判断・データの入力を消す
+    // ロックのとき、画面が持つ一時の入力（貼った文・書きかけ・変換の結果）をすべて消す（続く vault の通知で描き直す）
+    if (reason === 'lock') { clearConvertState(); clearMemosState(); clearPreprocessState(); clearMaskState(); clearBizflowState(); clearJudgeState(); clearImportDraft(); clearPromptsState(); clearHearingState(); app.viewOpts = {}; return; }
+    if (reason === 'vault') { clearMasterState(); clearJudgeState(); }
+    // 案件の切り替え・置き換えでも、案件ごとの書きかけ（業務フロー）と判断・データの入力を消す（別の案件に持ち込まない）
+    if (reason === 'switch' || reason === 'replace') { clearBizflowState(); clearJudgeState(); }
     if (reason === 'presentation' && hiddenInPresentation(app.view)) { app.go('overview'); return; }
     app.refresh();
   });

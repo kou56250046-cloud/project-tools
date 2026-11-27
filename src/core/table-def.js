@@ -4,6 +4,7 @@
 
 import { KINDS, LOGICAL_TYPES } from './schema.js';
 import { MDBLOCKS } from './mdblocks.js';
+import { csvSafe } from './csv.js';
 
 export const TABLEDEF = (() => {
   const LOGICAL_LABEL = Object.fromEntries(LOGICAL_TYPES.map((t) => [t.v, t.label]));
@@ -70,10 +71,11 @@ export const TABLEDEF = (() => {
   // 「A、B」「A|B」などの並び。数値だけのとき（100,000 など）は区切らない。
   // , は桁区切りと見分けられないので、ほかの区切りで分けたあと、数として読めない断片だけを , で分ける
   function splitVals(s) {
-    const t = strip(s);
+    // 空白の並びを先に 1 つにまとめてから分ける（空白の量指定を重ねた正規表現は、空白が多いと固まる。写し元から変えた）
+    const t = strip(s).replace(/\s+/g, " ");
     if (num(t) != null) return [t];
-    return t.split(/\s*(?:\||｜|、|／|\/|\s+または\s+|\s+又は\s+|\s+or\s+)\s*/i)
-      .flatMap((x) => (num(x) != null ? [x] : x.split(/\s*[,，]\s*/)))
+    return t.split(/ ?(?:\||｜|、|／|\/| または | 又は | or ) ?/i)
+      .flatMap((x) => (num(x) != null ? [x] : x.split(/ ?[,，] ?/)))
       .map((x) => x.trim()).filter(Boolean);
   }
 
@@ -82,9 +84,11 @@ export const TABLEDEF = (() => {
   const ANY_RE = /^(?:|-|－|―|ー|—|\*|＊|任意|問わない|すべて|全て|指定なし|any)$/i;
   const OPS = { ">=": ">=", "≧": ">=", "＞＝": ">=", "=>": ">=", "<=": "<=", "≦": "<=", "＜＝": "<=", "=<": "<=", ">": ">", "＞": ">", "<": "<", "＜": "<", "=": "=", "＝": "=", "==": "=", "!=": "!=", "≠": "!=", "<>": "!=" };
   const WORD_OPS = { 以上: ">=", 以下: "<=", 未満: "<", 超: ">", を超える: ">", より大きい: ">", より小さい: "<" };
+  const COND_MAX = 200;   // 条件として読むセルの長さの上限。長いセルはそのままの値として扱う（正規表現で固まらない）
   function parseCond(raw) {
-    const t = strip(raw).replace(/^【(.*)】$/, "$1").trim();
+    const t = strip(raw).replace(/^【(.*)】$/, "$1").trim().replace(/\s+/g, " ");
     if (ANY_RE.test(t)) return { any: true };
+    if (t.length > COND_MAX) return { eq: [t] };
     // 「10万以上50万未満」「100 超 200 以下」
     let m = t.match(/^(.+?)\s*(以上|超|より大きい|を超え)\s*[、,・，]?\s*(.+?)\s*(以下|未満|まで)$/);
     if (m && num(m[1]) != null && num(m[3]) != null) {
@@ -300,8 +304,7 @@ export const TABLEDEF = (() => {
   const rowCells = (r) => [r.table, r.name, r.key, r.typeName, r.ledgerType, r.required, r.pk, r.ref, r.digits, r.range, r.choices, r.state, r.basis, r.note];
   // Excel が式として読む先頭（= + @、- の後に数以外、タブ・改行）は ' を前に付ける。「-」だけのセルと数はそのまま
   const csvCell = (s) => {
-    let v = String(s == null ? "" : s);
-    if (/^[=+@\t\r]/.test(v) || /^-[^\d.\s]/.test(v)) v = "'" + v;
+    const v = csvSafe(s);   // 式になる値の無害化は csv.js に寄せた（- の後が数値でないものも ' を付ける）
     return /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
   };
   const toCsv = (rows) => "\uFEFF" + rows.map((r) => r.map(csvCell).join(",")).join("\r\n") + "\r\n";
@@ -321,7 +324,7 @@ export function toEntityPatch(model, ledger) {
   const { strip } = TABLEDEF.util;
   const warnings = [];
   const ids = new Set(ledger.items.map((it) => it.id));
-  const existing = new Map(ledger.items.filter((it) => it.kind === 'entity' && it.physicalName).map((it) => [String(it.physicalName).toLowerCase(), it]));
+  const existing = new Map(ledger.items.filter((it) => it.kind === 'entity' && it.physicalName && it.status !== 'dropped').map((it) => [String(it.physicalName).toLowerCase(), it]));
   const byTbl = new Map(model.tables.map((t) => [t.id, t]));
   // TBL → 台帳の参照先（同じ差分の仮 ID か、既存の EN の ID）
   const target = new Map();
@@ -346,7 +349,9 @@ export function toEntityPatch(model, ledger) {
       if (c.ref) {
         const to = target.get(c.ref);
         const refT = byTbl.get(c.ref);
-        const key = refT ? pkKey(refT) : '';
+        const exRef = refT && refT.physical ? existing.get(refT.physical.toLowerCase()) : null;
+        const exPk = exRef ? (exRef.columns || []).find((x) => x && x.pk) : null;
+        const key = exRef ? (exPk ? exPk.name : '') : refT ? pkKey(refT) : '';
         if (to && key) col.fk = { entity: to, column: key };
         else warnings.push(`${t.id}.${c.name}: 参照先 ${c.ref} を台帳のテーブルにできないので、外部キーを付けません（参照先に物理名か主キーの内部名がありません）`);
       }

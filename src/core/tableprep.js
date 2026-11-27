@@ -4,7 +4,7 @@
 // ・集計は NotebookLM にさせず、ここで全行から計算した結果を表で渡す（01_集計.md）
 // ・データは 1 行 1 レコードで列名を毎回書く（断片に切られても列名が残る）。決めた行数ごとにファイルを分ける
 // 表は { name, source, sheet, cols: [列名], rows: [[文字列]] }（rows は見出しを除く）
-import { parseDelimited } from './csv.js';
+import { parseDelimited, csvSafe } from './csv.js';
 import { safeParse } from './extract.js';
 export const TABLEPREP = (() => {
 
@@ -15,7 +15,7 @@ export const TABLEPREP = (() => {
 
   const str = (v) => (v == null ? "" : String(v));
   // CSV の書き出し（gemini-kit の mask.js の toCSV と同じ。Excel で開けるよう BOM つき・全セルを引用符で囲む）
-  const prepToCsv = (rows) => "\uFEFF" + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  const prepToCsv = (rows) => "\uFEFF" + rows.map((r) => r.map((v) => `"${csvSafe(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
   const isBlank = (v) => str(v).trim() === "";
 
   // ---------- 値の判定 ----------
@@ -56,7 +56,7 @@ export const TABLEPREP = (() => {
   // 2 次元配列（1 行目が見出し）→ 表。すべて空の行は落とす
   function fromRows(rows, meta) {
     const all = (rows || []).map((r) => r.map(str));
-    const width = Math.max(0, ...all.map((r) => r.length));
+    const width = all.reduce((m, r) => Math.max(m, r.length), 0);
     if (!all.length || !width) throw new Error("表に行がありません");
     const pad = (r) => (r.length < width ? r.concat(Array(width - r.length).fill("")) : r);
     const body = all.slice(1).map(pad).filter((r) => r.some((v) => !isBlank(v)));

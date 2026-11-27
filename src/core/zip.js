@@ -3,6 +3,9 @@
 // 展開は標準の DecompressionStream('deflate-raw')（Node 22 以上・新しい Chrome / Edge）。書き出しは無圧縮
 
 const zipUtf8 = new TextDecoder('utf-8');
+// 展開後の大きさの上限（zip 爆弾でタブが落ちないように）。1 つの中のファイルと、1 つの zip の合計
+export const ZIP_ENTRY_MAX = 200 * 1024 * 1024;
+export const ZIP_TOTAL_MAX = 400 * 1024 * 1024;
 const zu16 = (b, o) => b[o] | (b[o + 1] << 8);
 const zu32 = (b, o) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
 
@@ -19,24 +22,31 @@ export function zipEntries(bytes) {
   const map = new Map();
   for (let k = 0; k < count; k++) {
     if (zu32(b, p) !== 0x02014b50) throw new Error('zip として読めません（目次が壊れています）');
-    const flag = zu16(b, p + 8), method = zu16(b, p + 10), size = zu32(b, p + 20);
+    const flag = zu16(b, p + 8), method = zu16(b, p + 10), size = zu32(b, p + 20), usize = zu32(b, p + 24);
     const nlen = zu16(b, p + 28), xlen = zu16(b, p + 30), clen = zu16(b, p + 32), local = zu32(b, p + 42);
     const name = zipUtf8.decode(b.subarray(p + 46, p + 46 + nlen));
     if (flag & 1) throw new Error('パスワード付きのファイルは読めません');
     const start = local + 30 + zu16(b, local + 26) + zu16(b, local + 28);
-    map.set(name, { method, data: b.subarray(start, start + size) });
+    map.set(name, { method, data: b.subarray(start, start + size), usize });
     p += 46 + nlen + xlen + clen;
   }
+  map.inflated = 0;   // 展開した大きさの合計（ZIP_TOTAL_MAX と比べる）
   return map;
 }
 
-async function zipInflate(data) {
+async function zipInflate(data, max) {
   if (typeof DecompressionStream !== 'function') throw new Error('このブラウザは圧縮されたファイルを展開できません（新しい Chrome / Edge で開いてください）');
   const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   const reader = stream.getReader();
   const parts = [];
   let n = 0;
-  for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); n += value.length; }
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.length;
+    if (n > max) { await reader.cancel().catch(() => {}); throw new Error(`展開すると大きすぎるファイルです（${Math.round(max / 1024 / 1024)}MB を超えます）`); }
+    parts.push(value);
+  }
   const out = new Uint8Array(n);
   let o = 0;
   for (const x of parts) { out.set(x, o); o += x.length; }
@@ -48,7 +58,13 @@ export async function zipBytes(zip, name) {
   const e = zip.get(name);
   if (!e) return null;
   if (e.method === 0) return e.data;
-  if (e.method === 8) return zipInflate(e.data);
+  if (e.method === 8) {
+    const left = Math.min(ZIP_ENTRY_MAX, ZIP_TOTAL_MAX - (zip.inflated || 0));
+    if (e.usize > left) throw new Error(`展開すると大きすぎるファイルです（${name}）`);
+    const out = await zipInflate(e.data, left);
+    zip.inflated = (zip.inflated || 0) + out.length;
+    return out;
+  }
   throw new Error(`圧縮方式 ${e.method} は読めません`);
 }
 // 中のファイルの文字列（UTF-8）。無ければ null

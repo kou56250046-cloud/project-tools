@@ -79,6 +79,6 @@ export function renderOrg(root, app) {
     h('div', { class: 'row' }, h('h3', { text: 'RACI 表' }), h('span', { class: 'spacer' }),
       h('label', { class: 'row small' }, '作業', sw('tasks', 'top', 'all', '根の作業だけ', 'すべて（中止・置き換え済みの決定も）')),
       h('label', { class: 'row small' }, '課題', sw('issues', 'open', 'all', '未完了だけ', 'すべて'))),
-    h('p', { class: 'small muted', text: `R 実行・A 承認（1 人）・C 相談・I 報告。薄い文字は、担当・決めた人から補ったもの（保存していない）。${pres ? '' : 'セルを押すと 空 → R → A → C → I → 空 と変わります（取り消し可）。'}` }),
+    h('p', { class: 'small muted', text: `R 実行・A 承認（1 人）・C 相談・I 報告。薄い文字は、担当・決めた人から補ったもの（保存していない）。${pres ? '' : 'セルを押すと 空 → R → A → C → I → 空 と変わります（取り消し可）。担当・決めた人から補った役（薄い字）がある人は、空にすると補いの役に戻ります。'}` }),
     rows.length && cols.length ? h('div', { class: 'table-wrap' }, h('table', { class: 'list raci-table' }, h('thead', null, head), h('tbody', null, body))) : h('div', { class: 'empty small', text: 'まだありません' })));
 }

@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8wz2K+gf022F0ULJ3r3leEL+Orh8v0iRYRiGVrNvKGY='; style-src 'sha256-NTM20exg7xnpdsftQaJVafA/eg2e6VGEc0zJaXqXrnw='; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7zI2IXcrCkuFSpxdbiaYZB1DymEFkHES5F9Ba+z4rCU='; style-src 'sha256-sTz08zn7I8jUqWwyDTge/V+NaG6rekyRRlgFOl5AVSk='; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:,">
@@ -105,7 +105,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .project-name .btn { flex: none; font-weight: 400; }
 .history-dialog { width: min(640px, 92vw); }
 .topbar-status { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-.topbar-actions { display: flex; gap: 8px; padding: 6px 0; }
+.topbar-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 0; }
 /* 濃紺の上で読めるようにする上書き */
 .topbar select { color: var(--ink); background: #fff; }
 .topbar .muted { color: var(--head-text); }
@@ -133,7 +133,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .view { flex: 1; overflow: auto; padding: 20px 24px 60px; min-width: 0; }
 .view:focus { outline: none; }
 .detail {
-  width: 420px; flex: none; overflow: auto;
+  width: 340px; flex: none; overflow: auto;
   background: var(--panel); border-left: 1px solid var(--line);
   padding: 16px 20px 40px;
 }
@@ -318,7 +318,6 @@ dialog.dialog::backdrop { background: rgba(20, 30, 45, .35); }
 .idref { display: inline-flex; gap: 2px; align-items: baseline; }
 table.list th, table.list td { white-space: nowrap; }
 table.list td.title { white-space: normal; min-width: 240px; }
-.detail { width: 380px; }
 svg.graph .edge path.hit { stroke: transparent; stroke-width: 10; cursor: pointer; }
 .legend .sw-customer { border-color: var(--side-customer); }
 .legend .sw-own { border-color: var(--side-own); }
@@ -330,7 +329,6 @@ svg.graph .edge path.hit { stroke: transparent; stroke-width: 10; cursor: pointe
 .next-actions, .health-list { padding: 4px 0; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.detail { width: 340px; }
 .lock { max-width: 560px; margin: 40px auto; }
 .lock form input { flex: 1; }
 .active-filters { margin: -4px 0 10px; }
@@ -567,7 +565,7 @@ tr.kt-purpose td, tr.kt-goal td { background: var(--surface); }
 .org-node.is-inactive rect { stroke-dasharray: 4 3; }
 .org-node.is-inactive text { fill: var(--ink-3); }
 .org-name { font-size: 13px; font-weight: 600; fill: var(--ink); }
-.org-sub { font-size: 11.5px; fill: var(--ink-2); }
+.org-sub { font-size: 12px; fill: var(--ink-2); }
 .org-edge { fill: none; stroke: var(--edge); stroke-width: 1.3; }
 .org-edge.is-cross { stroke-dasharray: 5 4; }
 .org-arrowhead { fill: var(--edge); }
@@ -616,8 +614,8 @@ tr.kt-purpose td, tr.kt-goal td { background: var(--surface); }
 .bfl-sub-line { stroke: var(--edge); stroke-width: 1.2; }
 .bfl-node-text { fill: var(--ink); text-anchor: middle; }
 .bfl-node-text.is-bold { font-weight: 700; }
-.bfl-note-no { font-size: 10px; font-weight: 700; fill: var(--mid); text-anchor: end; }
-.bfl-role-label { font-size: 10px; font-weight: 700; stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
+.bfl-note-no { font-size: 12px; font-weight: 700; fill: var(--mid); text-anchor: end; }
+.bfl-role-label { font-size: 12px; font-weight: 700; stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
 .bfl-role-label.role-ai, .bfl-legend-role.role-ai { fill: var(--role-ai); }
 .bfl-role-label.role-rule, .bfl-legend-role.role-rule { fill: var(--role-rule); }
 .bfl-role-label.role-human, .bfl-legend-role.role-human { fill: var(--role-human); }
@@ -659,17 +657,17 @@ tr.kt-purpose td, tr.kt-goal td { background: var(--surface); }
 .arch-node.is-retired rect { stroke-dasharray: 5 4; }
 .arch-node.is-selected rect { stroke: var(--accent); stroke-width: 2.6; }
 .arch-name { font-size: 13px; font-weight: 700; fill: var(--ink); text-anchor: middle; }
-.arch-sub { font-size: 11px; fill: var(--ink-2); text-anchor: middle; }
+.arch-sub { font-size: 12px; fill: var(--ink-2); text-anchor: middle; }
 .arch-edge { fill: none; stroke: var(--edge); stroke-width: 1.5; }
 .arch-arrowhead { fill: var(--edge); }
-.arch-label { font-size: 11.5px; fill: var(--ink-2); stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
+.arch-label { font-size: 12px; fill: var(--ink-2); stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
 .arch-batch { font-size: 12px; fill: var(--ink); }
 .btn.is-retired { border-style: dashed; }
 /* ---- 判断・データ（P7c） ---- */
 .jd-layout { display: grid; grid-template-columns: minmax(320px, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
 .jd-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
 .jd-tab { border: 1px solid var(--line); border-bottom: 0; border-radius: 6px 6px 0 0; background: var(--surface); padding: 6px 12px; cursor: pointer; color: var(--ink); font: inherit; display: inline-flex; gap: 6px; align-items: center; }
-.jd-tab[aria-selected=true] { background: var(--panel); font-weight: 700; color: var(--accent); }
+.jd-tab[aria-pressed=true] { background: var(--panel); font-weight: 700; color: var(--accent); }
 .jd-src { width: 100%; font-family: var(--mono); font-size: 13px; }
 .jd-band { gap: 8px; }
 .jd-figure { overflow: auto; }
@@ -677,6 +675,15 @@ tr.kt-purpose td, tr.kt-goal td { background: var(--surface); }
 .jd-log-stop { color: var(--high); font-weight: 700; }
 .jd-log-done { color: var(--ok); font-weight: 700; }
 @media (max-width: 1000px) { .jd-layout { grid-template-columns: 1fr; } }
+/* 図の枠（P7c FIX-027）: 幅に合わせるときは SVG を枠の幅まで縮める */
+.bfl-frame { overflow: auto; }
+.bfl-frame.is-fit .bfl-svg { width: 100%; height: auto; }
+.bfl-more { margin: 0; }
+/* 狭い幅（FIX-028）: 詳細パネルは本文の上に全面で出す */
+@media (max-width: 800px) {
+  .detail { position: fixed; inset: 0; width: auto; z-index: 40; border-left: 0; }
+}
+.rk-heat.is-zero { opacity: .45; }
 
 /* 写した部品: ~/.claude/skills/dashboard/assets/dash.css（2026-11-26 に写す）
    変えたところ: :root を styles.css へ移した・目盛線の灰色を var(--d-grid)・印刷用の枠の灰色を var(--d-mute) にした */
@@ -1117,7 +1124,9 @@ tr.kt-purpose td, tr.kt-goal td { background: var(--surface); }
   }
 
   function csvLink(headers, rows, name) {
-    const esc = (v) => { const s = v == null ? '' : String(v); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    // ワークベンチで足した: Excel が式として読む値の先頭に ' を付ける（core/csv.js の csvSafe と同じ規則）
+    const safe = (s) => (/^[=+@\t\r\n]/.test(s) || (s.startsWith('-') && s !== '-' && !/^-[\d,]*\.?\d+$/.test(s)) ? "'" + s : s);
+    const esc = (v) => { const s = safe(v == null ? '' : String(v)); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
     const text = '﻿' + [headers, ...rows].map((r) => r.map(esc).join(',')).join('\r\n');
     return el('a', { class: 'd-csv', href: URL.createObjectURL(new Blob([text], { type: 'text/csv' })), download: (name || 'data') + '.csv', text: 'CSV をダウンロード' });
   }
@@ -3116,35 +3125,36 @@ const GROUPS = [
   { id: 'help', label: '使い方' },
 ];
 
+// select: 項目を選んだとき画面ごと描き直す（画面の中でも選んだ項目を強調する画面）。無い画面は詳細パネルだけを描き直す
 const SCREENS = [
   { id: 'cross', group: 'grasp', label: '横断' },
   { id: 'overview', group: 'grasp', label: '概要' },
-  { id: 'graph', group: 'grasp', label: '関係図' },
+  { id: 'graph', group: 'grasp', label: '関係図', select: true },
   { id: 'org', group: 'grasp', label: '体制' },
-  { id: 'list', group: 'grasp', label: '一覧' },
+  { id: 'list', group: 'grasp', label: '一覧', select: true },
   { id: 'decisions', group: 'grasp', label: '決定ログ' },
   { id: 'health', group: 'grasp', label: '健康診断' },
   { id: 'memos', group: 'grasp', label: 'メモ' },
   { id: 'hearing', group: 'req', label: 'ヒヤリング' },
-  { id: 'issues', group: 'req', label: '課題と質問' },
+  { id: 'issues', group: 'req', label: '課題と質問', select: true },
   { id: 'nfr', group: 'req', label: '非機能' },
-  { id: 'scope', group: 'req', label: 'スコープ' },
+  { id: 'scope', group: 'req', label: 'スコープ', select: true },
   { id: 'kpi-tree', group: 'req', label: 'KPI の木' },
   { id: 'bizflow', group: 'req', label: '業務フロー' },
-  { id: 'wbs', group: 'plan', label: 'WBS' },
-  { id: 'gantt', group: 'plan', label: 'ガント' },
+  { id: 'wbs', group: 'plan', label: 'WBS', select: true },
+  { id: 'gantt', group: 'plan', label: 'ガント', select: true },
   { id: 'progress', group: 'plan', label: '進捗（EVM）' },
-  { id: 'changes', group: 'plan', label: '変更管理' },
+  { id: 'changes', group: 'plan', label: '変更管理', select: true },
   { id: 'risks', group: 'plan', label: 'リスク' },
   { id: 'meeting-report', group: 'plan', label: '定例会資料' },
-  { id: 'data', group: 'design', label: 'データ設計' },
-  { id: 'functions', group: 'design', label: '画面・連携' },
-  { id: 'arch', group: 'design', label: '構成図' },
+  { id: 'data', group: 'design', label: 'データ設計', select: true },
+  { id: 'functions', group: 'design', label: '画面・連携', select: true },
+  { id: 'arch', group: 'design', label: '構成図', select: true },
   { id: 'crud', group: 'design', label: 'CRUD' },
   { id: 'estimate', group: 'design', label: '見積（FP）' },
   { id: 'master', group: 'design', label: 'マスタ点検' },
   { id: 'trace', group: 'test', label: 'トレーサビリティ' },
-  { id: 'tests', group: 'test', label: 'テスト' },
+  { id: 'tests', group: 'test', label: 'テスト', select: true },
   { id: 'prompts', group: 'tools', label: '指示文' },
   { id: 'import', group: 'tools', label: '取込' },
   { id: 'convert', group: 'tools', label: '資料の変換' },
@@ -5067,6 +5077,14 @@ function decodeBytes(buffer, encoding = 'auto') {
   }
 }
 
+// CSV・TSV に書き出す値を、Excel が式として読まない形にする（先頭が = + @ タブ 改行、または - の後が数値でないもの）
+function csvSafe(v) {
+  const s = String(v == null ? '' : v);
+  if (/^[=+@\t\r\n]/.test(s)) return "'" + s;
+  if (s.startsWith('-') && !/^-[\d,]*\.?\d+$/.test(s) && s !== '-') return "'" + s;
+  return s;
+}
+
 
 // ---- core/zip.js ----
 // zip の読み書きと、Office の XML を読む小道具。DOM に触れない。
@@ -5074,6 +5092,9 @@ function decodeBytes(buffer, encoding = 'auto') {
 // 展開は標準の DecompressionStream('deflate-raw')（Node 22 以上・新しい Chrome / Edge）。書き出しは無圧縮
 
 const zipUtf8 = new TextDecoder('utf-8');
+// 展開後の大きさの上限（zip 爆弾でタブが落ちないように）。1 つの中のファイルと、1 つの zip の合計
+const ZIP_ENTRY_MAX = 200 * 1024 * 1024;
+const ZIP_TOTAL_MAX = 400 * 1024 * 1024;
 const zu16 = (b, o) => b[o] | (b[o + 1] << 8);
 const zu32 = (b, o) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
 
@@ -5090,24 +5111,31 @@ function zipEntries(bytes) {
   const map = new Map();
   for (let k = 0; k < count; k++) {
     if (zu32(b, p) !== 0x02014b50) throw new Error('zip として読めません（目次が壊れています）');
-    const flag = zu16(b, p + 8), method = zu16(b, p + 10), size = zu32(b, p + 20);
+    const flag = zu16(b, p + 8), method = zu16(b, p + 10), size = zu32(b, p + 20), usize = zu32(b, p + 24);
     const nlen = zu16(b, p + 28), xlen = zu16(b, p + 30), clen = zu16(b, p + 32), local = zu32(b, p + 42);
     const name = zipUtf8.decode(b.subarray(p + 46, p + 46 + nlen));
     if (flag & 1) throw new Error('パスワード付きのファイルは読めません');
     const start = local + 30 + zu16(b, local + 26) + zu16(b, local + 28);
-    map.set(name, { method, data: b.subarray(start, start + size) });
+    map.set(name, { method, data: b.subarray(start, start + size), usize });
     p += 46 + nlen + xlen + clen;
   }
+  map.inflated = 0;   // 展開した大きさの合計（ZIP_TOTAL_MAX と比べる）
   return map;
 }
 
-async function zipInflate(data) {
+async function zipInflate(data, max) {
   if (typeof DecompressionStream !== 'function') throw new Error('このブラウザは圧縮されたファイルを展開できません（新しい Chrome / Edge で開いてください）');
   const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   const reader = stream.getReader();
   const parts = [];
   let n = 0;
-  for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); n += value.length; }
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.length;
+    if (n > max) { await reader.cancel().catch(() => {}); throw new Error(`展開すると大きすぎるファイルです（${Math.round(max / 1024 / 1024)}MB を超えます）`); }
+    parts.push(value);
+  }
   const out = new Uint8Array(n);
   let o = 0;
   for (const x of parts) { out.set(x, o); o += x.length; }
@@ -5119,7 +5147,13 @@ async function zipBytes(zip, name) {
   const e = zip.get(name);
   if (!e) return null;
   if (e.method === 0) return e.data;
-  if (e.method === 8) return zipInflate(e.data);
+  if (e.method === 8) {
+    const left = Math.min(ZIP_ENTRY_MAX, ZIP_TOTAL_MAX - (zip.inflated || 0));
+    if (e.usize > left) throw new Error(`展開すると大きすぎるファイルです（${name}）`);
+    const out = await zipInflate(e.data, left);
+    zip.inflated = (zip.inflated || 0) + out.length;
+    return out;
+  }
   throw new Error(`圧縮方式 ${e.method} は読めません`);
 }
 // 中のファイルの文字列（UTF-8）。無ければ null
@@ -5244,18 +5278,26 @@ const XLSX = (() => {
       const name = dec.decode(b.subarray(p + 46, p + 46 + nlen));
       if (flag & 1) throw new Error("パスワード付きの xlsx は読めません");
       const start = local + 30 + u16(b, local + 26) + u16(b, local + 28);
-      map.set(name, { method, data: b.subarray(start, start + size) });
+      map.set(name, { method, data: b.subarray(start, start + size), usize: u32(b, p + 24) });
       p += 46 + nlen + xlen + clen;
     }
     return map;
   }
+  // 展開後の大きさの上限（zip 爆弾でタブが落ちないように。写し元から足した）
+  const INFLATE_MAX = 200 * 1024 * 1024;
   async function inflate(data) {
     if (typeof DecompressionStream !== "function") throw new Error("このブラウザは圧縮された xlsx を展開できません（新しい Chrome / Edge で開いてください）");
     const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
     const reader = stream.getReader();
     const parts = [];
     let n = 0;
-    for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); n += value.length; }
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      n += value.length;
+      if (n > INFLATE_MAX) { await reader.cancel().catch(() => {}); throw new Error("展開すると大きすぎる xlsx です（200MB を超えます）"); }
+      parts.push(value);
+    }
     const out = new Uint8Array(n);
     let o = 0;
     for (const x of parts) { out.set(x, o); o += x.length; }
@@ -5265,7 +5307,10 @@ const XLSX = (() => {
     const e = zip.get(name);
     if (!e) return null;
     if (e.method === 0) return dec.decode(e.data);
-    if (e.method === 8) return dec.decode(await inflate(e.data));
+    if (e.method === 8) {
+      if (e.usize > INFLATE_MAX) throw new Error("展開すると大きすぎる xlsx です（200MB を超えます）");
+      return dec.decode(await inflate(e.data));
+    }
     throw new Error(`xlsx の圧縮方式 ${e.method} は読めません`);
   }
 
@@ -5298,12 +5343,17 @@ const XLSX = (() => {
     const xfs = (xml.match(/<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/) || [])[1] || "";
     return [...xfs.matchAll(/<xf\b([^>]*?)\/?>/g)].map((m) => {
       const id = +(attrs(m[1]).numFmtId || 0);
+      // 経過時間の書式（[h]:mm など。組み込みの 46）は日付ではなく「時:分」で出す
+      if (id === 46 || (custom.has(id) && /\[(h|m|s)+\]/i.test(String(custom.get(id))))) return "elapsed";
       return custom.has(id) ? isDateCode(custom.get(id)) : BUILTIN_DATE.has(id);
     });
   }
-  // 1900 年基準のシリアル値 → yyyy-mm-dd（時刻があれば hh:mm を足す。1 未満は時刻だけ）
-  function serialToDate(v) {
+  // シリアル値 → yyyy-mm-dd（時刻があれば hh:mm を足す。1 未満は時刻だけ）。date1904: Mac の 1904 年基準のブック
+  // 1900 年基準では Excel が 1900 年をうるう年として数えるので、60（1900-02-29）より前は 1 日足す
+  function serialToDate(v, date1904) {
     const p = (n) => String(n).padStart(2, "0");
+    if (date1904) v += 1462;
+    else if (v >= 1 && v < 60) v += 1;
     const ms = Math.round((v - 25569) * 86400000 / 60000) * 60000;
     const d = new Date(ms);
     const time = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
@@ -5311,20 +5361,30 @@ const XLSX = (() => {
     const day = `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
     return time === "00:00" ? day : `${day} ${time}`;
   }
+  // 経過時間（[h]:mm）: 1 日を 24 時間として 時:分 にする（36:00 など）
+  function serialToElapsed(v) {
+    const min = Math.round(v * 1440);
+    const sign = min < 0 ? "-" : "";
+    const a = Math.abs(min);
+    return `${sign}${Math.floor(a / 60)}:${String(a % 60).padStart(2, "0")}`;
+  }
   const colIndex = (ref) => { let n = 0; for (const ch of String(ref).replace(/\d+$/, "").toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; };
   const cleanNum = (s) => { const n = Number(s); return isFinite(n) ? String(Number(n.toPrecision(15))) : s; };
 
-  function sheetRows(xml, sst, dates) {
+  const ROW_MAX = 1048576, COL_MAX = 16384;   // Excel の行・列の上限（これを超える番号は壊れたファイルか細工）
+  function sheetRows(xml, sst, dates, date1904) {
     const rows = [];
     let rowNo = 0;
     for (const rm of String(xml).matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
       const ra = attrs(rm[1]);
       rowNo = ra.r ? +ra.r : rowNo + 1;
+      if (!(rowNo >= 1 && rowNo <= ROW_MAX)) throw new Error(`行の番号（${ra.r}）が Excel の上限を超えています。ファイルが壊れていないか確かめてください`);
       const row = [];
       let col = -1;
       for (const cm of String(rm[2] || "").matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
         const a = attrs(cm[1]);
         col = a.r ? colIndex(a.r) : col + 1;
+        if (!(col >= 0 && col < COL_MAX)) throw new Error(`列の番号（${a.r}）が Excel の上限を超えています。ファイルが壊れていないか確かめてください`);
         const inner = cm[2] || "";
         const v = (inner.match(/<v>([\s\S]*?)<\/v>/) || [])[1];
         let out = "";
@@ -5332,12 +5392,15 @@ const XLSX = (() => {
         else if (a.t === "inlineStr") out = runs((inner.match(/<is>([\s\S]*?)<\/is>/) || [])[1] || "");
         else if (a.t === "b") out = v === "1" ? "TRUE" : v === "0" ? "FALSE" : "";
         else if (a.t === "str" || a.t === "e") out = v != null ? unesc(v) : "";
-        else if (v != null) out = dates[+(a.s || 0)] ? serialToDate(Number(v)) : cleanNum(unesc(v));
+        else if (v != null) {
+          const kind = dates[+(a.s || 0)];
+          out = kind === "elapsed" ? serialToElapsed(Number(v)) : kind ? serialToDate(Number(v), date1904) : cleanNum(unesc(v));
+        }
         row[col] = out;
       }
-      rows[rowNo - 1] = Array.from(row, (x) => (x == null ? "" : x));
+      rows.push(Array.from(row, (x) => (x == null ? "" : x)));
     }
-    return Array.from(rows, (r) => r || []).filter((r) => r.some((x) => String(x).trim() !== ""));
+    return rows.filter((r) => r.some((x) => String(x).trim() !== ""));
   }
 
   // bytes（Uint8Array）→ [{ name, rows }]。rows は 2 次元の文字列の配列（1 行目が見出し）
@@ -5355,19 +5418,20 @@ const XLSX = (() => {
     }
     const sst = sharedStrings(await text(zip, "xl/sharedStrings.xml"));
     const dates = dateStyles(await text(zip, "xl/styles.xml"));
+    const date1904 = /<workbookPr\b[^>]*\bdate1904="(?:1|true)"/i.test(wb);
     const out = [];
     for (const m of wb.matchAll(/<sheet\b([^>]*?)\/?>/g)) {
       const a = attrs(m[1]);
       const path = target.get(a["r:id"]);
       const xml = path && (await text(zip, path));
       if (xml == null) continue; // グラフのシートなど
-      out.push({ name: a.name || `シート${out.length + 1}`, rows: sheetRows(xml, sst, dates) });
+      out.push({ name: a.name || `シート${out.length + 1}`, rows: sheetRows(xml, sst, dates, date1904) });
     }
     if (!out.length) throw new Error("xlsx にシートがありません");
     return out;
   }
 
-  return { sheets, entries, isDateCode, serialToDate, colIndex };
+  return { sheets, entries, isDateCode, serialToDate, serialToElapsed, colIndex };
 })();
 
 
@@ -5387,7 +5451,7 @@ const TABLEPREP = (() => {
 
   const str = (v) => (v == null ? "" : String(v));
   // CSV の書き出し（gemini-kit の mask.js の toCSV と同じ。Excel で開けるよう BOM つき・全セルを引用符で囲む）
-  const prepToCsv = (rows) => "\uFEFF" + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  const prepToCsv = (rows) => "\uFEFF" + rows.map((r) => r.map((v) => `"${csvSafe(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
   const isBlank = (v) => str(v).trim() === "";
 
   // ---------- 値の判定 ----------
@@ -5428,7 +5492,7 @@ const TABLEPREP = (() => {
   // 2 次元配列（1 行目が見出し）→ 表。すべて空の行は落とす
   function fromRows(rows, meta) {
     const all = (rows || []).map((r) => r.map(str));
-    const width = Math.max(0, ...all.map((r) => r.length));
+    const width = all.reduce((m, r) => Math.max(m, r.length), 0);
     if (!all.length || !width) throw new Error("表に行がありません");
     const pad = (r) => (r.length < width ? r.concat(Array(width - r.length).fill("")) : r);
     const body = all.slice(1).map(pad).filter((r) => r.some((v) => !isBlank(v)));
@@ -5799,7 +5863,7 @@ const mdCellText = (v) => String(v == null ? '' : v).replace(/\r?\n/g, '<br>').r
 // rows: 2 次元の配列（1 行目が見出し）。行の長さは最長の行にそろえる
 function mdTable(rows) {
   if (!rows.length) return '';
-  const w = Math.max(1, ...rows.map((r) => r.length));
+  const w = rows.reduce((m, r) => Math.max(m, r.length), 1);
   const pad = (r) => Array.from({ length: w }, (_, i) => mdCellText(r[i]));
   const [h, ...body] = rows;
   return [`| ${pad(h).join(' | ')} |`, `|${Array(w).fill('---').join('|')}|`, ...body.map((r) => `| ${pad(r).join(' | ')} |`)].join('\n');
@@ -5854,7 +5918,7 @@ async function xlsxToMd(bytes) {
 }
 function delimitedToMd(text, delim) {
   const rows = parseDelimited(text, delim);
-  const width = Math.max(0, ...rows.map((r) => r.length));
+  const width = rows.reduce((m, r) => Math.max(m, r.length), 0);
   return { body: tidy([mdTable(rows)]), counts: `行 ${Math.max(0, rows.length - 1)}・列 ${width}`, tables: [{ label: '', rows }] };
 }
 function jsonToMd(text) {
@@ -6603,12 +6667,15 @@ function parseChat(text, { year, today } = {}) {
   let cur = null;
   let date = '';
   let unparsed = 0;
-  const finish = () => { if (cur) { if (cur.text) out.push(cur); cur = null; } };
+  // 本文の無い見出しは発言にしないが、黙って消さずに読めなかった行として残す
+  const finish = () => { if (cur) { if (cur.text) out.push(cur); else { out.push({ at: '', speaker: '', text: cur.speaker, raw: true }); unparsed++; } cur = null; } };
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
     const dl = dateLine(l, base, year);
     if (dl) { date = dl; continue; }
-    const s = format === 'unknown' ? null : startOf(format, lines, i);
+    let s = format === 'unknown' ? null : startOf(format, lines, i);
+    // 見出し（名前 時刻）の直後の行は、見出しの形に合っても本文とする（「集合は 9:30」を新しい発言と読まない）
+    if (s && format === 'header' && cur && !cur.text) s = null;
     if (s) {
       finish();
       const d = s.date || date;
@@ -6652,11 +6719,12 @@ function bodyToLines(body) {
 
 
 // ---- core/mask.js ----
-// 写した部品: gemini-kit src/js/mask.js（2026-11-26）。外側の IIFE を、MASK だけを外に出す形に包み直した。中身は変えていない
+// 写した部品: gemini-kit src/js/mask.js（2026-11-26）。外側の IIFE を、MASK だけを外に出す形に包み直した。変えたところ: 短い行を列の数まで埋める（FIX-003）・書き出しで式になる値を無害にする（FIX-023）・文中の置き換えの重複を除く（FIX-019）
 // 貼り付けもファイル（CSV・TSV）も、この中の parseTable で読む（結果をそろえるため。P6c design.md）
 // 表（Excel からのコピー＝TSV、または CSV）を列ごとの規則でマスキングする。ブラウザの中だけで処理する。
 // ・同じ値には必ず同じ仮名を付ける（同じ接頭辞の列どうしで辞書を共有するので、別シートの結合キーも保てる）
 // ・対応表は別に出力する。対応表は社外に出さない
+
 const MASK = (() => {
 
   const RULES = {
@@ -6692,14 +6760,15 @@ const MASK = (() => {
     }
     row.push(cell);
     rows.push(row);
-    const n = Math.max(...rows.map((r) => r.length));
+    const n = rows.reduce((m, r) => Math.max(m, r.length), 0);
     return rows.map((r) => (r.length < n ? r.concat(Array(n - r.length).fill("")) : r));
   }
+  // 書き出すときは、式として読まれる値を無害にする（csv.js の csvSafe。写し元から足した）
   function toTSV(rows) {
-    return rows.map((r) => r.map((v) => (/[\t\n"]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v)).join("\t")).join("\n");
+    return rows.map((r) => r.map((v0) => { const v = csvSafe(v0); return /[\t\n"]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; }).join("\t")).join("\n");
   }
   function toCSV(rows) {
-    return "\uFEFF" + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+    return "\uFEFF" + rows.map((r) => r.map((v) => `"${csvSafe(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
   }
 
   // ---------- 値の判定 ----------
@@ -6777,6 +6846,9 @@ const MASK = (() => {
     const o = Object.assign({ header: true, replaceInText: true }, opt);
     const st = state || newState();
     if (!rows.length) return { rows: [], mapping: [], warnings: [] };
+    // xlsx の行は値のある最後の列までしかないので、列の数まで "" で埋める（CSV に undefined を書かない）
+    const width = rows.reduce((m, r) => Math.max(m, r.length), colRules.length);
+    rows = rows.map((r) => (r.length < width ? r.concat(Array(width - r.length).fill("")) : r)).map((r) => r.map((v) => (v == null ? "" : v)));
     const head = o.header ? rows[0] : rows[0].map((_, i) => `列${i + 1}`);
     const body = o.header ? rows.slice(1) : rows;
     const mapping = [];
@@ -6789,7 +6861,7 @@ const MASK = (() => {
     if (st.baseDate == null) {
       const ds = [];
       colRules.forEach((cr, c) => { if (cr.rule === "reldate") for (const r of body) { const d = parseDate(r[c]); if (d != null) ds.push(d); } });
-      if (ds.length) st.baseDate = Math.min(...ds);
+      if (ds.length) st.baseDate = ds.reduce((m, d) => Math.min(m, d), Infinity);
     }
     const textReplace = []; // 他の列の文中に出てくる元の値 → 仮名
     const outBody = body.map((r) => r.map((v) => v));
@@ -6853,6 +6925,11 @@ const MASK = (() => {
     });
     // そのままの列の文中にある元の値を置き換える（長いものから）
     if (o.replaceInText && textReplace.length) {
+      // 同じ元の値は 1 つにまとめる（行ごとに積むと、行数の 2 乗で遅くなる）
+      const uniq = new Map();
+      for (const [from, to] of textReplace) if (!uniq.has(from)) uniq.set(from, to);
+      textReplace.length = 0;
+      for (const x of uniq) textReplace.push(x);
       textReplace.sort((a, b) => b[0].length - a[0].length);
       colRules.forEach((cr, c) => {
         if (cr.rule !== "keep") return;
@@ -7355,14 +7432,17 @@ const FLOWCHART = (() => {
     ext: { name: "外部", decision: "外部の判断" },
   };
   const ROLE_ORDER = ["ai", "rule", "human", "ext"];
-  const roleOf = (w) => { const k = String(w).trim(); return ROLE_WORDS[k.toLowerCase()] || ROLE_WORDS[k] || null; };
+  // 書かれた語で表を引くときは、表そのものが持つキーだけを見る（constructor などで継承したものに当たらない。写し元から変えた）
+  const ownWord = (o, k) => (Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined);
+  const roleOf = (w) => { const k = String(w).trim(); return ownWord(ROLE_WORDS, k.toLowerCase()) || ownWord(ROLE_WORDS, k) || null; };
   // 末尾の {区分}（全角の ｛｝ も）
-  const TAG_RE = /\s*[{｛]([^}｝]*)[}｝]\s*$/;
+  // 先頭の \s* は付けない（空白が多いと照合が 2 乗で遅くなる。使う側で slice のあと trim する。写し元から変えた）
+  const TAG_RE = /[{｛]([^}｝]*)[}｝]\s*$/;
   // 末尾の参照 [JDG-001] [Q-04 TBL-001]（全角の ［］ も）。判断マスタ・テーブル定義・カルテの ID だけを対象にする
   // 写し元から変えたところ: 参照の接頭辞を JDG・TBL と台帳の全種別にする（カルテの Q・H・F・D は外す）
   const REF_PFX = ['JDG', 'TBL', ...Object.values(KINDS).map((k) => k.prefix)].join('|');
   const REF_ID = new RegExp(`(?:${REF_PFX})-\\d{1,4}(?![\\d-])`, 'g');
-  const REF_RE = new RegExp(`\\s*[[［]\\s*((?:(?:${REF_PFX})-\\d{1,4}(?![\\d-])[\\s,、，]*)+)[\\]］]\\s*$`);
+  const REF_RE = new RegExp(`[[［]\\s*((?:(?:${REF_PFX})-\\d{1,4}(?![\\d-])[\\s,、，]*)+)[\\]］]\\s*$`);
 
   // ---------- 文字幅 ----------
   // 全角は 1em、半角は 0.6em とみなす（メイリオ / Arial の近似）
@@ -7442,10 +7522,10 @@ const FLOWCHART = (() => {
       if ((m = s.match(/^(?:note|注記)\s+([A-Za-z0-9_]+)\s*[:：]?\s*(.+)$/i))) { pendingNotes.push({ id: m[1], text: m[2].trim(), line: ln }); return; }
       // ノードの行は種類のキーワードで始まる。ラベルに -> が入っていても矢印の行とみなさない。全角の ＠ も受け付ける
       m = s.match(/^(\S+)\s+([A-Za-z0-9_]+)(?:\s+[@＠](\[[^\]]+\]|[^\s{｛]+))?(?:\s*[{｛]([^}｝]*)[}｝])?(?:\s+(.*))?$/);
-      const isNode = m && (TYPE_WORDS[m[1].toLowerCase()] || TYPE_WORDS[m[1]]);
+      const isNode = m && (ownWord(TYPE_WORDS, m[1].toLowerCase()) || ownWord(TYPE_WORDS, m[1]));
       if (!isNode && (s.includes("->") || s.includes("..>"))) { parseEdge(s, ln); return; }
       if (m) {
-        const type = TYPE_WORDS[m[1].toLowerCase()] || TYPE_WORDS[m[1]];
+        const type = ownWord(TYPE_WORDS, m[1].toLowerCase()) || ownWord(TYPE_WORDS, m[1]);
         if (type) {
           const id = m[2];
           if (byId.has(id)) { err(ln, `ID「${id}」が2回定義されています（最初は ${byId.get(id).line} 行目）`); return; }
@@ -8231,7 +8311,16 @@ function judgePrompt(purpose, ledger) {
 
 
 const ARCH_BOX = { w: 200, h: 56, gapX: 230, gapY: 22, top: 44, margin: 20, labelH: 15 };
-const ARCH_LABEL_MAX = 3;   // 1 本の線に並べる連携名の数。超えたら「ほか N 件」
+const ARCH_LABEL_MAX = 3;
+// 真ん中の箱: 案件名の長さに合わせて広げ（最大 ARCH_SELF_MAX_W）、収まらなければ 2 行に折る。1 文字の幅の目安は 13px
+const ARCH_SELF_MAX_W = 300;
+const ARCH_CH_W = 13;
+function archWrap(text, perLine) {
+  const a = [...String(text)];
+  if (a.length <= perLine) return [a.join('')];
+  const second = a.slice(perLine);
+  return [a.slice(0, perLine).join(''), second.length > perLine ? second.slice(0, perLine - 1).join('') + '…' : second.join('')];
+}   // 1 本の線に並べる連携名の数。超えたら「ほか N 件」
 const ARCH_MARK = { planned: '（新規予定）', retired: '（廃止）' };
 
 const ifLabel = (it) => {
@@ -8267,7 +8356,10 @@ function archGraph(ledger) {
 function archLayout(ledger) {
   const g = archGraph(ledger);
   const B = ARCH_BOX;
-  const xL = B.margin, xC = B.margin + B.gapX + B.w, xR = B.margin + 2 * (B.gapX + B.w);
+  const selfW = Math.max(B.w, Math.min(ARCH_SELF_MAX_W, [...g.self].length * ARCH_CH_W + 24));
+  const selfLines = archWrap(g.self, Math.floor((selfW - 24) / ARCH_CH_W));
+  const selfH = B.h + (selfLines.length - 1) * 16;
+  const xL = B.margin, xC = B.margin + B.gapX + B.w, xR = xC + selfW + B.gapX;
   const place = (list, x) => {
     let y = B.top;
     return list.map((gr) => {
@@ -8282,7 +8374,7 @@ function archLayout(ledger) {
   const left = place(g.inbound, xL), right = place(g.outbound, xR);
   const bottom = (bs) => (bs.length ? Math.max(...bs.map((b) => b.y + b.h)) : B.top + B.h);
   const colBottom = Math.max(bottom(left), bottom(right));
-  const selfBox = { x: xC, y: (B.top + colBottom) / 2 - B.h / 2, w: B.w, h: B.h, label: g.self };
+  const selfBox = { x: xC, y: (B.top + colBottom) / 2 - selfH / 2, w: selfW, h: selfH, label: g.self, lines: selfLines };
   const edges = [];
   const edge = (box, dir) => {
     const labels = box.group.interfaces.slice(0, ARCH_LABEL_MAX).map(ifLabel);
@@ -8515,10 +8607,11 @@ const TABLEDEF = (() => {
   // 「A、B」「A|B」などの並び。数値だけのとき（100,000 など）は区切らない。
   // , は桁区切りと見分けられないので、ほかの区切りで分けたあと、数として読めない断片だけを , で分ける
   function splitVals(s) {
-    const t = strip(s);
+    // 空白の並びを先に 1 つにまとめてから分ける（空白の量指定を重ねた正規表現は、空白が多いと固まる。写し元から変えた）
+    const t = strip(s).replace(/\s+/g, " ");
     if (num(t) != null) return [t];
-    return t.split(/\s*(?:\||｜|、|／|\/|\s+または\s+|\s+又は\s+|\s+or\s+)\s*/i)
-      .flatMap((x) => (num(x) != null ? [x] : x.split(/\s*[,，]\s*/)))
+    return t.split(/ ?(?:\||｜|、|／|\/| または | 又は | or ) ?/i)
+      .flatMap((x) => (num(x) != null ? [x] : x.split(/ ?[,，] ?/)))
       .map((x) => x.trim()).filter(Boolean);
   }
 
@@ -8527,9 +8620,11 @@ const TABLEDEF = (() => {
   const ANY_RE = /^(?:|-|－|―|ー|—|\*|＊|任意|問わない|すべて|全て|指定なし|any)$/i;
   const OPS = { ">=": ">=", "≧": ">=", "＞＝": ">=", "=>": ">=", "<=": "<=", "≦": "<=", "＜＝": "<=", "=<": "<=", ">": ">", "＞": ">", "<": "<", "＜": "<", "=": "=", "＝": "=", "==": "=", "!=": "!=", "≠": "!=", "<>": "!=" };
   const WORD_OPS = { 以上: ">=", 以下: "<=", 未満: "<", 超: ">", を超える: ">", より大きい: ">", より小さい: "<" };
+  const COND_MAX = 200;   // 条件として読むセルの長さの上限。長いセルはそのままの値として扱う（正規表現で固まらない）
   function parseCond(raw) {
-    const t = strip(raw).replace(/^【(.*)】$/, "$1").trim();
+    const t = strip(raw).replace(/^【(.*)】$/, "$1").trim().replace(/\s+/g, " ");
     if (ANY_RE.test(t)) return { any: true };
+    if (t.length > COND_MAX) return { eq: [t] };
     // 「10万以上50万未満」「100 超 200 以下」
     let m = t.match(/^(.+?)\s*(以上|超|より大きい|を超え)\s*[、,・，]?\s*(.+?)\s*(以下|未満|まで)$/);
     if (m && num(m[1]) != null && num(m[3]) != null) {
@@ -8745,8 +8840,7 @@ const TABLEDEF = (() => {
   const rowCells = (r) => [r.table, r.name, r.key, r.typeName, r.ledgerType, r.required, r.pk, r.ref, r.digits, r.range, r.choices, r.state, r.basis, r.note];
   // Excel が式として読む先頭（= + @、- の後に数以外、タブ・改行）は ' を前に付ける。「-」だけのセルと数はそのまま
   const csvCell = (s) => {
-    let v = String(s == null ? "" : s);
-    if (/^[=+@\t\r]/.test(v) || /^-[^\d.\s]/.test(v)) v = "'" + v;
+    const v = csvSafe(s);   // 式になる値の無害化は csv.js に寄せた（- の後が数値でないものも ' を付ける）
     return /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
   };
   const toCsv = (rows) => "\uFEFF" + rows.map((r) => r.map(csvCell).join(",")).join("\r\n") + "\r\n";
@@ -8766,7 +8860,7 @@ function toEntityPatch(model, ledger) {
   const { strip } = TABLEDEF.util;
   const warnings = [];
   const ids = new Set(ledger.items.map((it) => it.id));
-  const existing = new Map(ledger.items.filter((it) => it.kind === 'entity' && it.physicalName).map((it) => [String(it.physicalName).toLowerCase(), it]));
+  const existing = new Map(ledger.items.filter((it) => it.kind === 'entity' && it.physicalName && it.status !== 'dropped').map((it) => [String(it.physicalName).toLowerCase(), it]));
   const byTbl = new Map(model.tables.map((t) => [t.id, t]));
   // TBL → 台帳の参照先（同じ差分の仮 ID か、既存の EN の ID）
   const target = new Map();
@@ -8791,7 +8885,9 @@ function toEntityPatch(model, ledger) {
       if (c.ref) {
         const to = target.get(c.ref);
         const refT = byTbl.get(c.ref);
-        const key = refT ? pkKey(refT) : '';
+        const exRef = refT && refT.physical ? existing.get(refT.physical.toLowerCase()) : null;
+        const exPk = exRef ? (exRef.columns || []).find((x) => x && x.pk) : null;
+        const key = exRef ? (exPk ? exPk.name : '') : refT ? pkKey(refT) : '';
         if (to && key) col.fk = { entity: to, column: key };
         else warnings.push(`${t.id}.${c.name}: 参照先 ${c.ref} を台帳のテーブルにできないので、外部キーを付けません（参照先に物理名か主キーの内部名がありません）`);
       }
@@ -8824,6 +8920,7 @@ function toEntityPatch(model, ledger) {
 
 
 const JUDGE = (() => {
+  // 外から来た見出し・ID をキーにする表は、プロトタイプの無い表にする（constructor などの名前で継承したものに当たらない。写し元から変えた）
   // 台帳の ID か（JDG・TBL は判断マスタとテーブル定義の ID）
   const LEDGER_PFX = new Set(Object.values(KINDS).map((k) => k.prefix));
   const isLedgerId = (id) => LEDGER_PFX.has(String(id).split("-")[0]);
@@ -8898,7 +8995,7 @@ const JUDGE = (() => {
         tb.rows.forEach((r, k) => {
           // 「交通費|備品」のように表の中で | を使うと列がずれる
           if (r.length !== tb.head.length) warn(tb.line + 2 + k, j.id, `判定表の ${k + 1} 行目のセルが ${r.length} 個です（見出しは ${tb.head.length} 個）。セルの中で | を使うと列がずれます。「どれか」は 交通費、備品 のように 、 で書く`);
-          const raw = {}, conds = {};
+          const raw = Object.create(null), conds = Object.create(null);
           for (const i of condIdx) { raw[head[i]] = U.strip(r[i] || ""); conds[head[i]] = U.parseCond(r[i] || ""); }
           const resultRaw = U.strip(r[ri] || "");
           const stateRaw = cols.st >= 0 ? U.strip(r[cols.st] || "") : "";
@@ -8975,12 +9072,20 @@ const JUDGE = (() => {
     const b = MDBLOCKS.parse(t).find((x) => x.type === "code" && x.lang === "flow");
     return b ? b.text : t;
   };
+  // ```flow の囲みの中を読むとき、欄の行番号に直すために足す行数（囲みの開始行。囲みが無ければ 0）
+  const flowLineOffset = (src) => {
+    const b = MDBLOCKS.parse(String(src == null ? "" : src)).find((x) => x.type === "code" && x.lang === "flow");
+    return b ? b.line : 0;
+  };
 
   function analyze(inp) {
     const flowSrc = String((inp && inp.flow) || ""), ledger = (inp && inp.ledger) || null;
     const T = TABLEDEF.parse((inp && inp.tables) || "");
     const J = parse((inp && inp.master) || "");
     const graph = flowSrc.trim() ? FLOWCHART.parse(flowText(flowSrc)) : null;
+    // 囲みの中を読んだときは、誤り・警告・箱・線の行番号を欄の行番号に直す（点検の「N 行目」で正しい行へ移る）
+    const off = flowSrc.trim() ? flowLineOffset(flowSrc) : 0;
+    if (graph && off) for (const x of [...graph.errors, ...graph.warnings, ...graph.nodes, ...graph.edges]) if (typeof x.line === "number") x.line += off;
     const warnings = [];
     const seenW = new Set();
     // src：警告の元の入力（flow / master / tables）。画面で行へ飛ぶのに使う
@@ -9036,7 +9141,7 @@ const JUDGE = (() => {
     const colState = (c) => (c.state === "確定" ? null : `${c.state || "状態なし"}`);
 
     // 判断ごと
-    const judgeInfo = {};
+    const judgeInfo = Object.create(null);
     for (const j of J.judges) {
       const reasons = [];
       const refs = [...j.basis, ...j.rows.flatMap((r) => r.basis)];
@@ -9049,7 +9154,7 @@ const JUDGE = (() => {
       }
       // 見る項目と条件列を列に結び付ける
       const inputCols = [];
-      const colMap = {};
+      const colMap = Object.create(null);
       if (tables.length) {
         for (const inp2 of j.inputs) {
           const hits = resolve(inp2);
@@ -9102,8 +9207,8 @@ const JUDGE = (() => {
     }
 
     // フローの分岐・データ
-    const nodes = {};
-    const marks = {};
+    const nodes = Object.create(null);
+    const marks = Object.create(null);
     const usable = graph && !graph.errors.length;
     if (usable) {
       const tblById = new Map(tables.map((t) => [t.id, t]));
@@ -9235,7 +9340,7 @@ const JUDGE = (() => {
       if (ni < 0) continue;
       const di = head.findIndex((h) => /^(説明|想定|期待|期待する結果|想定する結果)$/.test(h));
       b.rows.forEach((r, k) => {
-        const values = {};
+        const values = Object.create(null);
         head.forEach((h, i) => { if (i !== ni && h && !CASE_SKIP.test(h)) { const v = U.strip(r[i] || ""); if (v !== "") values[h] = v; } });
         cases.push({ name: U.strip(r[ni] || "") || `ケース ${cases.length + 1}`, desc: di >= 0 ? U.strip(r[di] || "") : "", values, line: b.line + 2 + k });
       });
@@ -9406,7 +9511,7 @@ const JUDGE = (() => {
   function unbundle(text) {
     const lines = String(text == null ? "" : text).replace(/\r\n?/g, "\n").split("\n");
     if (!lines.some((l) => MARK_RE.test(l.trim()))) return null;
-    const out = {};
+    const out = Object.create(null);
     let cur = null;
     for (const l of lines) {
       const m = l.trim().match(MARK_RE);
@@ -9420,7 +9525,7 @@ const JUDGE = (() => {
     const b = unbundle(text);
     if (b) return b;
     const t = String(text == null ? "" : text);
-    const out = {};
+    const out = Object.create(null);
     if (U.sections(t, "JDG").length) out.master = t;
     if (U.sections(t, "TBL").length) out.tables = t;
     if (caseList(t).length) out.cases = t;
@@ -9494,7 +9599,8 @@ const PENDING_STATUS = { open: '未着手', in_progress: '対応中', closed: '�
 function ledgerToKarte(ledger, { includeInternal = false, now, today } = {}) {
   const src = includeInternal ? ledger : visibleLedger(ledger, true);
   const items = src.items;
-  const byId = new Map(ledger.items.map((it) => [it.id, it]));
+  // 名前は書き出す範囲（社内のみを除いた後）から引く。社内のみの関係者の氏名を担当・質問先などに出さない
+  const byId = new Map(items.map((it) => [it.id, it]));
   const nameOf = (id) => { const p = id && byId.get(id); return p && p.kind === 'stakeholder' ? p.title : ''; };
   const names = (ids) => (ids || []).map(nameOf).filter(Boolean).join('、');
   const firstSource = (it) => (it.sources || []).find((s) => s && s.type !== 'template') || null;
@@ -10723,6 +10829,25 @@ function renderFlowSvg(geo, overlay) {
     }
   }
   return svg;
+}
+
+// 図の枠: 「幅に合わせる／実寸」の切り替えと、右に続きがあるときの一言（切れた図を全体と読み違えないように）
+// 切り替えは画面をまたいで覚える（業務フロー・判断・データで共通）
+let flowFit = false;
+function flowFrame(svg, cls) {
+  const wrap = h('div', { class: ['graph-wrap', 'bfl-frame', cls, flowFit && 'is-fit'] }, svg);
+  const hint = h('p', { class: 'small muted bfl-more', hidden: true, text: '→ 図は右に続きます（横にスクロールするか「幅に合わせる」）' });
+  const btn = h('button', { class: 'btn small', type: 'button', 'aria-pressed': String(flowFit), onclick: () => {
+    flowFit = !flowFit;
+    wrap.classList.toggle('is-fit', flowFit);
+    btn.setAttribute('aria-pressed', String(flowFit));
+    btn.textContent = flowFit ? '実寸で見る' : '幅に合わせる';
+    check();
+  } }, flowFit ? '実寸で見る' : '幅に合わせる');
+  // 画面に置かれてから、はみ出しているかを測る
+  const check = () => { hint.hidden = !(wrap.isConnected && wrap.scrollWidth > wrap.clientWidth + 2); };
+  setTimeout(check, 0);
+  return h('div', { class: 'stack bfl-figure-box' }, h('div', { class: 'row' }, btn, hint), wrap);
 }
 
 
@@ -12387,6 +12512,9 @@ const draft = {
   justRead: false,   // 読み取った直後（結果へスクロールする）
 };
 
+// ロックで貼った返答ごと消す（次に開いた人に見せない）
+function clearImportDraft() { clearDraft(false); }
+
 function clearDraft(keepText) {
   if (!keepText) draft.text = '';
   draft.extracted = null; draft.validated = null; draft.result = null; draft.accepted = new Set();
@@ -12635,7 +12763,10 @@ function renderImport(root, app, opts) {
 // 指示文画面: 目的を選ぶ → 指示文を作る → コピーして Gemini / NotebookLM に貼る
 
 
-const promptState = { purpose: 'minutes', freeText: '', meetingId: '', changeId: '', reportText: '', targetIds: [], memoIds: [], flowId: '' };
+const freshPromptState = () => ({ purpose: 'minutes', freeText: '', meetingId: '', changeId: '', reportText: '', targetIds: [], memoIds: [], flowId: '' });
+const promptState = freshPromptState();
+// ロックで自由記述・報告の貼り付け・選んだ項目を消す
+function clearPromptsState() { Object.assign(promptState, freshPromptState()); }
 
 const GUIDE = {
   notebooklm: 'NotebookLM に資料を入れたうえで、この文を質問欄に貼ります。返ってきた箇条書きは、「資料からの追加」の指示文と一緒に Gemini に貼ってください（指示文の末尾の「ここから資料」の下に貼ります）。',
@@ -13097,6 +13228,8 @@ function renderSettings(root, app) {
 
 
 const hearingState = { meetingId: null, picked: new Set(), drafts: {} };
+// ロックで回答の書きかけを消す（次に開いた人に見せない）
+function clearHearingState() { hearingState.meetingId = null; hearingState.picked = new Set(); hearingState.drafts = {}; }
 const TYPE_VALUES = KINDS.meeting.fields.meetingType.values;
 
 function meetings(ledger) {
@@ -14106,13 +14239,16 @@ const sizeText = (n) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB`
 
 async function addFiles(list, app) {
   const today = todayStr();
+  const st = convertState;   // ロックで替わったら、残りのファイルを読まない（結果をロックの後に残さない）
   for (const f of list) {
+    if (st !== convertState) return;
     const id = ++convertState.seq;
     const entry = { id, name: f.name, size: f.size, kind: '', ok: false, reason: '', md: null, counts: '', tables: null };
     convertState.files.push(entry);
     try {
       const bytes = new Uint8Array(await f.arrayBuffer());
       const r = await convertFile(f.name, bytes, { today });
+      if (st !== convertState) return;
       Object.assign(entry, r);
       if (r.kind === 'pdf') entry.pages = pdfPageCount(bytes);
       if (r.kind === 'image') entry.pages = 1;
@@ -14165,7 +14301,8 @@ function bundleBox(entry, app) {
 
 function geminiBox(entry, app) {
   const pages = h('input', { type: 'number', min: '1', value: entry.pages ? String(entry.pages) : '', class: 'num-in', 'aria-label': 'ページ数', 'data-fk': `g-${entry.id}-pages` });
-  pages.addEventListener('change', () => { entry.pages = Math.max(1, Math.floor(+pages.value)) || null; });
+  // 空欄・0・数でない値は「ページ数なし」（空欄を 1 ページとして点検しない）
+  pages.addEventListener('change', () => { const n = Math.floor(Number(pages.value)); entry.pages = pages.value.trim() !== '' && n >= 1 ? n : null; });
   const reply = h('textarea', { rows: '6', 'aria-label': 'Gemini の返事', placeholder: 'Gemini の返事（```markdown の囲みごと）を貼ります。何回かに分かれたときは、つなげて貼ってください。', 'data-fk': `g-${entry.id}-reply` });
   reply.value = entry.reply || '';
   reply.addEventListener('input', () => { entry.reply = reply.value; });
@@ -14460,8 +14597,13 @@ function renderPreprocess(root, app) {
   root.appendChild(h('p', { class: 'muted small', text: 'Teams（VTT・txt）・Meet の文字起こしを、1 行 1 発言（時刻 話者｜本文）に整え、つなぎ言葉（えー・あのー など）を除きます。結果は保存しません（ロックすると消えます）。整えた本文を「議事録の取込」の指示文に貼るか、メモにします。' }));
   const input = h('input', { type: 'file', multiple: true, accept: '.txt,.vtt,text/plain,text/vtt', id: 'pp-file', 'aria-label': '文字起こしのファイルを選ぶ' });
   input.addEventListener('change', async () => {
+    const st = preprocessState;   // ロックで替わったら、読んだ結果を捨てる
     for (const f of [...input.files]) {
-      try { addResult(f.name, decodeText(new Uint8Array(await f.arrayBuffer())).text); } catch (e) { toast(`${f.name} を読めませんでした`); }
+      try {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        if (st !== preprocessState) return;
+        addResult(f.name, decodeText(bytes).text);
+      } catch (e) { toast(`${f.name} を読めませんでした`); }
     }
     input.value = '';
     app.refresh();
@@ -14511,16 +14653,20 @@ function loadRows(rows, name) {
 function inferRules() {
   const rows = maskState.rows;
   const body = maskState.header ? rows.slice(1) : rows;
-  const width = Math.max(...rows.map((r) => r.length));
+  const width = rows.reduce((m, r) => Math.max(m, r.length), 0);
   maskState.rules = Array.from({ length: width }, (_, c) => MASK.infer(maskState.header ? rows[0][c] || '' : '', body.map((r) => r[c] || '')));
 }
 
 async function loadMaskFile(f, app) {
+  const st = maskState;   // ロックで替わったら、読んだ表を捨てる
   const bytes = new Uint8Array(await f.arrayBuffer());
   const kind = (await detectKind(f.name, bytes)).kind;
+  if (st !== maskState) return;
   try {
     if (kind === 'xlsx') {
-      maskState.sheets = (await XLSX.sheets(bytes)).filter((s) => s.rows.length);
+      const sheets = (await XLSX.sheets(bytes)).filter((s) => s.rows.length);
+      if (st !== maskState) return;
+      maskState.sheets = sheets;
       maskState.sheet = 0;
       if (!maskState.sheets.length) { toast('シートが空です'); return; }
       loadRows(maskState.sheets[0].rows, f.name);
@@ -14682,9 +14828,10 @@ function renderKpiTree(root, app) {
 
 
 const BF_TEMPLATE = 'title 業務の名前\nlane 担当\n\nstart S @担当 始まり\ntask A @担当 作業\nend Z @担当 終わり\n\nS -> A -> Z';
-let bizflowState = { selectedId: '', drafts: new Map(), newTitle: '', newPhase: 'asis' };
+// drafts: ID → { text: 書きかけ, base: 書き始めたときの台帳の記法 }。token: 書きかけを作った案件の印
+let bizflowState = { selectedId: '', drafts: new Map(), newTitle: '', newPhase: 'asis', token: null };
 function clearBizflowState() {
-  bizflowState = { selectedId: '', drafts: new Map(), newTitle: '', newPhase: 'asis' };
+  bizflowState = { selectedId: '', drafts: new Map(), newTitle: '', newPhase: 'asis', token: null };
 }
 
 const bfPhases = () => KINDS.bizflow.fields.phase.values;
@@ -14693,7 +14840,7 @@ const bfPhases = () => KINDS.bizflow.fields.phase.values;
 function flowFigure(f, notation) {
   const r = flowGeometry(notation);
   const box = h('div', { class: 'stack' });
-  box.appendChild(r.geo ? h('div', { class: 'graph-wrap bf-figure', 'data-flow': f.id }, renderFlowSvg(r.geo)) : h('div', { class: 'empty small', text: '描ける行がありません。記法を確かめてください' }));
+  box.appendChild(r.geo ? flowFrame(renderFlowSvg(r.geo), 'bf-figure') : h('div', { class: 'empty small', text: '描ける行がありません。記法を確かめてください' }));
   if (r.errors.length) box.appendChild(h('div', { class: 'notice warn small', role: 'status' },
     h('strong', { text: `誤り ${r.errors.length} 件（この行は図に出ていません${r.dropped.length > r.errors.length ? '。消えた箱につながる行も外しています' : ''}）` }),
     h('ul', null, r.errors.map((e) => h('li', { text: `${e.line} 行目: ${e.message}` })))));
@@ -14702,14 +14849,22 @@ function flowFigure(f, notation) {
 }
 
 function renderBizflow(root, app, opts) {
+  if (bizflowState.token !== store.token) { clearBizflowState(); bizflowState.token = store.token; }
   const ledger = store.view();
   const pres = store.presentation;
   if (opts && opts.flowId) { bizflowState.selectedId = opts.flowId; app.viewOpts = {}; }
   const flows = ledger.items.filter((it) => it.kind === 'bizflow');
   if (!flows.some((f) => f.id === bizflowState.selectedId)) bizflowState.selectedId = flows.length ? flows[0].id : '';
-  for (const id of [...bizflowState.drafts.keys()]) if (!flows.some((f) => f.id === id)) bizflowState.drafts.delete(id);
+  // 消えたフローの書きかけと、取込や取り消しで台帳の記法が書き始めから変わった書きかけは捨てる（古い書きかけで上書きしない）
+  const stale = [];
+  for (const [id, d] of [...bizflowState.drafts]) {
+    const f = flows.find((x) => x.id === id);
+    if (!f) bizflowState.drafts.delete(id);
+    else if (d.base !== String(f.notation || '')) { bizflowState.drafts.delete(id); stale.push(id); }
+  }
 
   root.appendChild(h('h2', { text: '業務フロー' }));
+  if (stale.length) root.appendChild(h('p', { class: 'notice warn small', role: 'status', text: `${stale.join('・')} の記法が取込か取り消しで変わったので、保存していない書きかけを捨てました。` }));
   root.appendChild(h('p', { class: 'muted small', text: '現行（As-Is）と導入後（To-Be）の業務の流れを、フロー記法で持ちます。図は記法から自動で配置します。フローは指示文「業務フローの作成」で Gemini に書かせて取り込むか、ここで記法を直して保存します。' }));
 
   // 左: 一覧と新しいフロー
@@ -14741,7 +14896,7 @@ function renderBizflow(root, app, opts) {
   const right = h('div', { class: 'stack' });
   const f = flows.find((x) => x.id === bizflowState.selectedId);
   if (f) {
-    const notation = bizflowState.drafts.has(f.id) ? bizflowState.drafts.get(f.id) : String(f.notation || '');
+    const notation = bizflowState.drafts.has(f.id) ? bizflowState.drafts.get(f.id).text : String(f.notation || '');
     right.appendChild(h('div', { class: 'row' },
       h('h3', null, h('span', { class: ['badge', f.phase === 'tobe' ? 'accent' : 'low'], text: enumLabel(bfPhases(), f.phase) }), ' ', h('button', { class: 'linklike', type: 'button', onclick: () => store.select(f.id) }, `${f.id} ${f.title}`)),
       statusBadge(f.kind, f.status)));
@@ -14750,12 +14905,12 @@ function renderBizflow(root, app, opts) {
       const ta = h('textarea', { class: 'mono', rows: '14', id: 'bf-notation', 'aria-label': 'フロー記法', spellcheck: 'false', 'data-fk': 'bf-notation-' + f.id });
       ta.value = notation;
       const count = h('span', { class: 'small muted', text: `${notation.length.toLocaleString()} / ${BIZFLOW_NOTATION_MAX.toLocaleString()} 字` });
-      ta.addEventListener('input', () => { bizflowState.drafts.set(f.id, ta.value); count.textContent = `${ta.value.length.toLocaleString()} / ${BIZFLOW_NOTATION_MAX.toLocaleString()} 字${ta.value !== f.notation ? '（未保存）' : ''}`; });
-      const dirty = bizflowState.drafts.has(f.id) && bizflowState.drafts.get(f.id) !== f.notation;
+      ta.addEventListener('input', () => { bizflowState.drafts.set(f.id, { text: ta.value, base: String(f.notation || '') }); count.textContent = `${ta.value.length.toLocaleString()} / ${BIZFLOW_NOTATION_MAX.toLocaleString()} 字${ta.value !== f.notation ? '（未保存）' : ''}`; });
+      const dirty = bizflowState.drafts.has(f.id) && bizflowState.drafts.get(f.id).text !== f.notation;
       right.appendChild(h('div', { class: 'stack' }, ta, h('div', { class: 'row' },
         h('button', { class: 'btn', type: 'button', id: 'bf-preview', onclick: () => app.refresh() }, '図を描き直す'),
         h('button', { class: 'btn primary', type: 'button', id: 'bf-save', onclick: () => {
-          const text = bizflowState.drafts.has(f.id) ? bizflowState.drafts.get(f.id) : f.notation;
+          const text = bizflowState.drafts.has(f.id) ? bizflowState.drafts.get(f.id).text : f.notation;
           if (!String(text).trim()) { toast('記法が空です'); return; }
           const r = store.applyLocal([{ op: 'update', id: f.id, set: { notation: text } }]);
           if (!r.ok) { toast(r.errors.join(' / ')); return; }
@@ -14787,11 +14942,13 @@ function renderBizflow(root, app, opts) {
 
 
 function archBox(box, label, sub, opts = {}) {
+  const lines = box.lines || [label];
   const g = s('g', { class: ['arch-node', opts.self && 'is-self', box.dashed && 'is-retired', opts.id && store.selectedId === opts.id && 'is-selected'], 'data-id': opts.id || null,
     tabindex: opts.id ? '0' : null, role: opts.id ? 'button' : null, 'aria-label': opts.id ? label + (sub ? `（${sub}）` : '') : null });
   g.appendChild(s('rect', { x: box.x, y: box.y, width: box.w, height: box.h, rx: 6 }));
-  g.appendChild(s('text', { class: 'arch-name', x: box.x + box.w / 2, y: box.y + (sub ? 23 : 33) }, label));
-  if (sub) g.appendChild(s('text', { class: 'arch-sub', x: box.x + box.w / 2, y: box.y + 41 }, sub));
+  lines.forEach((t, k) => g.appendChild(s('text', { class: 'arch-name', x: box.x + box.w / 2, y: box.y + (sub ? 23 : 33) + k * 16 }, t)));
+  if (sub) g.appendChild(s('text', { class: 'arch-sub', x: box.x + box.w / 2, y: box.y + 41 + (lines.length - 1) * 16 }, sub));
+  if (lines.length > 1 || lines[0] !== label) g.appendChild(s('title', null, label));
   if (opts.id) {
     const go = () => store.select(opts.id);
     g.addEventListener('click', go);
@@ -14816,7 +14973,8 @@ function renderArch(root, app) {
     // ラベルは相手の箱の側に寄せて縦に並べる
     const lines = [...e.labels, ...(e.more ? [`ほか ${e.more} 件`] : [])];
     const x = e.direction === 'in' ? e.from[0] + 8 : e.to[0] - 8;
-    const y0 = e.from[1] - 6 - (lines.length - 1) * ARCH_BOX.labelH;
+    const yBox = e.direction === 'in' ? e.from[1] : e.to[1];
+    const y0 = yBox - 6 - (lines.length - 1) * ARCH_BOX.labelH;
     lines.forEach((t, k) => svg.appendChild(s('text', { class: 'arch-label', x, y: y0 + k * ARCH_BOX.labelH, 'text-anchor': e.direction === 'in' ? 'start' : 'end' }, t)));
   }
   for (const b of [...L.left, ...L.right]) svg.appendChild(archBox(b, b.system.title + b.mark, b.system.id, { id: b.system.id }));
@@ -14845,7 +15003,7 @@ const JD_INPUTS = [
   { key: 'cases', label: 'ケース', prompt: 'judge-cases', ph: '| ケース | 説明 | テーブル名.列名 | … | JDG-001 |（デモで流す入力の表）' },
 ];
 const JD_VIEWS = [['map', '図と確認事項'], ['check', '点検'], ['demo', 'デモ']];
-const freshJudge = () => ({ src: { flow: '', master: '', tables: '', cases: '' }, input: 'flow', view: 'map', sel: null, demo: null, caseKey: '0', sig: '' });
+const freshJudge = () => ({ src: { flow: '', master: '', tables: '', cases: '' }, input: 'flow', view: 'map', sel: null, demo: null, caseKey: '0', sig: '', token: null });
 let judgeState = freshJudge();
 function clearJudgeState() { judgeState = freshJudge(); }
 
@@ -14864,8 +15022,8 @@ async function toImport(app, patch) {
 function inputPane(app) {
   const s = judgeState.src;
   const cur = JD_INPUTS.find((x) => x.key === judgeState.input);
-  const tabs = h('div', { class: 'jd-tabs', role: 'tablist', 'aria-label': '入力' }, JD_INPUTS.map((x) => h('button', {
-    type: 'button', role: 'tab', class: 'jd-tab', 'aria-selected': String(x.key === cur.key), id: `jd-in-${x.key}`,
+  const tabs = h('div', { class: 'jd-tabs', role: 'group', 'aria-label': '入力' }, JD_INPUTS.map((x) => h('button', {
+    type: 'button', class: 'jd-tab', 'aria-pressed': String(x.key === cur.key), id: `jd-in-${x.key}`,
     onclick: () => { judgeState.input = x.key; app.refresh(); },
   }, x.label, s[x.key].trim() ? h('span', { class: 'badge ok', text: '入力済み' }) : null)));
   const ta = h('textarea', { class: 'mono jd-src', rows: '18', id: `jd-src-${cur.key}`, 'aria-label': cur.label, placeholder: cur.ph, spellcheck: 'false' });
@@ -14904,7 +15062,7 @@ function figure(an, overlay) {
   if (!r.geo) return h('div', { class: 'empty small', text: judgeState.src.flow.trim() ? '描けるフローがありません。記法を確かめてください' : 'フローを貼ると、ここに図が出ます' });
   return h('div', { class: 'stack' },
     r.errors.length ? h('p', { class: 'notice warn small', text: `フロー記法に誤りが ${r.errors.length} 件あります。誤りの行を外して描いています（「点検」に行番号）。印は誤りを直すまで付きません` }) : null,
-    h('div', { class: 'graph-wrap jd-figure' }, renderFlowSvg(r.geo, overlay)));
+    flowFrame(renderFlowSvg(r.geo, overlay), 'jd-figure'));
 }
 
 function legend() {
@@ -14995,6 +15153,9 @@ function demoView(app, an) {
 }
 
 function renderJudge(root, app) {
+  // 別の案件で作った入力は持ち込まない（切り替えの通知を取りこぼしても、案件の印で捨てる）
+  if (judgeState.token !== null && judgeState.token !== store.token) clearJudgeState();
+  judgeState.token = store.token;
   const ledger = store.ledger;
   const s = judgeState.src;
   // 入力が変わったら、選んだ箱とデモを最初に戻す
@@ -15006,14 +15167,14 @@ function renderJudge(root, app) {
   root.appendChild(h('h2', { text: '判断・データ' }));
   root.appendChild(h('p', { class: 'muted small', text: '業務フローの分岐（判断）とデータの登録が決まっているかを、判断マスタ・テーブル定義・台帳の ID と突き合わせて点検します。入力は台帳に保存しません（ロックと案件の切り替えで消えます）。残すときは「まとめて保存」してください。' }));
   const c = an.counts;
-  const band = h('div', { class: 'row jd-band', role: 'status' },
+  const band = h('div', { class: 'row jd-band' },
     h('span', { class: 'badge ok', text: `✓ 確定 ${c.ok}` }), h('span', { class: 'badge mid', text: `? 未確定 ${c.open}` }), h('span', { class: 'badge high', text: `! マスタなし ${c.none}` }),
     h('span', { class: 'small muted', text: `判断 ${c.judges}・テーブル ${c.tables}（未確定の列 ${c.openCols}）・確認事項 ${an.items.length}・警告 ${c.warnings}` }));
-  const viewTabs = h('div', { class: 'jd-tabs', role: 'tablist', 'aria-label': '表示' }, JD_VIEWS.map(([k, label]) => h('button', {
-    type: 'button', role: 'tab', class: 'jd-tab', 'aria-selected': String(judgeState.view === k), id: `jd-v-${k}`, onclick: () => { judgeState.view = k; app.refresh(); },
+  const viewTabs = h('div', { class: 'jd-tabs', role: 'group', 'aria-label': '表示' }, JD_VIEWS.map(([k, label]) => h('button', {
+    type: 'button', class: 'jd-tab', 'aria-pressed': String(judgeState.view === k), id: `jd-v-${k}`, onclick: () => { judgeState.view = k; app.refresh(); },
   }, label)));
   const view = judgeState.view === 'check' ? checkView(app, an) : judgeState.view === 'demo' ? demoView(app, an) : mapView(app, an);
-  root.appendChild(h('div', { class: 'jd-layout' }, inputPane(app), h('div', { class: 'stack' }, band, viewTabs, h('div', { role: 'tabpanel', 'aria-labelledby': `jd-v-${judgeState.view}` }, view))));
+  root.appendChild(h('div', { class: 'jd-layout' }, inputPane(app), h('div', { class: 'stack' }, band, viewTabs, h('div', { 'aria-label': JD_VIEWS.find(([k]) => k === judgeState.view)[1] }, view))));
 }
 
 
@@ -15068,13 +15229,15 @@ function renderRisks(root, app) {
       const n = m.cells[p - 1][i - 1];
       const on = sel && sel.p === p && sel.i === i;
       return h('td', { class: 'rk-cell' }, h('button', {
-        type: 'button', class: ['rk-heat', 'rk-heat-' + heatLevel(p * i), on && 'is-on'], 'data-fk': `rk-cell-${p}-${i}`,
+        type: 'button', class: ['rk-heat', 'rk-heat-' + heatLevel(p * i), on && 'is-on', !n && 'is-zero'], 'data-fk': `rk-cell-${p}-${i}`,
         'aria-label': `見込み ${p}・影響 ${i}・点数 ${p * i}・${n} 件`, 'aria-pressed': String(!!on),
         onclick: () => { risksState.cell = on ? null : { p, i }; app.refresh(); },
-      }, n ? String(n) : '·'));
+      }, n ? String(n) : ''));   // 0 件のセルは数を出さず、色を薄くする（「無い」と「読めていない」を見分ける）
     })));
+  const heatTotal = m.cells.flat().reduce((a, n) => a + n, 0);
   root.appendChild(h('section', { class: 'card stack', id: 'risk-heat' },
     h('h3', { text: '見込み × 影響（監視中・対策中のリスクの件数）' }),
+    heatTotal ? null : h('p', { class: 'small', text: '監視中・対策中のリスクはありません。' }),
     h('div', { class: 'table-wrap' }, h('table', { class: 'list rk-matrix' }, h('thead', null, head), h('tbody', null, body))),
     h('p', { class: 'small muted', text: '色の段: 点数 1〜4・5〜9・10〜14・15〜25。セルを押すと、そのリスクだけを下の一覧に出します。' })));
 
@@ -15179,7 +15342,7 @@ function renderOrg(root, app) {
     h('div', { class: 'row' }, h('h3', { text: 'RACI 表' }), h('span', { class: 'spacer' }),
       h('label', { class: 'row small' }, '作業', sw('tasks', 'top', 'all', '根の作業だけ', 'すべて（中止・置き換え済みの決定も）')),
       h('label', { class: 'row small' }, '課題', sw('issues', 'open', 'all', '未完了だけ', 'すべて'))),
-    h('p', { class: 'small muted', text: `R 実行・A 承認（1 人）・C 相談・I 報告。薄い文字は、担当・決めた人から補ったもの（保存していない）。${pres ? '' : 'セルを押すと 空 → R → A → C → I → 空 と変わります（取り消し可）。'}` }),
+    h('p', { class: 'small muted', text: `R 実行・A 承認（1 人）・C 相談・I 報告。薄い文字は、担当・決めた人から補ったもの（保存していない）。${pres ? '' : 'セルを押すと 空 → R → A → C → I → 空 と変わります（取り消し可）。担当・決めた人から補った役（薄い字）がある人は、空にすると補いの役に戻ります。'}` }),
     rows.length && cols.length ? h('div', { class: 'table-wrap' }, h('table', { class: 'list raci-table' }, h('thead', null, head), h('tbody', null, body))) : h('div', { class: 'empty small', text: 'まだありません' })));
 }
 
@@ -15669,13 +15832,17 @@ function boot() {
   store.subscribe((reason) => {
     if (reason === 'select') {
       // 選んだ項目を画面の中でも強調する画面は、描き直す
-      if (['graph', 'list', 'data', 'gantt', 'wbs', 'issues', 'scope', 'changes', 'functions', 'tests', 'arch'].includes(app.view)) app.refresh();
+      const sc = SCREENS.find((x) => x.id === app.view);
+      if (sc && sc.select) app.refresh();
       else renderDetail(document.getElementById('detail'), app);
       return;
     }
     if (reason === 'save-error') { renderTopbar(); return; }
-    if (reason === 'lock') { clearConvertState(); clearMemosState(); clearPreprocessState(); clearMaskState(); clearBizflowState(); clearJudgeState(); return; }   // ロックのときだけ、資料の変換の結果を消す（続く vault の通知で描き直す）
-    if (reason === 'vault') { clearMasterState(); clearJudgeState(); }   // 案件の切り替えでも判断・データの入力を消す
+    // ロックのとき、画面が持つ一時の入力（貼った文・書きかけ・変換の結果）をすべて消す（続く vault の通知で描き直す）
+    if (reason === 'lock') { clearConvertState(); clearMemosState(); clearPreprocessState(); clearMaskState(); clearBizflowState(); clearJudgeState(); clearImportDraft(); clearPromptsState(); clearHearingState(); app.viewOpts = {}; return; }
+    if (reason === 'vault') { clearMasterState(); clearJudgeState(); }
+    // 案件の切り替え・置き換えでも、案件ごとの書きかけ（業務フロー）と判断・データの入力を消す（別の案件に持ち込まない）
+    if (reason === 'switch' || reason === 'replace') { clearBizflowState(); clearJudgeState(); }
     if (reason === 'presentation' && hiddenInPresentation(app.view)) { app.go('overview'); return; }
     app.refresh();
   });

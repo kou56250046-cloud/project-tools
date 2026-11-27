@@ -210,7 +210,7 @@ test('判断マスタ：区分ごとの点検・番号の列・セルの数', ()
 // ---------- 突き合わせ ----------
 test('突き合わせ：サンプル（台帳なし）の分岐の状態・件数・確認事項', () => {
   const an = JUDGE.analyze(SAMPLE);
-  assert.deepEqual(an.marks, { C: 'ok', B: 'ok', D: 'open', K: 'none', E: 'ok', G: 'open' });
+  assert.deepEqual({ ...an.marks }, { C: 'ok', B: 'ok', D: 'open', K: 'none', E: 'ok', G: 'open' });
   assert.deepEqual([an.counts.ok, an.counts.open, an.counts.none, an.counts.tables, an.counts.openCols], [2, 1, 1, 3, 2]);
   assert.ok(an.warnings.some((w) => w.kind === '台帳' && /台帳を渡していない/.test(w.message)));
   const it = (id) => an.items.find((x) => x.id === id);
@@ -372,7 +372,8 @@ test('テーブル定義を台帳のテーブルの差分にする（物理名�
   assert.deepEqual([c('amount').type, c('price').type, c('rate').type], ['int', 'decimal', 'decimal']);
   assert.equal(c('kind').type, 'code');
   assert.deepEqual(c('applicant').fk, { entity: 'new:TBL-002', column: 'employee_no' });
-  assert.deepEqual(c('payment').fk, { entity: ex.id, column: 'pay_no' }, '同じ物理名の既存のテーブルを指す');
+  // 既存のテーブルを指すときは、テーブル定義の主キー名ではなく、台帳のそのテーブルの主キー名を使う（FIX-005）
+  assert.deepEqual(c('payment').fk, { entity: ex.id, column: ex.columns.find((x) => x.pk).name }, '同じ物理名の既存のテーブルを指す');
   assert.equal(c('applicant').type, 'string', '参照の列は参照先の主キーの型');
   assert.match(c('amount').note, /範囲: 0 以上/);
   assert.match(c('kind').note, /選択肢: 甲 \/ 乙/);
@@ -384,6 +385,12 @@ test('テーブル定義を台帳のテーブルの差分にする（物理名�
   assert.deepEqual(v.ops.flatMap((o) => o.errors), []);
   const after = applyPatch(l2, v, new Set(v.ops.map((_, i) => i)), NOW).ledger;
   assert.deepEqual(validateLedger(after), []);
+  // 取り下げたテーブルは既存に数えない（FIX-006）
+  const l3 = structuredClone(l2);
+  l3.items.find((it) => it.id === ex.id).status = 'dropped';
+  const r3 = toEntityPatch(TABLEDEF.parse(src), l3);
+  assert.ok(r3.patch.ops.some((o) => o.item.physicalName === 'ORDERS'));
+  assert.ok(!r3.warnings.some((w) => w.includes(ex.id)));
 });
 
 // ---------- デモ ----------
@@ -391,7 +398,7 @@ test('デモ：サンプルの 5 ケースの終わり方と止まる理由', ()
   const an = JUDGE.analyze({ ...SAMPLE, ledger: loadLedger() });
   const cases = JUDGE.caseList(fx('cases.md'));
   assert.equal(cases.length, 5);
-  assert.deepEqual(cases[0].values, { '経費申請.金額': '3000', '経費申請.経費種別': '交通費', '経費申請.領収書あり': 'はい', '社員.役職': '一般', 'JDG-001': '一致' });
+  assert.deepEqual({ ...cases[0].values }, { '経費申請.金額': '3000', '経費申請.経費種別': '交通費', '経費申請.領収書あり': 'はい', '社員.役職': '一般', 'JDG-001': '一致' });
   const run = (c) => JUDGE.demo.run(JUDGE.demo.start(an, c.values), an);
   const r = cases.map(run);
   assert.deepEqual(r.map((s) => [s.status, s.cur]), [['done', 'Z'], ['done', 'Z'], ['stop', 'D'], ['stop', 'D'], ['stop', 'C']]);
@@ -448,7 +455,7 @@ test('まとめ保存して分けると元に戻る。種類の見分け（複�
   const d = JUDGE.detect(design);
   assert.deepEqual(Object.keys(d).sort(), ['flow', 'master', 'tables']);
   assert.equal(FLOWCHART.parse(d.flow).nodes.length, 12);
-  assert.deepEqual(JUDGE.detect('ただのメモ'), {});
+  assert.deepEqual({ ...JUDGE.detect('ただのメモ') }, {});
   const an = JUDGE.analyze({ flow: design, master: design, tables: design });
   assert.equal(an.graph.errors.length, 0);
   assert.equal(an.marks.D, 'open');
@@ -473,4 +480,41 @@ test('判断・データの指示文 4 つ: 設計の分類で plain、差し込
   assert.ok(flow.includes('# フロー記法') && flow.includes('DC-002'), '記法の説明と有効な決定');
   assert.ok(!flow.includes('DC-001 '), '置き換え済みの決定は載せない');
   assert.match(buildPrompt('table-def', l, { today: '2026-11-26' }), /- 物理名：expense_request\n- 区分：自システム/);
+});
+
+test('外から来た見出し・ID が constructor などでも落ちない（FIX-016）', () => {
+  const tables = ['## TBL-001 A', '| 列名 | 型 | キー | 根拠 | 状態 |', '|---|---|---|---|---|', '| 金額 | 通貨 | PK | RE-001 | 確定 |'].join('\n');
+  const master = ['## JDG-001 x', '- 区分：ルール', '| constructor | 結果 | 状態 |', '|---|---|---|', '| 1 | 可 | 確定 |'].join('\n');
+  assert.doesNotThrow(() => JUDGE.analyze({ master, tables }));
+  const an = JUDGE.analyze({ flow: 'start S 開始\nend Z 終了\nS -> Z', master: '' });
+  assert.equal(an.nodes.constructor, undefined);
+  assert.equal(an.nodes.toString, undefined);
+  assert.ok(FLOWCHART.parse('constructor A x').errors.length > 0, '種類の語に constructor を受け付けない');
+  assert.equal(FLOWCHART.roleOf('toString'), null);
+});
+
+test('判定表のセルに空白が並んでも固まらない（FIX-017）', () => {
+  const P = TABLEDEF.util.parseCond;
+  const t0 = Date.now();
+  P('a' + ' '.repeat(5000) + 'b');
+  P('a' + '\u3000'.repeat(5000) + 'b');
+  TABLEDEF.util.splitVals('a' + ' '.repeat(5000) + 'または' + ' '.repeat(5000) + 'b');
+  assert.ok(Date.now() - t0 < 500, `${Date.now() - t0}ms かかった`);
+  assert.deepEqual(P('交通費  または   備品'), { eq: ['交通費', '備品'] });
+});
+
+import { csvSafe } from '../src/core/csv.js';
+import { MASK } from '../src/core/mask.js';
+test('CSV・TSV の式になる値（FIX-023）: - の後が式なら \' を付け、純粋な数値はそのまま', () => {
+  for (const v of ['-1+1', '- 1+1', '-.5+1', "-2+3+cmd|' /C calc'!A0", '=HYPERLINK("x")', '+1', '@SUM(A1)']) assert.ok(csvSafe(v).startsWith("'"), v);
+  for (const v of ['-', '-100', '-1,000', '-0.5', '通常', '2026-11-27']) assert.equal(csvSafe(v), v);
+  assert.ok(!JUDGE.itemsCsv([{ kind: '判断', id: 'JDG-1', title: '-1+1', role: '', reason: '', askTo: '', options: '', qs: '' }]).includes(',-1+1'));
+  assert.ok(MASK.mappingCSV([{ column: '氏名', original: '=HYPERLINK("x")', masked: '氏名A' }]).includes(`"'=HYPERLINK`));
+  assert.ok(MASK.toTSV([['=1+1']]).startsWith("'="));
+});
+
+test('囲み付きのフローの誤りの行番号は、欄の行番号で出る（FIX-009）', () => {
+  const an = JUDGE.analyze({ flow: '説明\n```flow\nstart S 始まり\nfoo\n```' });
+  const w = an.warnings.find((x) => x.kind === 'フロー');
+  assert.equal(w.line, 4);
 });

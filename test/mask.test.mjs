@@ -57,3 +57,12 @@ test("マスキング：Excel の引用符つきセル（改行・タブ入り�
   assert.equal(MASK.toTSV(rows), 'a\tb\n"x\ny"\t"q""q"');
   assert.equal(MASK.seqFormat("03-1234-5678", 7), "00-0000-0007");
 });
+
+test("マスキング：xlsx のように短い行（右端の空セルが無い）でも CSV・TSV に undefined を書かない（FIX-003）", () => {
+  const rows = [["顧客名", "金額", "備考"], ["山田商事", "100"], ["佐藤工業", "200", "急ぎ"]];
+  const rules = [{ rule: "pseudo", prefix: "顧客" }, { rule: "keep" }, { rule: "keep" }];
+  const res = MASK.apply(rows, rules, MASK.newState());
+  assert.ok(!MASK.toCSV(res.rows).includes("undefined"));
+  assert.ok(!MASK.toTSV(res.rows).includes("undefined"));
+  assert.equal(res.rows[1].length, 3);
+});

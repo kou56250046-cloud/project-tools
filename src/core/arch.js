@@ -5,7 +5,16 @@
 import { KINDS, enumLabel } from './schema.js';
 
 export const ARCH_BOX = { w: 200, h: 56, gapX: 230, gapY: 22, top: 44, margin: 20, labelH: 15 };
-export const ARCH_LABEL_MAX = 3;   // 1 本の線に並べる連携名の数。超えたら「ほか N 件」
+export const ARCH_LABEL_MAX = 3;
+// 真ん中の箱: 案件名の長さに合わせて広げ（最大 ARCH_SELF_MAX_W）、収まらなければ 2 行に折る。1 文字の幅の目安は 13px
+export const ARCH_SELF_MAX_W = 300;
+const ARCH_CH_W = 13;
+function archWrap(text, perLine) {
+  const a = [...String(text)];
+  if (a.length <= perLine) return [a.join('')];
+  const second = a.slice(perLine);
+  return [a.slice(0, perLine).join(''), second.length > perLine ? second.slice(0, perLine - 1).join('') + '…' : second.join('')];
+}   // 1 本の線に並べる連携名の数。超えたら「ほか N 件」
 const ARCH_MARK = { planned: '（新規予定）', retired: '（廃止）' };
 
 const ifLabel = (it) => {
@@ -41,7 +50,10 @@ export function archGraph(ledger) {
 export function archLayout(ledger) {
   const g = archGraph(ledger);
   const B = ARCH_BOX;
-  const xL = B.margin, xC = B.margin + B.gapX + B.w, xR = B.margin + 2 * (B.gapX + B.w);
+  const selfW = Math.max(B.w, Math.min(ARCH_SELF_MAX_W, [...g.self].length * ARCH_CH_W + 24));
+  const selfLines = archWrap(g.self, Math.floor((selfW - 24) / ARCH_CH_W));
+  const selfH = B.h + (selfLines.length - 1) * 16;
+  const xL = B.margin, xC = B.margin + B.gapX + B.w, xR = xC + selfW + B.gapX;
   const place = (list, x) => {
     let y = B.top;
     return list.map((gr) => {
@@ -56,7 +68,7 @@ export function archLayout(ledger) {
   const left = place(g.inbound, xL), right = place(g.outbound, xR);
   const bottom = (bs) => (bs.length ? Math.max(...bs.map((b) => b.y + b.h)) : B.top + B.h);
   const colBottom = Math.max(bottom(left), bottom(right));
-  const selfBox = { x: xC, y: (B.top + colBottom) / 2 - B.h / 2, w: B.w, h: B.h, label: g.self };
+  const selfBox = { x: xC, y: (B.top + colBottom) / 2 - selfH / 2, w: selfW, h: selfH, label: g.self, lines: selfLines };
   const edges = [];
   const edge = (box, dir) => {
     const labels = box.group.interfaces.slice(0, ARCH_LABEL_MAX).map(ifLabel);

@@ -76,7 +76,7 @@ const mdCellText = (v) => String(v == null ? '' : v).replace(/\r?\n/g, '<br>').r
 // rows: 2 次元の配列（1 行目が見出し）。行の長さは最長の行にそろえる
 export function mdTable(rows) {
   if (!rows.length) return '';
-  const w = Math.max(1, ...rows.map((r) => r.length));
+  const w = rows.reduce((m, r) => Math.max(m, r.length), 1);
   const pad = (r) => Array.from({ length: w }, (_, i) => mdCellText(r[i]));
   const [h, ...body] = rows;
   return [`| ${pad(h).join(' | ')} |`, `|${Array(w).fill('---').join('|')}|`, ...body.map((r) => `| ${pad(r).join(' | ')} |`)].join('\n');
@@ -131,7 +131,7 @@ async function xlsxToMd(bytes) {
 }
 function delimitedToMd(text, delim) {
   const rows = parseDelimited(text, delim);
-  const width = Math.max(0, ...rows.map((r) => r.length));
+  const width = rows.reduce((m, r) => Math.max(m, r.length), 0);
   return { body: tidy([mdTable(rows)]), counts: `行 ${Math.max(0, rows.length - 1)}・列 ${width}`, tables: [{ label: '', rows }] };
 }
 function jsonToMd(text) {

@@ -116,12 +116,15 @@ export function parseChat(text, { year, today } = {}) {
   let cur = null;
   let date = '';
   let unparsed = 0;
-  const finish = () => { if (cur) { if (cur.text) out.push(cur); cur = null; } };
+  // 本文の無い見出しは発言にしないが、黙って消さずに読めなかった行として残す
+  const finish = () => { if (cur) { if (cur.text) out.push(cur); else { out.push({ at: '', speaker: '', text: cur.speaker, raw: true }); unparsed++; } cur = null; } };
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
     const dl = dateLine(l, base, year);
     if (dl) { date = dl; continue; }
-    const s = format === 'unknown' ? null : startOf(format, lines, i);
+    let s = format === 'unknown' ? null : startOf(format, lines, i);
+    // 見出し（名前 時刻）の直後の行は、見出しの形に合っても本文とする（「集合は 9:30」を新しい発言と読まない）
+    if (s && format === 'header' && cur && !cur.text) s = null;
     if (s) {
       finish();
       const d = s.date || date;

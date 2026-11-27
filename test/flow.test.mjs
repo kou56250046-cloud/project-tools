@@ -214,3 +214,11 @@ test('指示文「業務フローの作成」: 選んだフローの記法が全
   assert.ok(itemsText(r.ledger, true).includes('受注（現行）'));
   assert.ok(!itemsText(r.ledger, true).includes(marker));
 });
+
+test('ラベルに空白が多くても読み取りが遅くならない（FIX-020）', () => {
+  const t0 = Date.now();
+  FLOWCHART.parse('task A x' + ' '.repeat(20000) + 'y');
+  assert.ok(Date.now() - t0 < 300, `${Date.now() - t0}ms`);
+  const g = FLOWCHART.parse('task A 書類を読む   {AI}   [TK-001]\ntask B 次\nA -> B');
+  assert.deepEqual([g.nodes[0].label, g.nodes[0].role, g.nodes[0].refs], ['書類を読む', 'ai', ['TK-001']]);
+});

@@ -27,18 +27,26 @@ export const XLSX = (() => {
       const name = dec.decode(b.subarray(p + 46, p + 46 + nlen));
       if (flag & 1) throw new Error("パスワード付きの xlsx は読めません");
       const start = local + 30 + u16(b, local + 26) + u16(b, local + 28);
-      map.set(name, { method, data: b.subarray(start, start + size) });
+      map.set(name, { method, data: b.subarray(start, start + size), usize: u32(b, p + 24) });
       p += 46 + nlen + xlen + clen;
     }
     return map;
   }
+  // 展開後の大きさの上限（zip 爆弾でタブが落ちないように。写し元から足した）
+  const INFLATE_MAX = 200 * 1024 * 1024;
   async function inflate(data) {
     if (typeof DecompressionStream !== "function") throw new Error("このブラウザは圧縮された xlsx を展開できません（新しい Chrome / Edge で開いてください）");
     const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
     const reader = stream.getReader();
     const parts = [];
     let n = 0;
-    for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); n += value.length; }
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      n += value.length;
+      if (n > INFLATE_MAX) { await reader.cancel().catch(() => {}); throw new Error("展開すると大きすぎる xlsx です（200MB を超えます）"); }
+      parts.push(value);
+    }
     const out = new Uint8Array(n);
     let o = 0;
     for (const x of parts) { out.set(x, o); o += x.length; }
@@ -48,7 +56,10 @@ export const XLSX = (() => {
     const e = zip.get(name);
     if (!e) return null;
     if (e.method === 0) return dec.decode(e.data);
-    if (e.method === 8) return dec.decode(await inflate(e.data));
+    if (e.method === 8) {
+      if (e.usize > INFLATE_MAX) throw new Error("展開すると大きすぎる xlsx です（200MB を超えます）");
+      return dec.decode(await inflate(e.data));
+    }
     throw new Error(`xlsx の圧縮方式 ${e.method} は読めません`);
   }
 
@@ -81,12 +92,17 @@ export const XLSX = (() => {
     const xfs = (xml.match(/<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/) || [])[1] || "";
     return [...xfs.matchAll(/<xf\b([^>]*?)\/?>/g)].map((m) => {
       const id = +(attrs(m[1]).numFmtId || 0);
+      // 経過時間の書式（[h]:mm など。組み込みの 46）は日付ではなく「時:分」で出す
+      if (id === 46 || (custom.has(id) && /\[(h|m|s)+\]/i.test(String(custom.get(id))))) return "elapsed";
       return custom.has(id) ? isDateCode(custom.get(id)) : BUILTIN_DATE.has(id);
     });
   }
-  // 1900 年基準のシリアル値 → yyyy-mm-dd（時刻があれば hh:mm を足す。1 未満は時刻だけ）
-  function serialToDate(v) {
+  // シリアル値 → yyyy-mm-dd（時刻があれば hh:mm を足す。1 未満は時刻だけ）。date1904: Mac の 1904 年基準のブック
+  // 1900 年基準では Excel が 1900 年をうるう年として数えるので、60（1900-02-29）より前は 1 日足す
+  function serialToDate(v, date1904) {
     const p = (n) => String(n).padStart(2, "0");
+    if (date1904) v += 1462;
+    else if (v >= 1 && v < 60) v += 1;
     const ms = Math.round((v - 25569) * 86400000 / 60000) * 60000;
     const d = new Date(ms);
     const time = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
@@ -94,20 +110,30 @@ export const XLSX = (() => {
     const day = `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
     return time === "00:00" ? day : `${day} ${time}`;
   }
+  // 経過時間（[h]:mm）: 1 日を 24 時間として 時:分 にする（36:00 など）
+  function serialToElapsed(v) {
+    const min = Math.round(v * 1440);
+    const sign = min < 0 ? "-" : "";
+    const a = Math.abs(min);
+    return `${sign}${Math.floor(a / 60)}:${String(a % 60).padStart(2, "0")}`;
+  }
   const colIndex = (ref) => { let n = 0; for (const ch of String(ref).replace(/\d+$/, "").toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; };
   const cleanNum = (s) => { const n = Number(s); return isFinite(n) ? String(Number(n.toPrecision(15))) : s; };
 
-  function sheetRows(xml, sst, dates) {
+  const ROW_MAX = 1048576, COL_MAX = 16384;   // Excel の行・列の上限（これを超える番号は壊れたファイルか細工）
+  function sheetRows(xml, sst, dates, date1904) {
     const rows = [];
     let rowNo = 0;
     for (const rm of String(xml).matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
       const ra = attrs(rm[1]);
       rowNo = ra.r ? +ra.r : rowNo + 1;
+      if (!(rowNo >= 1 && rowNo <= ROW_MAX)) throw new Error(`行の番号（${ra.r}）が Excel の上限を超えています。ファイルが壊れていないか確かめてください`);
       const row = [];
       let col = -1;
       for (const cm of String(rm[2] || "").matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
         const a = attrs(cm[1]);
         col = a.r ? colIndex(a.r) : col + 1;
+        if (!(col >= 0 && col < COL_MAX)) throw new Error(`列の番号（${a.r}）が Excel の上限を超えています。ファイルが壊れていないか確かめてください`);
         const inner = cm[2] || "";
         const v = (inner.match(/<v>([\s\S]*?)<\/v>/) || [])[1];
         let out = "";
@@ -115,12 +141,15 @@ export const XLSX = (() => {
         else if (a.t === "inlineStr") out = runs((inner.match(/<is>([\s\S]*?)<\/is>/) || [])[1] || "");
         else if (a.t === "b") out = v === "1" ? "TRUE" : v === "0" ? "FALSE" : "";
         else if (a.t === "str" || a.t === "e") out = v != null ? unesc(v) : "";
-        else if (v != null) out = dates[+(a.s || 0)] ? serialToDate(Number(v)) : cleanNum(unesc(v));
+        else if (v != null) {
+          const kind = dates[+(a.s || 0)];
+          out = kind === "elapsed" ? serialToElapsed(Number(v)) : kind ? serialToDate(Number(v), date1904) : cleanNum(unesc(v));
+        }
         row[col] = out;
       }
-      rows[rowNo - 1] = Array.from(row, (x) => (x == null ? "" : x));
+      rows.push(Array.from(row, (x) => (x == null ? "" : x)));
     }
-    return Array.from(rows, (r) => r || []).filter((r) => r.some((x) => String(x).trim() !== ""));
+    return rows.filter((r) => r.some((x) => String(x).trim() !== ""));
   }
 
   // bytes（Uint8Array）→ [{ name, rows }]。rows は 2 次元の文字列の配列（1 行目が見出し）
@@ -138,17 +167,18 @@ export const XLSX = (() => {
     }
     const sst = sharedStrings(await text(zip, "xl/sharedStrings.xml"));
     const dates = dateStyles(await text(zip, "xl/styles.xml"));
+    const date1904 = /<workbookPr\b[^>]*\bdate1904="(?:1|true)"/i.test(wb);
     const out = [];
     for (const m of wb.matchAll(/<sheet\b([^>]*?)\/?>/g)) {
       const a = attrs(m[1]);
       const path = target.get(a["r:id"]);
       const xml = path && (await text(zip, path));
       if (xml == null) continue; // グラフのシートなど
-      out.push({ name: a.name || `シート${out.length + 1}`, rows: sheetRows(xml, sst, dates) });
+      out.push({ name: a.name || `シート${out.length + 1}`, rows: sheetRows(xml, sst, dates, date1904) });
     }
     if (!out.length) throw new Error("xlsx にシートがありません");
     return out;
   }
 
-  return { sheets, entries, isDateCode, serialToDate, colIndex };
+  return { sheets, entries, isDateCode, serialToDate, serialToElapsed, colIndex };
 })();

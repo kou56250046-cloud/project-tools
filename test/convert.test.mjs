@@ -203,3 +203,55 @@ test('JSON は safeParse で読み、__proto__・constructor のキーでプロ�
   assert.equal(Object.prototype.polluted, undefined);
   assert.ok(table.cols.includes('明細.品名'));
 });
+
+// ---- FIX-012・FIX-013: 展開後の大きさと、xlsx の行・列の番号の上限 ----
+import { makeZip } from '../tools/make-convert-samples.mjs';
+import { zipBytes, ZIP_ENTRY_MAX } from '../src/core/zip.js';
+
+const xlsxWithSheet = (sheet) => makeZip([
+  { name: 'xl/workbook.xml', data: '<workbook xmlns:r="r"><sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets></workbook>' },
+  { name: 'xl/_rels/workbook.xml.rels', data: '<Relationships><Relationship Id="rId1" Type="worksheet" Target="worksheets/sheet1.xml"/></Relationships>' },
+  { name: 'xl/worksheets/sheet1.xml', data: `<worksheet><sheetData>${sheet}</sheetData></worksheet>` },
+]);
+
+test('目次の展開後の大きさが上限を超える中のファイルは、展開する前に断る', async () => {
+  const z = makeZip([{ name: 'big.xml', data: 'x' }]);
+  // 目次（central directory）の展開後の大きさを 300MB に書き換える
+  const view = new DataView(z.buffer);
+  for (let i = z.length - 22; i >= 0; i--) if (view.getUint32(i, true) === 0x02014b50) { view.setUint32(i + 24, 300 * 1024 * 1024, true); break; }
+  await assert.rejects(zipBytes(zipEntries(z), 'big.xml'), /大きすぎる/);
+});
+
+test('目次が小さく偽っていても、展開しながら上限を超えたら止めて断る', async () => {
+  const big = new Uint8Array(ZIP_ENTRY_MAX + 1024);
+  const z = makeZip([{ name: 'bomb.xml', data: big }]);
+  const view = new DataView(z.buffer);
+  for (let i = z.length - 22; i >= 0; i--) if (view.getUint32(i, true) === 0x02014b50) { view.setUint32(i + 24, 10, true); break; }
+  assert.ok(z.length < 1024 * 1024, '圧縮後は小さい');
+  await assert.rejects(zipBytes(zipEntries(z), 'bomb.xml'), /大きすぎる/);
+});
+
+test('xlsx の行・列の番号が Excel の上限を超えると断る（巨大な配列を作らない）', async () => {
+  await assert.rejects(XLSX.sheets(xlsxWithSheet('<row r="300000000"><c r="A300000000" t="str"><v>x</v></c></row>')), /行の番号/);
+  await assert.rejects(XLSX.sheets(xlsxWithSheet('<row r="1"><c r="ZZZZZZ1" t="str"><v>x</v></c></row>')), /列の番号/);
+  // 飛んだ行番号は、出てきた順に詰める
+  const s = await XLSX.sheets(xlsxWithSheet('<row r="1"><c r="A1" t="str"><v>a</v></c></row><row r="5000"><c r="A5000" t="str"><v>b</v></c></row>'));
+  assert.deepEqual(s[0].rows, [['a'], ['b']]);
+});
+
+test('Excel の経過時間・1900 年 1〜2 月・1904 年基準（FIX-008）', async () => {
+  assert.equal(XLSX.serialToElapsed(1.5), '36:00');
+  assert.equal(XLSX.serialToDate(1), '1900-01-01');
+  assert.equal(XLSX.serialToDate(59), '1900-02-28');
+  assert.equal(XLSX.serialToDate(61), '1900-03-01');
+  assert.equal(XLSX.serialToDate(46351), XLSX.serialToDate(46351 - 1462, true), '1904 年基準は 1462 日ずれる');
+  const styles = '<styleSheet><numFmts><numFmt numFmtId="200" formatCode="[h]:mm"/></numFmts><cellXfs><xf numFmtId="0"/><xf numFmtId="200"/><xf numFmtId="14"/></cellXfs></styleSheet>';
+  const z = makeZip([
+    { name: 'xl/workbook.xml', data: '<workbook xmlns:r="r"><workbookPr date1904="1"/><sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets></workbook>' },
+    { name: 'xl/_rels/workbook.xml.rels', data: '<Relationships><Relationship Id="rId1" Type="worksheet" Target="worksheets/sheet1.xml"/></Relationships>' },
+    { name: 'xl/styles.xml', data: styles },
+    { name: 'xl/worksheets/sheet1.xml', data: '<worksheet><sheetData><row r="1"><c r="A1" s="1"><v>1.5</v></c><c r="B1" s="2"><v>0</v></c></row></sheetData></worksheet>' },
+  ]);
+  const s = await XLSX.sheets(z);
+  assert.deepEqual(s[0].rows[0], ['36:00', '1904-01-01']);
+});

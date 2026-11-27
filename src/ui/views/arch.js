@@ -6,11 +6,13 @@ import { h, s } from '../dom.js';
 import { store } from '../store.js';
 
 function archBox(box, label, sub, opts = {}) {
+  const lines = box.lines || [label];
   const g = s('g', { class: ['arch-node', opts.self && 'is-self', box.dashed && 'is-retired', opts.id && store.selectedId === opts.id && 'is-selected'], 'data-id': opts.id || null,
     tabindex: opts.id ? '0' : null, role: opts.id ? 'button' : null, 'aria-label': opts.id ? label + (sub ? `（${sub}）` : '') : null });
   g.appendChild(s('rect', { x: box.x, y: box.y, width: box.w, height: box.h, rx: 6 }));
-  g.appendChild(s('text', { class: 'arch-name', x: box.x + box.w / 2, y: box.y + (sub ? 23 : 33) }, label));
-  if (sub) g.appendChild(s('text', { class: 'arch-sub', x: box.x + box.w / 2, y: box.y + 41 }, sub));
+  lines.forEach((t, k) => g.appendChild(s('text', { class: 'arch-name', x: box.x + box.w / 2, y: box.y + (sub ? 23 : 33) + k * 16 }, t)));
+  if (sub) g.appendChild(s('text', { class: 'arch-sub', x: box.x + box.w / 2, y: box.y + 41 + (lines.length - 1) * 16 }, sub));
+  if (lines.length > 1 || lines[0] !== label) g.appendChild(s('title', null, label));
   if (opts.id) {
     const go = () => store.select(opts.id);
     g.addEventListener('click', go);
@@ -35,7 +37,8 @@ export function renderArch(root, app) {
     // ラベルは相手の箱の側に寄せて縦に並べる
     const lines = [...e.labels, ...(e.more ? [`ほか ${e.more} 件`] : [])];
     const x = e.direction === 'in' ? e.from[0] + 8 : e.to[0] - 8;
-    const y0 = e.from[1] - 6 - (lines.length - 1) * ARCH_BOX.labelH;
+    const yBox = e.direction === 'in' ? e.from[1] : e.to[1];
+    const y0 = yBox - 6 - (lines.length - 1) * ARCH_BOX.labelH;
     lines.forEach((t, k) => svg.appendChild(s('text', { class: 'arch-label', x, y: y0 + k * ARCH_BOX.labelH, 'text-anchor': e.direction === 'in' ? 'start' : 'end' }, t)));
   }
   for (const b of [...L.left, ...L.right]) svg.appendChild(archBox(b, b.system.title + b.mark, b.system.id, { id: b.system.id }));

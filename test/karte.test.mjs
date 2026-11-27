@@ -153,3 +153,16 @@ test('観点の対応', () => {
   assert.equal(karte.unknowns.find((u) => u.wbId === 'QA-002').viewpoint, '');
   for (const f of karte.facts) if (f.wbId.startsWith('RQ-')) assert.equal(f.viewpoint, '機能');
 });
+
+test('社内のみの関係者の氏名は、含めないとき担当・質問先・発言者などにも出ない（FIX-002）', () => {
+  const l = load();
+  const p = l.items.find((it) => it.kind === 'stakeholder');
+  p.internal = true;
+  const t = l.items.find((it) => it.kind === 'task' && !it.internal);
+  t.assignee = p.id;
+  const q = l.items.find((it) => it.kind === 'question' && !it.internal);
+  q.askTo = p.id;
+  const out = JSON.stringify(ledgerToKarte(l, { ...OPT, includeInternal: false }).karte);
+  assert.ok(!out.includes(p.title), '社内のみの氏名が出ている');
+  assert.ok(JSON.stringify(ledgerToKarte(l, { ...OPT, includeInternal: true }).karte).includes(p.title), '含めるときは出る');
+});

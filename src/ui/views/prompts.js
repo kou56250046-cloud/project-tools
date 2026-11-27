@@ -5,7 +5,10 @@ import { KINDS, enumLabel } from '../../core/schema.js';
 import { h, toast, copyText, todayStr } from '../dom.js';
 import { store } from '../store.js';
 
-const promptState = { purpose: 'minutes', freeText: '', meetingId: '', changeId: '', reportText: '', targetIds: [], memoIds: [], flowId: '' };
+const freshPromptState = () => ({ purpose: 'minutes', freeText: '', meetingId: '', changeId: '', reportText: '', targetIds: [], memoIds: [], flowId: '' });
+const promptState = freshPromptState();
+// ロックで自由記述・報告の貼り付け・選んだ項目を消す
+export function clearPromptsState() { Object.assign(promptState, freshPromptState()); }
 
 const GUIDE = {
   notebooklm: 'NotebookLM に資料を入れたうえで、この文を質問欄に貼ります。返ってきた箇条書きは、「資料からの追加」の指示文と一緒に Gemini に貼ってください（指示文の末尾の「ここから資料」の下に貼ります）。',

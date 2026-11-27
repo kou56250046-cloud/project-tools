@@ -1,8 +1,10 @@
-// 写した部品: gemini-kit src/js/mask.js（2026-11-26）。外側の IIFE を、MASK だけを外に出す形に包み直した。中身は変えていない
+// 写した部品: gemini-kit src/js/mask.js（2026-11-26）。外側の IIFE を、MASK だけを外に出す形に包み直した。変えたところ: 短い行を列の数まで埋める（FIX-003）・書き出しで式になる値を無害にする（FIX-023）・文中の置き換えの重複を除く（FIX-019）
 // 貼り付けもファイル（CSV・TSV）も、この中の parseTable で読む（結果をそろえるため。P6c design.md）
 // 表（Excel からのコピー＝TSV、または CSV）を列ごとの規則でマスキングする。ブラウザの中だけで処理する。
 // ・同じ値には必ず同じ仮名を付ける（同じ接頭辞の列どうしで辞書を共有するので、別シートの結合キーも保てる）
 // ・対応表は別に出力する。対応表は社外に出さない
+import { csvSafe } from './csv.js';
+
 export const MASK = (() => {
 
   const RULES = {
@@ -38,14 +40,15 @@ export const MASK = (() => {
     }
     row.push(cell);
     rows.push(row);
-    const n = Math.max(...rows.map((r) => r.length));
+    const n = rows.reduce((m, r) => Math.max(m, r.length), 0);
     return rows.map((r) => (r.length < n ? r.concat(Array(n - r.length).fill("")) : r));
   }
+  // 書き出すときは、式として読まれる値を無害にする（csv.js の csvSafe。写し元から足した）
   function toTSV(rows) {
-    return rows.map((r) => r.map((v) => (/[\t\n"]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v)).join("\t")).join("\n");
+    return rows.map((r) => r.map((v0) => { const v = csvSafe(v0); return /[\t\n"]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; }).join("\t")).join("\n");
   }
   function toCSV(rows) {
-    return "\uFEFF" + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+    return "\uFEFF" + rows.map((r) => r.map((v) => `"${csvSafe(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
   }
 
   // ---------- 値の判定 ----------
@@ -123,6 +126,9 @@ export const MASK = (() => {
     const o = Object.assign({ header: true, replaceInText: true }, opt);
     const st = state || newState();
     if (!rows.length) return { rows: [], mapping: [], warnings: [] };
+    // xlsx の行は値のある最後の列までしかないので、列の数まで "" で埋める（CSV に undefined を書かない）
+    const width = rows.reduce((m, r) => Math.max(m, r.length), colRules.length);
+    rows = rows.map((r) => (r.length < width ? r.concat(Array(width - r.length).fill("")) : r)).map((r) => r.map((v) => (v == null ? "" : v)));
     const head = o.header ? rows[0] : rows[0].map((_, i) => `列${i + 1}`);
     const body = o.header ? rows.slice(1) : rows;
     const mapping = [];
@@ -135,7 +141,7 @@ export const MASK = (() => {
     if (st.baseDate == null) {
       const ds = [];
       colRules.forEach((cr, c) => { if (cr.rule === "reldate") for (const r of body) { const d = parseDate(r[c]); if (d != null) ds.push(d); } });
-      if (ds.length) st.baseDate = Math.min(...ds);
+      if (ds.length) st.baseDate = ds.reduce((m, d) => Math.min(m, d), Infinity);
     }
     const textReplace = []; // 他の列の文中に出てくる元の値 → 仮名
     const outBody = body.map((r) => r.map((v) => v));
@@ -199,6 +205,11 @@ export const MASK = (() => {
     });
     // そのままの列の文中にある元の値を置き換える（長いものから）
     if (o.replaceInText && textReplace.length) {
+      // 同じ元の値は 1 つにまとめる（行ごとに積むと、行数の 2 乗で遅くなる）
+      const uniq = new Map();
+      for (const [from, to] of textReplace) if (!uniq.has(from)) uniq.set(from, to);
+      textReplace.length = 0;
+      for (const x of uniq) textReplace.push(x);
       textReplace.sort((a, b) => b[0].length - a[0].length);
       colRules.forEach((cr, c) => {
         if (cr.rule !== "keep") return;

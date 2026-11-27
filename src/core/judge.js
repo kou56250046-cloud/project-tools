@@ -8,6 +8,7 @@ import { MDBLOCKS } from './mdblocks.js';
 import { TABLEDEF } from './table-def.js';
 
 export const JUDGE = (() => {
+  // 外から来た見出し・ID をキーにする表は、プロトタイプの無い表にする（constructor などの名前で継承したものに当たらない。写し元から変えた）
   // 台帳の ID か（JDG・TBL は判断マスタとテーブル定義の ID）
   const LEDGER_PFX = new Set(Object.values(KINDS).map((k) => k.prefix));
   const isLedgerId = (id) => LEDGER_PFX.has(String(id).split("-")[0]);
@@ -82,7 +83,7 @@ export const JUDGE = (() => {
         tb.rows.forEach((r, k) => {
           // 「交通費|備品」のように表の中で | を使うと列がずれる
           if (r.length !== tb.head.length) warn(tb.line + 2 + k, j.id, `判定表の ${k + 1} 行目のセルが ${r.length} 個です（見出しは ${tb.head.length} 個）。セルの中で | を使うと列がずれます。「どれか」は 交通費、備品 のように 、 で書く`);
-          const raw = {}, conds = {};
+          const raw = Object.create(null), conds = Object.create(null);
           for (const i of condIdx) { raw[head[i]] = U.strip(r[i] || ""); conds[head[i]] = U.parseCond(r[i] || ""); }
           const resultRaw = U.strip(r[ri] || "");
           const stateRaw = cols.st >= 0 ? U.strip(r[cols.st] || "") : "";
@@ -159,12 +160,20 @@ export const JUDGE = (() => {
     const b = MDBLOCKS.parse(t).find((x) => x.type === "code" && x.lang === "flow");
     return b ? b.text : t;
   };
+  // ```flow の囲みの中を読むとき、欄の行番号に直すために足す行数（囲みの開始行。囲みが無ければ 0）
+  const flowLineOffset = (src) => {
+    const b = MDBLOCKS.parse(String(src == null ? "" : src)).find((x) => x.type === "code" && x.lang === "flow");
+    return b ? b.line : 0;
+  };
 
   function analyze(inp) {
     const flowSrc = String((inp && inp.flow) || ""), ledger = (inp && inp.ledger) || null;
     const T = TABLEDEF.parse((inp && inp.tables) || "");
     const J = parse((inp && inp.master) || "");
     const graph = flowSrc.trim() ? FLOWCHART.parse(flowText(flowSrc)) : null;
+    // 囲みの中を読んだときは、誤り・警告・箱・線の行番号を欄の行番号に直す（点検の「N 行目」で正しい行へ移る）
+    const off = flowSrc.trim() ? flowLineOffset(flowSrc) : 0;
+    if (graph && off) for (const x of [...graph.errors, ...graph.warnings, ...graph.nodes, ...graph.edges]) if (typeof x.line === "number") x.line += off;
     const warnings = [];
     const seenW = new Set();
     // src：警告の元の入力（flow / master / tables）。画面で行へ飛ぶのに使う
@@ -220,7 +229,7 @@ export const JUDGE = (() => {
     const colState = (c) => (c.state === "確定" ? null : `${c.state || "状態なし"}`);
 
     // 判断ごと
-    const judgeInfo = {};
+    const judgeInfo = Object.create(null);
     for (const j of J.judges) {
       const reasons = [];
       const refs = [...j.basis, ...j.rows.flatMap((r) => r.basis)];
@@ -233,7 +242,7 @@ export const JUDGE = (() => {
       }
       // 見る項目と条件列を列に結び付ける
       const inputCols = [];
-      const colMap = {};
+      const colMap = Object.create(null);
       if (tables.length) {
         for (const inp2 of j.inputs) {
           const hits = resolve(inp2);
@@ -286,8 +295,8 @@ export const JUDGE = (() => {
     }
 
     // フローの分岐・データ
-    const nodes = {};
-    const marks = {};
+    const nodes = Object.create(null);
+    const marks = Object.create(null);
     const usable = graph && !graph.errors.length;
     if (usable) {
       const tblById = new Map(tables.map((t) => [t.id, t]));
@@ -419,7 +428,7 @@ export const JUDGE = (() => {
       if (ni < 0) continue;
       const di = head.findIndex((h) => /^(説明|想定|期待|期待する結果|想定する結果)$/.test(h));
       b.rows.forEach((r, k) => {
-        const values = {};
+        const values = Object.create(null);
         head.forEach((h, i) => { if (i !== ni && h && !CASE_SKIP.test(h)) { const v = U.strip(r[i] || ""); if (v !== "") values[h] = v; } });
         cases.push({ name: U.strip(r[ni] || "") || `ケース ${cases.length + 1}`, desc: di >= 0 ? U.strip(r[di] || "") : "", values, line: b.line + 2 + k });
       });
@@ -590,7 +599,7 @@ export const JUDGE = (() => {
   function unbundle(text) {
     const lines = String(text == null ? "" : text).replace(/\r\n?/g, "\n").split("\n");
     if (!lines.some((l) => MARK_RE.test(l.trim()))) return null;
-    const out = {};
+    const out = Object.create(null);
     let cur = null;
     for (const l of lines) {
       const m = l.trim().match(MARK_RE);
@@ -604,7 +613,7 @@ export const JUDGE = (() => {
     const b = unbundle(text);
     if (b) return b;
     const t = String(text == null ? "" : text);
-    const out = {};
+    const out = Object.create(null);
     if (U.sections(t, "JDG").length) out.master = t;
     if (U.sections(t, "TBL").length) out.tables = t;
     if (caseList(t).length) out.cases = t;

@@ -53,13 +53,15 @@ export function renderRisks(root, app) {
       const n = m.cells[p - 1][i - 1];
       const on = sel && sel.p === p && sel.i === i;
       return h('td', { class: 'rk-cell' }, h('button', {
-        type: 'button', class: ['rk-heat', 'rk-heat-' + heatLevel(p * i), on && 'is-on'], 'data-fk': `rk-cell-${p}-${i}`,
+        type: 'button', class: ['rk-heat', 'rk-heat-' + heatLevel(p * i), on && 'is-on', !n && 'is-zero'], 'data-fk': `rk-cell-${p}-${i}`,
         'aria-label': `見込み ${p}・影響 ${i}・点数 ${p * i}・${n} 件`, 'aria-pressed': String(!!on),
         onclick: () => { risksState.cell = on ? null : { p, i }; app.refresh(); },
-      }, n ? String(n) : '·'));
+      }, n ? String(n) : ''));   // 0 件のセルは数を出さず、色を薄くする（「無い」と「読めていない」を見分ける）
     })));
+  const heatTotal = m.cells.flat().reduce((a, n) => a + n, 0);
   root.appendChild(h('section', { class: 'card stack', id: 'risk-heat' },
     h('h3', { text: '見込み × 影響（監視中・対策中のリスクの件数）' }),
+    heatTotal ? null : h('p', { class: 'small', text: '監視中・対策中のリスクはありません。' }),
     h('div', { class: 'table-wrap' }, h('table', { class: 'list rk-matrix' }, h('thead', null, head), h('tbody', null, body))),
     h('p', { class: 'small muted', text: '色の段: 点数 1〜4・5〜9・10〜14・15〜25。セルを押すと、そのリスクだけを下の一覧に出します。' })));
 

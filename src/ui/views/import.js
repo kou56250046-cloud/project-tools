@@ -20,6 +20,9 @@ const draft = {
   justRead: false,   // 読み取った直後（結果へスクロールする）
 };
 
+// ロックで貼った返答ごと消す（次に開いた人に見せない）
+export function clearImportDraft() { clearDraft(false); }
+
 function clearDraft(keepText) {
   if (!keepText) draft.text = '';
   draft.extracted = null; draft.validated = null; draft.result = null; draft.accepted = new Set();

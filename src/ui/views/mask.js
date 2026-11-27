@@ -24,16 +24,20 @@ function loadRows(rows, name) {
 function inferRules() {
   const rows = maskState.rows;
   const body = maskState.header ? rows.slice(1) : rows;
-  const width = Math.max(...rows.map((r) => r.length));
+  const width = rows.reduce((m, r) => Math.max(m, r.length), 0);
   maskState.rules = Array.from({ length: width }, (_, c) => MASK.infer(maskState.header ? rows[0][c] || '' : '', body.map((r) => r[c] || '')));
 }
 
 async function loadMaskFile(f, app) {
+  const st = maskState;   // ロックで替わったら、読んだ表を捨てる
   const bytes = new Uint8Array(await f.arrayBuffer());
   const kind = (await detectKind(f.name, bytes)).kind;
+  if (st !== maskState) return;
   try {
     if (kind === 'xlsx') {
-      maskState.sheets = (await XLSX.sheets(bytes)).filter((s) => s.rows.length);
+      const sheets = (await XLSX.sheets(bytes)).filter((s) => s.rows.length);
+      if (st !== maskState) return;
+      maskState.sheets = sheets;
       maskState.sheet = 0;
       if (!maskState.sheets.length) { toast('シートが空です'); return; }
       loadRows(maskState.sheets[0].rows, f.name);
