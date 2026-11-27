@@ -13,7 +13,8 @@ export function clearMemosState() {
 
 const memoTypes = () => KINDS.memo.fields.memoType.values;
 const memoTotal = (ledger) => ledger.items.filter((it) => it.kind === 'memo').reduce((a, it) => a + String(it.body || '').length, 0);
-const fileSafeName = (s) => String(s || '案件').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 40);
+// 書き出すファイルの名前は案件 ID と日付だけ（案件名を入れない。FIX-025）
+const memoFileBase = () => `anken_${store.workspace.activeId || 'project'}`;
 const ymd = () => todayStr().replace(/-/g, '');
 
 // メモを台帳に足す（前処理の画面からも使う）。戻り値 { ok, id? }
@@ -131,7 +132,7 @@ export function renderMemos(root, app) {
         } }, '消す'))))))) : h('div', { class: 'empty small', text: all.length ? '条件に合うメモはありません' : 'まだメモはありません' }),
     h('div', { class: 'row' },
       h('span', { class: 'small muted', text: `${sel.length} 件選択中` }),
-      h('button', { class: 'btn', type: 'button', id: 'memo-export-json', disabled: !sel.length, onclick: () => download(`${fileSafeName(ledger.project.name)}_memo_${ymd()}.json`, exportJson(ledger, sel)) }, 'JSON で書き出す'),
-      h('button', { class: 'btn', type: 'button', id: 'memo-export-md', disabled: !sel.length, onclick: () => download(`${fileSafeName(ledger.project.name)}_memo_${ymd()}.md`, exportMd(ledger, sel), 'text/markdown;charset=utf-8') }, 'md で書き出す'),
+      h('button', { class: 'btn', type: 'button', id: 'memo-export-json', disabled: !sel.length, onclick: () => download(`${memoFileBase()}_memo_${ymd()}.json`, exportJson(ledger, sel)) }, 'JSON で書き出す'),
+      h('button', { class: 'btn', type: 'button', id: 'memo-export-md', disabled: !sel.length, onclick: () => download(`${memoFileBase()}_memo_${ymd()}.md`, exportMd(ledger, sel), 'text/markdown;charset=utf-8') }, 'md で書き出す'),
       h('button', { class: 'btn primary', type: 'button', id: 'memo-to-prompt', disabled: !sel.length, onclick: () => app.go('prompts', { purpose: 'memo', memoIds: sel.map((m) => m.id) }) }, 'メモからの取込の指示文を開く'))));
 }

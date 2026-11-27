@@ -62,3 +62,12 @@ export function hiddenScreenInPresentation(s) {
 export function screenById(id) {
   return SCREENS.find((s) => s.id === id) || null;
 }
+
+// Web で配信されたページか（GitHub Pages など）。そこでは台帳を作らず・開かず、ダウンロードの案内だけを出す（FIX-024）
+// 同じ github.io の別のページとオリジンが同じになり、保存の箱や解錠後の画面を読まれうるため。CLAUDE.md の制約 4「配布にだけ使う」
+// 確認用のローカルの配信（localhost・127.0.0.1・[::1]・*.localhost）は除く
+export function isHostedLocation(protocol, hostname) {
+  if (protocol !== 'http:' && protocol !== 'https:') return false;
+  const h = String(hostname || '').toLowerCase();
+  return !(h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1' || h.endsWith('.localhost'));
+}

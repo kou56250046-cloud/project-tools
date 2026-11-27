@@ -45,7 +45,7 @@ import { renderKpiTree } from './ui/views/kpi-tree.js';
 import { renderBizflow, clearBizflowState } from './ui/views/bizflow.js';
 import { renderRisks } from './ui/views/risks.js';
 import { renderOrg } from './ui/views/org.js';
-import { GROUPS, SCREENS, NO_LEDGER_OK, hiddenScreenInPresentation } from './core/screens.js';
+import { GROUPS, SCREENS, NO_LEDGER_OK, hiddenScreenInPresentation, isHostedLocation } from './core/screens.js';
 
 // 画面の描画関数（画面の id → 関数）。分類と画面の一覧は core/screens.js が正
 const RENDERERS = {
@@ -300,12 +300,31 @@ function renderAll() {
   renderDetail(document.getElementById('detail'), app);
 }
 
+// 配信元で開いたときの画面: ダウンロードの案内だけ（保存の箱を読まない・台帳を作らない）
+function renderDistributionOnly() {
+  for (const id of ['tabs', 'groups', 'topbar-actions', 'topbar-status', 'project-name', 'detail']) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.hidden = true; }
+  }
+  const view = document.getElementById('view');
+  view.textContent = '';
+  view.appendChild(h('section', { class: 'card stack lock', id: 'distribution' },
+    h('h2', { text: '案件ワークベンチをダウンロードしてください' }),
+    h('p', { text: 'このページは配布のためのものです。ここでは台帳を作ったり開いたりできません。HTML をダウンロードし、自分の PC に保存したファイルをダブルクリックで開いて使ってください。' }),
+    h('div', { class: 'row' }, h('a', { class: 'btn primary', href: './index.html', download: 'anken-workbench.html', id: 'download-html' }, 'HTML をダウンロード')),
+    h('ul', { class: 'small muted' },
+      h('li', { text: 'ダウンロードした HTML は、通信なしで動きます（外部へは一切送信しません）' }),
+      h('li', { text: 'Web 上のページでは、同じサイトの別のページから保存の中身を読まれるおそれがあるため、台帳を使えないようにしています' }))));
+}
+
 function boot() {
   // 他人のページの枠の中では動かない（クリックジャッキング対策。GitHub Pages ではヘッダで防げないため）
   if (window.top !== window.self) {
     document.body.textContent = 'このツールは単独のタブで開いてください。';
     return;
   }
+  // 配信元（GitHub Pages など）では台帳を使わせない（FIX-024）。保存の箱を読む前に止める
+  if (isHostedLocation(location.protocol, location.hostname)) { renderDistributionOnly(); return; }
   store.init();
   const fromHash = location.hash.replace('#', '');
   app.view = VIEWS.some((v) => v.id === fromHash) ? fromHash : 'overview';

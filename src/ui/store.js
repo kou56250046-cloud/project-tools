@@ -494,8 +494,9 @@ export const store = {
   exportText() {
     return JSON.stringify(this.ledger, null, 2) + '\n';
   },
+  // 既定の名前に案件名を入れない（ダウンロードの履歴に暗号化されない形で残るため。FIX-025）。案件 ID と日付だけ
   exportFilename() {
-    const name = (this.ledger.project.name || '案件').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 40);
+    const name = `anken_${this.workspace.activeId || 'project'}`;
     const d = new Date();
     const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
     return `${name}_rev${this.ledger.revision}_${ymd}.json`;
