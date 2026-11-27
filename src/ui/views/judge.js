@@ -9,7 +9,7 @@ import { flowGeometry } from '../../core/flowsafe.js';
 import { renderFlowSvg, flowFrame } from '../flowsvg.js';
 import { h, toast, download, confirmDialog, todayStr } from '../dom.js';
 import { store } from '../store.js';
-import { importDraftText } from './import.js';
+import { sendPatchToImport } from './to-import.js';
 
 const JD_INPUTS = [
   { key: 'flow', label: 'フロー', prompt: 'judge-flow', ph: 'フロー記法（```flow の囲みのままでも可）。分岐に [JDG-001]、データに [TBL-001] を付ける' },
@@ -27,12 +27,8 @@ const jdTable = (head, rows, cls) => h('div', { class: 'table-wrap' }, h('table'
   h('thead', null, h('tr', null, head.map((t) => h('th', { scope: 'col', text: t })))),
   h('tbody', null, rows)));
 
-// 取込の画面へ差分を渡す。下書きがあれば置き換えてよいかを確かめる
-async function toImport(app, patch) {
-  const cur = importDraftText();
-  if (cur && cur.trim() && !(await confirmDialog('取込の画面に下書き（貼った文）があります。', '置き換える', '今の下書きを置き換えます。下書きを残したいときは「やめる」を押し、先に取込を済ませてください。'))) return;
-  app.go('import', { text: JSON.stringify(patch, null, 2) });
-}
+// 取込の画面へ差分を渡す（下書きがあれば置き換えの確認。to-import.js）
+const toImport = (app, patch) => sendPatchToImport(app, patch);
 
 function inputPane(app) {
   const s = judgeState.src;

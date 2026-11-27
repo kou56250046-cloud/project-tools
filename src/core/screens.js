@@ -47,6 +47,7 @@ export const SCREENS = [
   { id: 'preprocess', group: 'tools', label: '議事録の前処理' },
   { id: 'mask', group: 'tools', label: 'マスキング' },
   { id: 'judge', group: 'tools', label: '判断・データ' },
+  { id: 'qabox', group: 'tools', label: '質問箱（qa-box）' },
   { id: 'settings', group: 'tools', label: '設定' },
   { id: 'guide', group: 'help', label: '使い方' },
 ];

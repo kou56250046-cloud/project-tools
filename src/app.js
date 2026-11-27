@@ -30,6 +30,7 @@ import { renderData } from './ui/views/data.js';
 import { renderFunctions } from './ui/views/functions.js';
 import { renderArch } from './ui/views/arch.js';
 import { renderJudge, clearJudgeState } from './ui/views/judge.js';
+import { renderQabox, clearQaboxState } from './ui/views/qabox.js';
 import { renderCrud } from './ui/views/crud.js';
 import { renderEstimate } from './ui/views/estimate.js';
 import { renderMaster, clearMasterState } from './ui/views/master.js';
@@ -52,7 +53,7 @@ const RENDERERS = {
   cross: renderCross, memos: renderMemos, org: renderOrg, overview: renderOverview, graph: renderGraph, list: renderList, decisions: renderDecisions, health: renderHealth,
   hearing: renderHearing, issues: renderIssues, nfr: renderNfr, scope: renderScope, 'kpi-tree': renderKpiTree, bizflow: renderBizflow,
   wbs: renderWbs, gantt: renderGantt, progress: renderProgress, changes: renderChanges, risks: renderRisks, 'meeting-report': renderMeetingReport,
-  data: renderData, functions: renderFunctions, arch: renderArch, judge: renderJudge, crud: renderCrud, estimate: renderEstimate, master: renderMaster,
+  data: renderData, functions: renderFunctions, arch: renderArch, judge: renderJudge, qabox: renderQabox, crud: renderCrud, estimate: renderEstimate, master: renderMaster,
   trace: renderTrace, tests: renderTests,
   prompts: renderPrompts, import: renderImport, convert: renderConvert, preprocess: renderPreprocess, mask: renderMask, settings: renderSettings,
   guide: renderGuide,
@@ -338,10 +339,10 @@ function boot() {
     }
     if (reason === 'save-error') { renderTopbar(); return; }
     // ロックのとき、画面が持つ一時の入力（貼った文・書きかけ・変換の結果）をすべて消す（続く vault の通知で描き直す）
-    if (reason === 'lock') { clearConvertState(); clearMemosState(); clearPreprocessState(); clearMaskState(); clearBizflowState(); clearJudgeState(); clearImportDraft(); clearPromptsState(); clearHearingState(); app.viewOpts = {}; return; }
+    if (reason === 'lock') { clearConvertState(); clearMemosState(); clearPreprocessState(); clearMaskState(); clearBizflowState(); clearJudgeState(); clearQaboxState(); clearImportDraft(); clearPromptsState(); clearHearingState(); app.viewOpts = {}; return; }
     if (reason === 'vault') { clearMasterState(); clearJudgeState(); }
     // 案件の切り替え・置き換えでも、案件ごとの書きかけ（業務フロー）と判断・データの入力を消す（別の案件に持ち込まない）
-    if (reason === 'switch' || reason === 'replace') { clearBizflowState(); clearJudgeState(); }
+    if (reason === 'switch' || reason === 'replace') { clearBizflowState(); clearJudgeState(); clearQaboxState(); }
     if (reason === 'presentation' && hiddenInPresentation(app.view)) { app.go('overview'); return; }
     app.refresh();
   });
