@@ -26,7 +26,11 @@ test('ビルドすると CSP にハッシュが入り unsafe-inline を使わな
   const html = build({ write: false });
   assert.match(html, /script-src 'sha256-[A-Za-z0-9+/=]+'/);
   assert.match(html, /connect-src 'none'/);
-  assert.doesNotMatch(html, /unsafe-inline/);
+  // アプリ自身の CSP（meta）に unsafe-inline が無いこと。書き出す HTML 用の CSP の文字列（mdhtml.js の EXPORT_CSP。script なし）は対象外
+  const csp = (html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)">/) || [])[1];
+  assert.ok(csp, 'CSP の meta がある');
+  assert.doesNotMatch(csp, /unsafe-inline/);
+  assert.doesNotMatch(html.replace(/const EXPORT_CSP = "[^"]*";/, ''), /unsafe-inline/, 'EXPORT_CSP のほかに unsafe-inline が無い');
   assert.match(html, /<link rel="icon" href="data:,">/);
 });
 

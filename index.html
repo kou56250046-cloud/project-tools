@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7zI2IXcrCkuFSpxdbiaYZB1DymEFkHES5F9Ba+z4rCU='; style-src 'sha256-sTz08zn7I8jUqWwyDTge/V+NaG6rekyRRlgFOl5AVSk='; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5nkrpq2SbKd7D7HzICR1mltRYTsUZdkoVaeBBLticOM='; style-src 'sha256-sTz08zn7I8jUqWwyDTge/V+NaG6rekyRRlgFOl5AVSk='; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:,">
@@ -3177,6 +3177,15 @@ function screenById(id) {
   return SCREENS.find((s) => s.id === id) || null;
 }
 
+// Web で配信されたページか（GitHub Pages など）。そこでは台帳を作らず・開かず、ダウンロードの案内だけを出す（FIX-024）
+// 同じ github.io の別のページとオリジンが同じになり、保存の箱や解錠後の画面を読まれうるため。CLAUDE.md の制約 4「配布にだけ使う」
+// 確認用のローカルの配信（localhost・127.0.0.1・[::1]・*.localhost）は除く
+function isHostedLocation(protocol, hostname) {
+  if (protocol !== 'http:' && protocol !== 'https:') return false;
+  const h = String(hostname || '').toLowerCase();
+  return !(h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1' || h.endsWith('.localhost'));
+}
+
 
 // ---- core/guide-text.js ----
 // 使い方の画面の文章（唯一の置き場所）。画面は core/screens.js、指示文は core/prompts.js の PURPOSES の id で指す
@@ -3347,7 +3356,7 @@ const SCREEN_HELP = {
   arch: { what: 'システム・連携・バッチから、データの流れの構成図を自動で描く。真ん中がこの案件、左が受信元・右が送信先。同じ相手と向きの連携は 1 本にまとめる。新規予定・廃止は名前の後ろの印（廃止は破線）', when: '連携の洗い出しのあと、顧客と全体像を合わせるとき' },
   bizflow: { what: '現行・導入後の業務フローを、フロー記法からスイムレーンの図にする。記法を直して保存（取り消し可）。誤りのある行は外して描き、誤りを一覧に出す。関連でつながる現行・導入後を並べて見比べる', when: '現行業務を聞き取ったあと、導入後の業務を顧客と合わせるとき' },
   memos: { what: 'チャット（Teams・Google Chat の貼り付け）や会議の文字起こしを、1 行 1 発言に整えて保管する。絞り込み・JSON と md の書き出し・メモからの取込の指示文。社内のものなので顧客向けの表示やカルテには出ない', when: 'チャットで決まったことを台帳に入れたいとき、やりとりを NotebookLM に渡したいとき' },
-  convert: { what: 'Excel・CSV・JSON・Word・PowerPoint・HTML を Markdown にする。大きな表は NotebookLM 用の一式（項目定義書・集計・サンプル・分けたデータ）を zip で。PDF・画像は Gemini に貼る変換の指示文と、返事の点検（抜けたページ・表・見出し）。結果は保存しない', when: 'NotebookLM や Gemini に資料を渡す前' },
+  convert: { what: 'Excel・CSV・JSON・Word・PowerPoint・HTML を Markdown にする。PowerPoint・Excel の図形と矢印のフロー図はフロー記法（```flow）に、SmartArt は箇条書きかフロー記法に起こす。Excel の非表示シート・結合セル・コメントも出す。「HTML を保存」で人が読む 1 枚の HTML（フロー図は図）に。大きな表は NotebookLM 用の一式を zip で。Gemini で変換（PDF・画像・PowerPoint・HTML → md、Excel・PowerPoint・PDF → HTML、画像のフロー図 → フロー記法）は、選択肢で確かめてから書き写させる指示文と、返事の点検（抜けたページ・ツールの変換結果との照合・HTML の script や外部 URL を外す仕上げ）。フロー図は業務フローとして台帳に足せる。結果は保存しない', when: 'NotebookLM や Gemini に資料を渡す前、資料を人が読める HTML にしたいとき、資料のフロー図を業務フローに取り込みたいとき' },
   settings: { what: '案件の作成・読み込み・切り替え・外す、この案件の設定（自分・日数・生産性など）、中身を空に戻す、合言葉を変える、書き出し、gemini-kit 用のカルテの書き出し', when: '案件を始めるとき、区切りごとの書き出し、やり直したいとき' },
   guide: { what: 'この画面。使い方の説明', when: '迷ったとき' },
 };
@@ -5905,16 +5914,90 @@ function find(n, name) {
 const attr = (n, a) => (n && n.attrs[a] !== undefined ? n.attrs[a] : null);
 
 // ======== Excel・CSV・JSON ========
+// シートごとの細部（P6d）: 非表示・結合セル・セルのコメント・図形（drawing）。名前 → { hidden, merges, comments, geo, shapeTexts }
+const EMU_COL = 609600, EMU_ROW = 190500;   // 図形に位置が無いときの、セル 1 つの大きさの目安（EMU）
+function xlsxGeo(tree) {
+  const geo = { shapes: [], links: [] };
+  const texts = [];
+  const walk = (n) => {
+    for (const c of kids(n)) {
+      if (c.name === 'xdr:sp') {
+        const id = attr(find(c, 'xdr:cNvPr'), 'id');
+        const t = kids(find(c, 'xdr:txBody'), 'a:p').map(aParaText).filter((x) => x).join(' ');
+        if (t) texts.push({ id, text: t });
+        const b = pptBox(c, PPT_TF0);
+        if (b) geo.shapes.push({ id, text: t, geom: attr(find(c, 'a:prstGeom'), 'prst') || '', x: b.x, y: b.y, w: b.w, h: b.h });
+      } else if (c.name === 'xdr:cxnSp') {
+        const b = pptBox(c, PPT_TF0);
+        const nv = find(c, 'xdr:cNvCxnSpPr');
+        const ln = find(c, 'a:ln');
+        if (b) {
+          const sx = b.flipH ? b.x + b.w : b.x, ex = b.flipH ? b.x : b.x + b.w;
+          const sy = b.flipV ? b.y + b.h : b.y, ey = b.flipV ? b.y : b.y + b.h;
+          geo.links.push({ from: attr(kid(nv, 'a:stCxn'), 'id'), to: attr(kid(nv, 'a:endCxn'), 'id'), x1: sx, y1: sy, x2: ex, y2: ey, head: arrowOn(ln, 'a:headEnd'), tail: arrowOn(ln, 'a:tailEnd') });
+        }
+      } else if (c.name === 'xdr:grpSp' || /Anchor$/.test(c.name) || c.name === 'mc:AlternateContent' || c.name === 'mc:Choice') walk(c);
+    }
+  };
+  walk(find(tree, 'xdr:wsDr') || tree);
+  return { geo, texts };
+}
+async function xlsxExtras(bytes) {
+  const out = new Map();
+  let zip;
+  try { zip = zipEntries(bytes); } catch (e) { return out; }
+  const wbXml = await zipText(zip, 'xl/workbook.xml');
+  if (!wbXml) return out;
+  const rels = relsMap(await zipText(zip, 'xl/_rels/workbook.xml.rels'));
+  for (const sh of kids(find(parseXml(wbXml), 'sheets'), 'sheet')) {
+    const name = attr(sh, 'name');
+    const r = rels.get(attr(sh, 'r:id'));
+    const info = { hidden: /hidden/i.test(attr(sh, 'state') || ''), merges: [], comments: [], geo: null, shapeTexts: [] };
+    out.set(name, info);
+    if (!r) continue;
+    const part = resolvePart('xl/workbook.xml', r.target);
+    const xml = await zipText(zip, part);
+    if (xml) for (const m of xml.matchAll(/<mergeCell\b[^>]*\bref="([^"]+)"/g)) info.merges.push(m[1]);
+    const srels = relsMap(await zipText(zip, relsPathOf(part)));
+    for (const x of srels.values()) {
+      if (/\/comments$/.test(x.type)) {
+        const cx = await zipText(zip, resolvePart(part, x.target));
+        if (cx) for (const c of kids(find(parseXml(cx), 'commentList'), 'comment')) {
+          const t = [];
+          const w = (n) => { for (const k of n.children) { if (typeof k === 'string') continue; if (k.name === 't') t.push(k.children.filter((y) => typeof y === 'string').join('')); else w(k); } };
+          w(c);
+          const text = t.join('').replace(/\s+/g, ' ').trim();
+          if (text) info.comments.push({ ref: attr(c, 'ref'), text });
+        }
+      } else if (/\/drawing$/.test(x.type)) {
+        const dx = await zipText(zip, resolvePart(part, x.target));
+        if (dx) { const g = xlsxGeo(parseXml(dx)); info.geo = g.geo; info.shapeTexts = g.texts; }
+      }
+    }
+  }
+  return out;
+}
 async function xlsxToMd(bytes) {
   const sheets = await XLSX.sheets(bytes);
+  const extras = await xlsxExtras(bytes);
   const out = [];
-  let rows = 0;
+  let rows = 0, flows = 0, hiddenN = 0;
   for (const s of sheets) {
-    out.push(`## ${s.name}`, '');
+    const ex = extras.get(s.name) || { hidden: false, merges: [], comments: [], geo: null, shapeTexts: [] };
+    if (ex.hidden) hiddenN++;
+    out.push(`## ${s.name}${ex.hidden ? '（非表示）' : ''}`, '');
     out.push(s.rows.length ? mdTable(s.rows) : '（空のシート）', '');
+    // 結合セル（左上のセルだけに値があり、ほかは空）
+    if (ex.merges.length) out.push(`結合したセル: ${ex.merges.join('、')}（値は左上のセルにあります）`, '');
+    if (ex.comments.length) out.push(...ex.comments.map((c) => `- コメント ${c.ref}: ${c.text}`), '');
+    // 図形: 矢印でつながっていればフロー記法、ほかの図形の文字は「図形の文字」
+    const fl = ex.geo ? shapesToFlow({ ...ex.geo, title: s.name }) : { ok: false, used: new Set() };
+    if (fl.ok) { out.push('```flow', fl.notation, '```', ''); flows++; }
+    const rest = ex.shapeTexts.filter((t) => !(t.id != null && fl.used.has(String(t.id))));
+    if (rest.length) out.push(...rest.map((t) => `- 図形の文字: ${t.text}`), '');
     rows += Math.max(0, s.rows.length - 1);
   }
-  return { body: tidy(out), counts: `シート ${sheets.length}・行 ${rows}`, tables: sheets.filter((s) => s.rows.length).map((s) => ({ label: s.name, rows: s.rows })) };
+  return { body: tidy(out), counts: `シート ${sheets.length}${hiddenN ? `（うち非表示 ${hiddenN}）` : ''}・行 ${rows}${flows ? `・フロー ${flows}` : ''}`, tables: sheets.filter((s) => s.rows.length).map((s) => ({ label: s.name, rows: s.rows })) };
 }
 function delimitedToMd(text, delim) {
   const rows = parseDelimited(text, delim);
@@ -6016,6 +6099,8 @@ function docxRunText(node, ctx, boxes) {
       case 'w:txbxContent': boxes.push(...kids(c).filter((x) => x.name === 'w:p' || x.name === 'w:tbl')); break;
       case 'mc:Fallback': case 'w:instrText': case 'w:delText': case 'w:pPr': case 'w:rPr': break;
       case 'w:drawing': case 'w:pict': {
+        const rel = find(c, 'dgm:relIds');
+        if (rel && ctx.smartArts) { ctx.smartArts.push(attr(rel, 'r:dm')); s += `\u0000SA${ctx.smartArts.length - 1}\u0000`; break; }
         const inner = docxRunText(c, ctx, boxes);
         s += find(c, 'w:txbxContent') ? inner : '[図]';
         break;
@@ -6054,6 +6139,7 @@ async function docxToMd(zip) {
   const ctx = {
     styles: docxStyles(await zipText(zip, 'word/styles.xml')),
     nums: docxNumbering(await zipText(zip, 'word/numbering.xml')),
+    smartArts: [],
   };
   const body = find(parseXml(await zipText(zip, 'word/document.xml')), 'w:body');
   const out = [];
@@ -6085,7 +6171,21 @@ async function docxToMd(zip) {
   };
   for (const n of kids(body)) block(n);
   endList();
-  return { body: tidy(out), counts: `見出し ${headings}・表 ${tables}・段落 ${paras}` };
+  // SmartArt の印を、データの部品から作った md に置き換える
+  let smartArts = 0;
+  if (ctx.smartArts.length) {
+    const rels = relsMap(await zipText(zip, 'word/_rels/document.xml.rels'));
+    const mds = [];
+    for (const rid of ctx.smartArts) {
+      const t = rels.get(rid);
+      const xml = t ? await zipText(zip, resolvePart('word/document.xml', t.target)) : null;
+      const md = xml ? smartArtToMd(parseXml(xml)) : '';
+      if (md) smartArts++;
+      mds.push(md || '[図]');
+    }
+    for (let i = 0; i < out.length; i++) out[i] = String(out[i]).replace(/\u0000SA(\d+)\u0000/g, (_, k) => `\n${mds[+k]}\n`);
+  }
+  return { body: tidy(out), counts: `見出し ${headings}・表 ${tables}・段落 ${paras}${smartArts ? `・SmartArt ${smartArts}` : ''}` };
 }
 
 // ======== PowerPoint（.pptx） ========
@@ -6115,25 +6215,65 @@ function pptTableRows(tbl) {
   }
   return rows;
 }
-// 図形の木をたどって、タイトル・本文の行・表を集める
-function pptShapes(tree, acc) {
+// 図形の位置（a:xfrm の off・ext）をグループの座標変換（chOff・chExt → off・ext）に通す（P6d）
+const xfrmOf = (n) => {
+  const x = find(kid(n, 'p:spPr') || kid(n, 'p:grpSpPr') || n, 'a:xfrm');
+  if (!x) return null;
+  const v = (name, a, b) => { const e = kid(x, name); return e ? [+(attr(e, a) || 0), +(attr(e, b) || 0)] : null; };
+  return { off: v('a:off', 'x', 'y'), ext: v('a:ext', 'cx', 'cy'), chOff: v('a:chOff', 'x', 'y'), chExt: v('a:chExt', 'cx', 'cy'), flipH: attr(x, 'flipH') === '1', flipV: attr(x, 'flipV') === '1' };
+};
+const PPT_TF0 = (x, y) => [x, y];
+function pptGroupTf(g, tf) {
+  const f = xfrmOf(g);
+  if (!f || !f.off || !f.ext || !f.chOff || !f.chExt || !f.chExt[0] || !f.chExt[1]) return tf;
+  const sx = f.ext[0] / f.chExt[0], sy = f.ext[1] / f.chExt[1];
+  return (x, y) => tf(f.off[0] + (x - f.chOff[0]) * sx, f.off[1] + (y - f.chOff[1]) * sy);
+}
+function pptBox(n, tf) {
+  const f = xfrmOf(n);
+  if (!f || !f.off || !f.ext) return null;
+  const [x1, y1] = tf(f.off[0], f.off[1]);
+  const [x2, y2] = tf(f.off[0] + f.ext[0], f.off[1] + f.ext[1]);
+  return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1), x1, y1, x2, y2, flipH: f.flipH, flipV: f.flipV };
+}
+const pptGeom = (n) => attr(find(kid(n, 'p:spPr'), 'a:prstGeom'), 'prst') || '';
+const arrowOn = (ln, end) => { const e = kid(ln, end); return !!e && (attr(e, 'type') || 'none') !== 'none'; };
+// 図形の木をたどって、タイトル・本文の行・表を集める。あわせて図形と線（コネクタ）の位置を geo に集める（フロー記法を起こすため）
+function pptShapes(tree, acc, tf = PPT_TF0) {
   for (const n of kids(tree)) {
     if (n.name === 'p:sp') {
       const t = phType(n);
       const paras = kids(kid(n, 'p:txBody'), 'a:p');
       if (t === 'title' || t === 'ctrTitle') { const s = paras.map(aParaText).filter((x) => x).join(' '); if (s && !acc.title) acc.title = s; continue; }
+      const id = attr(find(n, 'p:cNvPr'), 'id');
+      const texts = [];
       for (const p of paras) {
         const s = aParaText(p);
         if (!s) continue;
+        texts.push(s);
         const lvl = +(attr(kid(p, 'a:pPr'), 'lvl') || 0);
-        acc.lines.push(`${'  '.repeat(lvl)}- ${s}`);
+        acc.lines.push({ id, text: `${'  '.repeat(lvl)}- ${s}` });
       }
-    } else if (n.name === 'p:grpSp') pptShapes(n, acc);
+      const b = pptBox(n, tf);
+      if (b && !t) acc.geo.shapes.push({ id, text: texts.join(' '), geom: pptGeom(n), x: b.x, y: b.y, w: b.w, h: b.h });
+    } else if (n.name === 'p:cxnSp') {
+      const b = pptBox(n, tf);
+      const nv = find(n, 'p:cNvCxnSpPr');
+      const ln = find(kid(n, 'p:spPr'), 'a:ln');
+      if (b) {
+        // 線の始点・終点（反転の印で入れ替える）
+        const sx = b.flipH ? b.x + b.w : b.x, ex = b.flipH ? b.x : b.x + b.w;
+        const sy = b.flipV ? b.y + b.h : b.y, ey = b.flipV ? b.y : b.y + b.h;
+        acc.geo.links.push({ from: attr(kid(nv, 'a:stCxn'), 'id'), to: attr(kid(nv, 'a:endCxn'), 'id'), x1: sx, y1: sy, x2: ex, y2: ey, head: arrowOn(ln, 'a:headEnd'), tail: arrowOn(ln, 'a:tailEnd') });
+      }
+    } else if (n.name === 'p:grpSp') pptShapes(n, acc, pptGroupTf(n, tf));
     else if (n.name === 'p:graphicFrame') {
       const tbl = find(n, 'a:tbl');
-      if (tbl) { acc.blocks.push(mdTable(pptTableRows(tbl))); acc.tables++; } else acc.lines.push('- [図]');
-    } else if (n.name === 'p:pic') acc.lines.push('- [図]');
-    else if (n.name === 'mc:AlternateContent') pptShapes(kid(n, 'mc:Choice') || { children: [] }, acc);
+      if (tbl) { acc.blocks.push(mdTable(pptTableRows(tbl))); acc.tables++; }
+      else if (find(n, 'dgm:relIds')) acc.smartArt.push(attr(find(n, 'dgm:relIds'), 'r:dm'));
+      else acc.lines.push({ id: null, text: '- [図]' });
+    } else if (n.name === 'p:pic') acc.lines.push({ id: null, text: '- [図]' });
+    else if (n.name === 'mc:AlternateContent') pptShapes(kid(n, 'mc:Choice') || { children: [] }, acc, tf);
   }
 }
 async function pptxToMd(zip) {
@@ -6141,7 +6281,7 @@ async function pptxToMd(zip) {
   const rels = relsMap(await zipText(zip, 'ppt/_rels/presentation.xml.rels'));
   const ids = kids(find(pres, 'p:sldIdLst'), 'p:sldId');
   const out = [];
-  let hidden = 0, tables = 0, n = 0;
+  let hidden = 0, tables = 0, n = 0, flows = 0, smartArts = 0;
   for (const sid of ids) {
     const r = rels.get(attr(sid, 'r:id'));
     if (!r) continue;
@@ -6152,12 +6292,26 @@ async function pptxToMd(zip) {
     const sld = find(parseXml(xml), 'p:sld');
     const isHidden = attr(sld, 'show') === '0';
     if (isHidden) hidden++;
-    const acc = { title: '', lines: [], blocks: [], tables: 0 };
+    const acc = { title: '', lines: [], blocks: [], tables: 0, geo: { shapes: [], links: [] }, smartArt: [] };
     pptShapes(find(sld, 'p:spTree'), acc);
     tables += acc.tables;
     out.push(`## スライド ${n}: ${acc.title || '（タイトルなし）'}${isHidden ? '（非表示）' : ''}`, '');
-    if (acc.lines.length) out.push(...acc.lines, '');
+    // 図形が矢印でつながっていれば、フロー記法にする（フローに使った図形の文字は箇条書きに重ねない）
+    const fl = shapesToFlow({ ...acc.geo, title: acc.title });
+    const lines = fl.ok ? acc.lines.filter((l) => !(l.id != null && fl.used.has(String(l.id)))) : acc.lines;
+    if (lines.length) out.push(...lines.map((l) => l.text), '');
+    if (fl.ok) { out.push('```flow', fl.notation, '```', ''); flows++; }
     for (const b of acc.blocks) out.push(b, '');
+    // SmartArt（データの部品を引いて、字下げの箇条書きかフロー記法にする）
+    if (acc.smartArt.length) {
+      const srels0 = relsMap(await zipText(zip, relsPathOf(part)));
+      for (const rid of acc.smartArt) {
+        const t = srels0.get(rid);
+        const dxml = t ? await zipText(zip, resolvePart(part, t.target)) : null;
+        const sa = dxml ? smartArtToMd(parseXml(dxml)) : '';
+        if (sa) { out.push(sa, ''); smartArts++; }
+      }
+    }
     // ノート: スライドの rels から notesSlide を引き、placeholder が body の図形だけ読む
     const srels = relsMap(await zipText(zip, relsPathOf(part)));
     for (const x of srels.values()) {
@@ -6172,7 +6326,7 @@ async function pptxToMd(zip) {
       if (notes.length) out.push(`> ノート: ${notes[0]}`, ...notes.slice(1).map((s) => `> ${s}`), '');
     }
   }
-  return { body: tidy(out), counts: `スライド ${n}（うち非表示 ${hidden}）・表 ${tables}` };
+  return { body: tidy(out), counts: `スライド ${n}（うち非表示 ${hidden}）・表 ${tables}${flows ? `・フロー ${flows}` : ''}${smartArts ? `・SmartArt ${smartArts}` : ''}` };
 }
 
 // ======== HTML ========
@@ -6291,8 +6445,23 @@ function htmlToMd(html) {
       const c = close.exec(html);
       const raw = html.slice(re.lastIndex, c ? c.index : html.length).replace(/<[^>]*>/g, '');
       re.lastIndex = c ? close.lastIndex : html.length;
+      // フロー記法（このツールが作った HTML の flow-src、Gemini の HTML の flow）と mermaid は、言語名つきのコードに戻す（P6d）
+      const cls = String(a.class || '').split(/\s+/);
+      const lang = cls.includes('flow-src') || cls.includes('flow') ? 'flow' : cls.includes('mermaid') ? 'mermaid' : '';
       if (inCell()) curTable().cell.text += htmlUnescape(raw).replace(/\r?\n/g, '<br>');
-      else { closeP(); flush(); out.push('```', htmlUnescape(raw).replace(/^\n/, '').replace(/\s+$/, ''), '```', ''); }
+      else { closeP(); flush(); out.push('```' + lang, htmlUnescape(raw).replace(/^\n/, '').replace(/\s+$/, ''), '```', ''); }
+      continue;
+    }
+    // SVG の図は、中の文字だけを拾う（図の構造は再現しない）。このツールが作ったフローの図は flow-src の側から戻すので読み飛ばす
+    if (tag === 'svg' && !m[4]) {
+      const close = /<\/\s*svg\s*>/ig;
+      close.lastIndex = re.lastIndex;
+      const c = close.exec(html);
+      const inner = html.slice(re.lastIndex, c ? c.index : html.length);
+      re.lastIndex = c ? close.lastIndex : html.length;
+      if (/\bbfl-svg\b/.test(String(a.class || ''))) continue;
+      const words = [...inner.matchAll(/<(?:text|tspan)\b[^>]*>([^<]*)/gi)].map((x) => htmlUnescape(x[1]).trim()).filter(Boolean);
+      if (words.length) text(`[図の文字: ${words.join(' ／ ')}]`);
       continue;
     }
     if (tag === 'br') { brk(); continue; }
@@ -6344,10 +6513,12 @@ async function convertFile(name, bytes, { today } = {}) {
 
 
 // ---- core/gemini-convert.js ----
-// PDF・画像の変換は Gemini に任せる。その指示文と、返ってきた Markdown の点検。DOM に触れない。
+// 資料の変換を Gemini に任せるときの指示文と、返ってきた Markdown の点検。DOM に触れない。
 // 指示文は、まず選択肢つきで確かめさせてから、要約せずに一字一句書き写させる（ユーザーの案）
+// P6d: md にする（PDF・画像・PowerPoint・HTML）、HTML にする（Excel・PowerPoint・PDF）、画像のフローをフロー記法にする、の 3 種類
 
-// 先に確かめる 5 つ（番号で答えられる形）
+
+// 先に確かめる共通の 5 つ（番号で答えられる形）
 const GEMINI_CONVERT_QUESTIONS = [
   { q: '表の扱い', choices: ['Markdown の表にする', '箇条書きにする'] },
   { q: '図・写真の扱い', choices: ['内容の説明を [図: …] で書く', '[図] の印だけ残す'] },
@@ -6355,27 +6526,119 @@ const GEMINI_CONVERT_QUESTIONS = [
   { q: 'ページの区切り', choices: ['各ページの先頭に <!-- p.N --> を入れる（N はページ番号）', '入れない'] },
   { q: '読めない文字', choices: ['[読めない] と書く', '前後から推定して [推定: …] と書く'] },
 ];
+// フロー図（業務の流れ・手順・分岐の図）の扱い。md では ```flow、HTML では <pre class="flow"> にフロー記法で書かせる
+const Q_FLOW_MD = { q: 'フロー図（業務の流れ・手順・分岐の図）の扱い', choices: ['下の「フロー記法」で ```flow の囲みに書く（箱・矢印・分岐・レーンを残す）', '手順を番号つきの箇条書きで書く'] };
+const Q_FLOW_HTML = { q: 'フロー図（業務の流れ・手順・分岐の図）の扱い', choices: ['下の「フロー記法」で <pre class="flow"> の中に書く（あとで図にします）', '手順を番号つきの箇条書きで書く'] };
+const Q_SLIDE = { q: 'スライドの区切り', choices: ['各スライドの先頭に <!-- p.N --> と「## スライド N: タイトル」を入れる', '区切りを入れない'] };
+const Q_NOTES = { q: 'スライドのノート（話す内容）', choices: ['各スライドの最後に「> ノート: …」で入れる', '入れない'] };
+const Q_HIDDEN = { q: '非表示のスライド', choices: ['入れて、見出しに（非表示）と付ける', '入れない'] };
+const Q_SHEETS = { q: '非表示のシートとセルのコメント', choices: ['どちらも入れる（シート名に（非表示）、コメントは表の下に「コメント A1: …」）', 'どちらも入れない'] };
+const Q_CHAPTER = { q: '章の分け方', choices: ['元の区切り（ページ・スライド・シート）ごとに章（<h2>）にする', '内容の見出しで章を分ける'] };
+const Q_TABLE_HTML = { q: '表の見せ方', choices: ['元の表のまま（見出しの行を <thead> に、結合は rowspan・colspan で）', '長い表（30 行超）は <details> で折りたたむ'] };
+const Q_TOC = { q: '目次', choices: ['先頭に章の目次（ページ内のリンク）を付ける', '付けない'] };
+const Q_FLOW_LANE = { q: 'レーン（担当の帯）', choices: ['図の帯・列の見出しをそのままレーンにする', 'レーンを使わない'] };
+const Q_FLOW_ROLE = { q: '処理の区分', choices: ['箱ごとに {AI}・{ルール}・{人}・{外部} を推定して付け、推定したものは末尾に一覧で書く', '区分を付けない'] };
 
-// kind: 'pdf' | 'image'、pages: ページ数（分からなければ null）
-function conversionPrompt({ fileName, kind, pages }) {
-  const what = kind === 'pdf' ? `PDF「${fileName}」${pages ? `（全 ${pages} ページ）` : ''}` : `画像「${fileName}」`;
-  const qs = GEMINI_CONVERT_QUESTIONS.map((x, i) => `${i + 1}. ${x.q}\n${x.choices.map((c, j) => `   ${String.fromCharCode(97 + j)}) ${c}`).join('\n')}`).join('\n');
-  return [
-    `あなたは、資料を一字一句そのまま Markdown に書き写す係です。添付した${what}を書き写してください。`,
-    '',
+const KIND_NAME = { pdf: 'PDF', image: '画像', pptx: 'PowerPoint', html: 'HTML', xlsx: 'Excel' };
+// kind ごとの問い。target: 'md' | 'html'
+function convertQuestions(kind, target = 'md') {
+  const [table, fig, head, page, unread] = GEMINI_CONVERT_QUESTIONS;
+  if (target === 'html') {
+    const qs = [Q_CHAPTER, Q_TABLE_HTML, fig, Q_FLOW_HTML, Q_TOC, unread];
+    if (kind === 'pptx') qs.push(Q_NOTES, Q_HIDDEN);
+    if (kind === 'xlsx') qs.push(Q_SHEETS);
+    return qs;
+  }
+  const qs = [table, fig, head];
+  if (kind === 'pdf') qs.push(page);
+  if (kind === 'pptx') qs.push(Q_SLIDE);
+  qs.push(unread, Q_FLOW_MD);
+  if (kind === 'pptx') qs.push(Q_NOTES, Q_HIDDEN);
+  return qs;
+}
+const qsText = (qs) => qs.map((x, i) => `${i + 1}. ${x.q}\n${x.choices.map((c, j) => `   ${String.fromCharCode(97 + j)}) ${c}`).join('\n')}`).join('\n');
+const answerExample = (qs) => qs.map((_, i) => `${i + 1}a`).join(' ');
+const ATTACH_NOTE = {
+  pptx: '（PowerPoint を添付できないときは、PowerPoint で PDF に保存してから添付してください。スライドのノートは PDF に入らないので、ノートが要るときは「ノートを含めて PDF に保存」を選びます）',
+  xlsx: '（Excel を添付できないときは、シートごとに PDF に保存してから添付してください）',
+  html: '（HTML を添付できないときは、ブラウザで開いて「PDF に保存」したものを添付してください）',
+};
+// HTML にするときに使ってよい書式（見た目をそろえるため、指示文で決める）
+const HTML_STYLE = 'body{font-family:Arial,"メイリオ",Meiryo,sans-serif;max-width:1100px;margin:24px auto;padding:0 16px;line-height:1.7;color:#000}h1{font-size:24px;border-bottom:3px solid #0017C1}h2{font-size:20px;border-left:6px solid #0017C1;padding-left:8px;margin-top:2em}h3{font-size:16px}table{border-collapse:collapse;margin:8px 0}th,td{border:1px solid #ccc;padding:4px 8px;vertical-align:top}th{background:#F1F1F4}pre.flow{background:#F8F8FB;border:1px solid #ccc;padding:8px;white-space:pre-wrap}.note{color:#626264;font-size:13px}';
+
+// md にする: kind は 'pdf' | 'image' | 'pptx' | 'html'。HTML にする: target='html'、kind は 'xlsx' | 'pptx' | 'pdf'
+function conversionPrompt({ fileName, kind, pages, target = 'md' }) {
+  const unit = kind === 'pptx' ? 'スライド' : kind === 'xlsx' ? 'シート' : 'ページ';
+  const what = `${KIND_NAME[kind] || '資料'}「${fileName}」${pages ? `（全 ${pages} ${unit}）` : ''}`;
+  const qs = convertQuestions(kind, target);
+  const common = [
     '## 守ること',
     '- 要約・言い換え・補足・意見を書かない。資料にある文字だけを、出てくる順に書く',
     '- 数字・固有名詞・記号・表の値を変えない。単位も省かない',
     '- 途中で止まったら、「続き」と言われてから、止まったところの次から続ける（前の部分を繰り返さない）',
-    '',
+  ];
+  const ask = [
     '## 最初の返事でやること',
-    'まだ書き写さないでください。次の 5 つを、番号と記号（例「1a 2b 3a 4a 5a」）で答えられるように、そのまま私に聞いてください。',
+    `まだ書き写さないでください。次の ${qs.length} つを、番号と記号（例「${answerExample(qs)}」）で答えられるように、そのまま私に聞いてください。`,
     '',
-    qs,
+    qsText(qs),
+  ];
+  if (target === 'html') {
+    return [
+      `あなたは、資料の内容を一字一句そのまま、読みやすい 1 枚の HTML に書き写す係です。添付した${what}を書き写してください。${ATTACH_NOTE[kind] || ''}`,
+      '',
+      ...common,
+      '- 見た目の飾りより、元の資料の内容・順序・表の値が正しく読めることを優先する',
+      '',
+      ...ask,
+      '',
+      '## 答えを受けた後',
+      '- 1 枚の HTML（<!DOCTYPE html> から </html> まで）を書く。<title> に資料の名前を入れる',
+      '- 見出しは <h1>（資料の名前）・<h2>（章）・<h3> だけを使う。表は <table>、箇条書きは <ul>・<ol>',
+      `- <style> には次の書式だけをそのまま入れる（ほかの CSS・style 属性を書かない）: ${HTML_STYLE}`,
+      '- <script>・外部のファイルの読み込み（http で始まる URL・<link>・<iframe>）・画像（<img>）を書かない。図は <p class="note">[図: …]</p> で表す',
+      '- フロー図をフロー記法で書くときは <pre class="flow"> の中に書く（HTML の特別な文字 < > & は &lt; &gt; &amp; にする）',
+      '- 出力は ```html の囲みの中に HTML だけを書く。囲みの外に説明を書かない',
+      '',
+      flowFormatText(),
+    ].join('\n') + '\n';
+  }
+  return [
+    `あなたは、資料を一字一句そのまま Markdown に書き写す係です。添付した${what}を書き写してください。${ATTACH_NOTE[kind] || ''}`,
+    '',
+    ...common,
+    '',
+    ...ask,
     '',
     '## 答えを受けた後',
-    '- 答えに合わせて、全ページを順に書き写す',
+    `- 答えに合わせて、全${unit}を順に書き写す`,
+    '- フロー図をフロー記法で書くときは ```flow の囲みに入れる（本文の ```markdown の囲みの中に、入れ子で書いてよい）',
     '- 出力は ```markdown の囲みの中に本文だけを書く。囲みの外に説明を書かない',
+    '',
+    flowFormatText(),
+  ].join('\n') + '\n';
+}
+
+// 画像（スクリーンショット・写真）になっているフロー図を、フロー記法に書き写させる
+function flowImagePrompt({ fileName }) {
+  const qs = [Q_FLOW_LANE, Q_FLOW_ROLE, GEMINI_CONVERT_QUESTIONS[4]];
+  return [
+    `あなたは、図を正確に読み取って書き写す係です。添付した画像「${fileName}」のフロー図（業務の流れ・手順・分岐の図）を、下の「フロー記法」に書き写してください。`,
+    '',
+    '## 守ること',
+    '- 図に書かれた文字をそのまま使う。言い換え・要約・補足をしない',
+    '- 箱・ひし形・矢印・矢印のラベル（はい・いいえ等）をすべて書く。見えない矢印を足さない',
+    '- 矢印の向きが分からないところは、そのノートを note 行で書く（例: note A 矢印の向きが読めない）',
+    '',
+    '## 最初の返事でやること',
+    `まだ書き写さないでください。次の ${qs.length} つを、番号と記号（例「${answerExample(qs)}」）で答えられるように、そのまま私に聞いてください。`,
+    '',
+    qsText(qs),
+    '',
+    '## 答えを受けた後',
+    '- ```flow の囲みの中にフロー記法だけを書く。囲みの外には、読めなかった文字と推定した区分の一覧だけを書く',
+    '',
+    flowFormatText(),
   ].join('\n') + '\n';
 }
 
@@ -8126,6 +8389,228 @@ function flowFormatText() {
 }
 
 
+// ---- core/shapeflow.js ----
+// 図形と矢印（コネクタ）→ フロー記法。PowerPoint のスライドと Excel のシートの図形で共通に使う（P6d）
+// 入力: { shapes: [{ id, text, geom, x, y, w, h }], links: [{ from, to, x1, y1, x2, y2, head, tail }] }
+//   geom: prstGeom の名前。links の from/to は接続先の図形 id（無ければ null。端点から近い図形を探す）
+//   head/tail: 線の始点側（head）・終点側（tail）に矢じりがあるか
+// 出力: { ok, notation, used: Set<図形 id>, reason }。ok=false のときは呼ぶ側が今までどおり文字だけを出す
+// DOM に触れない
+
+
+const SHAPEFLOW_MAX = 60;       // これを超える図形の数ではフローを起こさない
+const SF_LABEL_MAX = 12;               // 線のラベルとみなす文字の長さの上限
+
+const SF_DECISION = new Set(['diamond', 'flowChartDecision']);
+const SF_TERMINAL = new Set(['flowChartTerminator', 'ellipse', 'roundRect', 'flowChartAlternateProcess', 'flowChartConnector']);
+const SF_DOC = new Set(['flowChartDocument', 'flowChartMultidocument']);
+const SF_DATA = new Set(['can', 'flowChartMagneticDisk', 'flowChartInputOutput', 'flowChartMagneticDrum', 'flowChartStoredData', 'parallelogram']);
+const SF_SUB = new Set(['flowChartPredefinedProcess']);
+const SF_RECT = new Set(['rect', 'flowChartProcess', '']);
+
+const sfOneLine = (t) => String(t || '').replace(/\s+/g, ' ').replace(/->/g, '→').replace(/\.\.>/g, '→').replace(/[[\]［］{}｛｝]/g, (c) => ({ '[': '［', ']': '］', '{': '｛', '}': '｝' })[c] || c).trim();
+const sfCenter = (s) => ({ cx: s.x + s.w / 2, cy: s.y + s.h / 2 });
+const sfInside = (inner, outer) => inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.w <= outer.x + outer.w && inner.y + inner.h <= outer.y + outer.h;
+// 点から図形の枠までの距離（中なら 0）
+function sfDist(px, py, s) {
+  const dx = Math.max(s.x - px, 0, px - (s.x + s.w));
+  const dy = Math.max(s.y - py, 0, py - (s.y + s.h));
+  return Math.hypot(dx, dy);
+}
+
+function shapesToFlow(input) {
+  const shapes = (input.shapes || []).filter((s) => s && s.w > 0 && s.h > 0);
+  const links = input.links || [];
+  const fail = (reason) => ({ ok: false, notation: '', used: new Set(), reason });
+  if (links.length < 2) return fail('線が 2 本未満');
+  if (shapes.length > SHAPEFLOW_MAX) return fail(`図形が ${SHAPEFLOW_MAX} を超える`);
+  const byId = new Map(shapes.map((s) => [String(s.id), s]));
+
+  // レーン: 文字を持ち、ほかの図形を 2 つ以上完全に囲む長方形
+  const lanes = shapes.filter((s) => SF_RECT.has(s.geom || '') && sfOneLine(s.text) && shapes.filter((o) => o !== s && sfInside(o, s)).length >= 2);
+  const laneSet = new Set(lanes);
+  // 線の端の図形（レーンは端にしない）
+  const nodeCands = shapes.filter((s) => !laneSet.has(s));
+  const tol = (l) => Math.max(20, Math.hypot(l.x2 - l.x1, l.y2 - l.y1) * 0.25);
+  const nearest = (px, py, limit) => {
+    let best = null, bd = Infinity;
+    for (const s of nodeCands) { const d = sfDist(px, py, s); if (d < bd) { bd = d; best = s; } }
+    return bd <= limit ? best : null;
+  };
+  const edges = [];
+  for (const l of links) {
+    let a = l.from != null && byId.has(String(l.from)) && !laneSet.has(byId.get(String(l.from))) ? byId.get(String(l.from)) : nearest(l.x1, l.y1, tol(l));
+    let b = l.to != null && byId.has(String(l.to)) && !laneSet.has(byId.get(String(l.to))) ? byId.get(String(l.to)) : nearest(l.x2, l.y2, tol(l));
+    if (!a || !b || a === b) continue;
+    // 矢じりが始点側にだけあるときは向きを逆にする
+    if (l.head && !l.tail) [a, b] = [b, a];
+    edges.push({ a, b, mx: (l.x1 + l.x2) / 2, my: (l.y1 + l.y2) / 2, len: Math.hypot(l.x2 - l.x1, l.y2 - l.y1), label: '' });
+  }
+  if (edges.length < 2) return fail('図形どうしを結ぶ線が 2 本未満');
+
+  const nodes = [...new Set(edges.flatMap((e) => [e.a, e.b]))];
+  const nodeSet = new Set(nodes);
+  // ラベル: 線に結ばれない、短い文字の図形で、線の中点に最も近いもの
+  const used = new Set();
+  const labelCands = nodeCands.filter((s) => !nodeSet.has(s) && sfOneLine(s.text) && [...sfOneLine(s.text)].length <= SF_LABEL_MAX);
+  for (const s of labelCands) {
+    const { cx, cy } = sfCenter(s);
+    let best = null, bd = Infinity;
+    for (const e of edges) { const d = Math.hypot(cx - e.mx, cy - e.my); if (d < bd) { bd = d; best = e; } }
+    if (best && !best.label && bd <= Math.max(best.len / 2, 40)) { best.label = sfOneLine(s.text); used.add(String(s.id)); }
+  }
+
+  // 並び: 上から下、左から右（ほぼ同じ高さは左から）
+  const rowH = Math.max(1, Math.min(...nodes.map((n) => n.h)) / 2);
+  nodes.sort((p, q) => Math.round(sfCenter(p).cy / rowH) - Math.round(sfCenter(q).cy / rowH) || sfCenter(p).cx - sfCenter(q).cx);
+  const idOf = new Map(nodes.map((n, i) => [n, `N${i + 1}`]));
+  const inDeg = new Map(nodes.map((n) => [n, 0])), outDeg = new Map(nodes.map((n) => [n, 0]));
+  for (const e of edges) { outDeg.set(e.a, outDeg.get(e.a) + 1); inDeg.set(e.b, inDeg.get(e.b) + 1); }
+  const typeOf = (n) => {
+    const g = n.geom || '';
+    if (SF_DECISION.has(g)) return 'decision';
+    if (SF_DOC.has(g)) return 'doc';
+    if (SF_DATA.has(g)) return 'data';
+    if (SF_SUB.has(g)) return 'sub';
+    if (SF_TERMINAL.has(g)) return !inDeg.get(n) ? 'start' : !outDeg.get(n) ? 'end' : 'task';
+    return 'task';
+  };
+  // レーンの名前（重なりは ［］ に置き換え済み）。ノードは中心が入るレーン
+  const laneName = (s) => sfOneLine(s.text);
+  const horizontal = lanes.length ? lanes.every((l) => l.w >= l.h) : true;
+  const laneOrder = [...lanes].sort((p, q) => (horizontal ? p.y - q.y : p.x - q.x));
+  const laneOf = (n) => { const { cx, cy } = sfCenter(n); return laneOrder.find((l) => cx >= l.x && cx <= l.x + l.w && cy >= l.y && cy <= l.y + l.h) || null; };
+  const useLanes = laneOrder.length > 0 && nodes.every((n) => laneOf(n));
+
+  const out = [];
+  if (input.title) out.push(`title ${sfOneLine(input.title)}`);
+  if (useLanes) for (const l of laneOrder) out.push(`lane ${laneName(l)}`);
+  if (out.length) out.push('');
+  for (const n of nodes) {
+    const lane = useLanes ? laneName(laneOf(n)) : '';
+    const at = lane ? ` @${/\s/.test(lane) ? `[${lane}]` : lane}` : '';
+    out.push(`${typeOf(n)} ${idOf.get(n)}${at} ${sfOneLine(n.text) || '（文字なし）'}`);
+  }
+  out.push('');
+  for (const e of edges) out.push(`${idOf.get(e.a)} -> ${idOf.get(e.b)}${e.label ? ` : ${e.label}` : ''}`);
+  const notation = out.join('\n');
+  const g = FLOWCHART.parse(notation);
+  if (g.errors.length) return fail(`フロー記法にできない（${g.errors[0].message}）`);
+  for (const n of nodes) used.add(String(n.id));
+  if (useLanes) for (const l of laneOrder) used.add(String(l.id));
+  return { ok: true, notation, used, reason: '' };
+}
+
+
+// ---- core/smartart.js ----
+// SmartArt のデータ（ppt/diagrams/data*.xml・word/diagrams/data*.xml）→ md（P6d）
+// 親子のつながり（dgm:cxn の parOf）から字下げの箇条書きにする。手順型（process・cycle・chevron・arrow）はフロー記法にする
+// 入力は convert.js の parseXml で読んだ木（この中では XML を読まない）。DOM に触れない
+
+
+const saKids = (n, name) => (n ? n.children.filter((c) => typeof c !== 'string' && (!name || c.name === name)) : []);
+function saFind(n, name) {
+  if (!n || typeof n === 'string') return null;
+  for (const c of n.children) {
+    if (typeof c === 'string') continue;
+    if (c.name === name) return c;
+    const f = saFind(c, name);
+    if (f) return f;
+  }
+  return null;
+}
+function saText(n) {
+  const out = [];
+  const walk = (x) => { for (const c of x.children) { if (typeof c === 'string') continue; if (c.name === 'a:t') out.push(c.children.filter((y) => typeof y === 'string').join('')); else walk(c); } };
+  if (n) walk(n);
+  return out.join(' ').replace(/\s+/g, ' ').trim();
+}
+const SA_STEP = /process|cycle|chevron|arrow|funnel|venn/i;
+const SA_FLOW_ONLY = /process|cycle|chevron|arrow/i;
+
+// tree: parseXml(data.xml) の結果。戻り値: md の文字列（中身が無ければ ''）
+function smartArtToMd(tree) {
+  const model = saFind(tree, 'dgm:dataModel');
+  if (!model) return '';
+  const pts = new Map();
+  let docId = null, layout = '';
+  for (const pt of saKids(saFind(model, 'dgm:ptLst'), 'dgm:pt')) {
+    const type = pt.attrs.type || 'node';
+    const id = pt.attrs.modelId;
+    if (type === 'doc') { docId = id; const ps = saFind(pt, 'dgm:prSet'); layout = (ps && ps.attrs.loTypeId) || ''; continue; }
+    if (type !== 'node' && type !== 'asst') continue;
+    pts.set(id, { id, text: saText(saFind(pt, 'dgm:t')), kids: [] });
+  }
+  if (!docId) return '';
+  const roots = [];
+  const cxns = saKids(saFind(model, 'dgm:cxnLst'), 'dgm:cxn').filter((c) => (c.attrs.type || 'parOf') === 'parOf');
+  cxns.sort((a, b) => (+a.attrs.srcOrd || 0) - (+b.attrs.srcOrd || 0));
+  for (const c of cxns) {
+    const child = pts.get(c.attrs.destId);
+    if (!child) continue;
+    if (c.attrs.srcId === docId) roots.push(child);
+    else { const parent = pts.get(c.attrs.srcId); if (parent) parent.kids.push(child); }
+  }
+  const named = roots.filter((r) => r.text || r.kids.length);
+  if (!named.length) return '';
+  // 手順型は、根の並びを順につないだフロー記法にする（子の文字は箱の文字に添える）
+  if (SA_FLOW_ONLY.test(layout) && named.length >= 2) {
+    const one = (t) => String(t).replace(/->/g, '→').replace(/[[\]{}]/g, ' ').trim();
+    const lines = named.map((r, i) => `task S${i + 1} ${one([r.text, r.kids.map((k) => k.text).filter(Boolean).join('・')].filter(Boolean).join('：')) || '（文字なし）'}`);
+    const chain = named.map((_, i) => `S${i + 1}`).join(' -> ');
+    const notation = [...lines, '', chain].join('\n');
+    if (!FLOWCHART.parse(notation).errors.length) return ['[SmartArt（手順）]', '```flow', notation, '```'].join('\n');
+  }
+  const out = [`[SmartArt${SA_STEP.test(layout) ? '（手順）' : ''}]`];
+  const walk = (n, depth) => { if (n.text) out.push(`${'  '.repeat(depth)}- ${n.text}`); for (const k of n.kids) walk(k, n.text ? depth + 1 : depth); };
+  for (const r of named) walk(r, 0);
+  return out.join('\n');
+}
+
+
+// ---- core/fidelity.js ----
+// 忠実さの点検（P6d）: 元の資料をツールで変換した文字と、Gemini が書き写した md・HTML を照合し、元にあって返事に無い語を出す
+// 語: 数値（桁区切り・全角は正規化）、英数字の 2 文字以上の語、漢字・カタカナの 2 文字以上の連なり。DOM に触れない
+
+const FIDELITY_LIST_MAX = 100;
+
+// HTML ならタグを外して、実体参照を戻す。md の書式記号は語の区切りになるので、そのままでよい
+function fdPlain(text) {
+  let t = String(text || '');
+  if (/<\/?[a-zA-Z][^>]*>/.test(t)) {
+    t = t.replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, ' ').replace(/<!--[\s\S]*?-->/g, ' ').replace(/<[^>]+>/g, ' ')
+      .replace(/&(lt|gt|amp|quot|#39|nbsp);/g, (m, k) => ({ lt: '<', gt: '>', amp: '&', quot: '"', '#39': "'", nbsp: ' ' })[k]);
+  }
+  return t.normalize('NFKC');
+}
+// 語を出てきた順に（重なりは除く）
+function fidelityWords(text) {
+  const t = fdPlain(text).replace(/<!--[\s\S]*?-->/g, ' ');
+  const out = [];
+  const seen = new Set();
+  const add = (w) => { if (!seen.has(w)) { seen.add(w); out.push(w); } };
+  // 数値: 1,000 → 1000、3.14。年月日の 2026-11-27 は数字ごとに分かれる
+  // 1 桁の数（番号・箇条の数）は多すぎて意味が薄いので、2 桁以上だけ
+  for (const m of t.matchAll(/\d[\d,]*(?:\.\d+)?/g)) { const n = m[0].replace(/,/g, ''); if (n.length >= 2) add(n); }
+  for (const m of t.matchAll(/[A-Za-z][A-Za-z0-9_-]+/g)) add(m[0].toLowerCase());
+  for (const m of t.matchAll(/[\p{Script=Han}\p{Script=Katakana}ー]{2,}/gu)) add(m[0]);
+  return out;
+}
+// 戻り値 { total, missing: [語]（最大 FIDELITY_LIST_MAX）, missingCount, rate（元の語のうち返事にあった割合 0〜1） }
+function fidelityCheck(sourceText, replyText) {
+  const src = fidelityWords(sourceText);
+  const reply = fdPlain(replyText);
+  // 数値と英数字の語は、返事の語の集まりと完全一致で照合する（25 が 1250000 の一部に当たらないように）。漢字・カタカナは部分一致
+  const replyWords = new Set(fidelityWords(replyText));
+  const missing = [];
+  for (const w of src) {
+    const hit = /^[\d.-]|^[a-z]/.test(w) ? replyWords.has(w) : reply.includes(w);
+    if (!hit) missing.push(w);
+  }
+  return { total: src.length, missing: missing.slice(0, FIDELITY_LIST_MAX), missingCount: missing.length, rate: src.length ? (src.length - missing.length) / src.length : 1 };
+}
+
+
 // ---- core/judge-prompts.js ----
 // 判断・データの指示文 4 つ（判断フロー・テーブル定義・判断マスタ・ケース）。差分ではなく md を返させる（plain）
 // 写した部品: gemini-kit src/items/90〜93（2026-11-26）。根拠の ID を台帳の ID にし、構築先（Excel・SharePoint・Dataverse）の文を外した。
@@ -8534,6 +9019,117 @@ const MDBLOCKS = (() => {
 
   return { parse, splitRow, unwrapFence, tableCols, stateOf, STATES };
 })();
+
+
+// ---- core/mdhtml.js ----
+// md → 人が読む 1 枚の HTML（ツールが組む）と、Gemini が書いた HTML の仕上げ（P6d）
+// どちらも文字列を作ってダウンロードするだけ（画面の中には入れない）。外から来た文字はすべてエスケープする
+// フロー記法の図は、呼ぶ側から flowSvg(notation) → SVG の文字列 をもらう（DOM を使うのは画面側）
+
+
+// 書き出す HTML の CSP: script なし・外部の読み込みなし。書式はこの文書の <style> だけ
+const EXPORT_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:";
+const mhEsc = (s) => String(s == null ? '' : s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const mhUnesc = (s) => String(s).replace(/&(lt|gt|amp|quot|#39|apos|#x[0-9a-f]+|#\d+);/gi, (m, k) => {
+  const l = k.toLowerCase();
+  if (l === 'lt') return '<'; if (l === 'gt') return '>'; if (l === 'amp') return '&'; if (l === 'quot') return '"'; if (l === '#39' || l === 'apos') return "'";
+  const n = l[1] === 'x' ? parseInt(l.slice(2), 16) : +l.slice(1);
+  return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : '';
+});
+// 行内: エスケープしてから **太字**・`コード`・[文字](ページ内か相対のリンク) だけを書式にする
+function mhInline(s) {
+  let t = mhEsc(s);
+  t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, label, href) => (/^(#|\.{0,2}\/?[\w%.-][\w%./#-]*$)/.test(href) && !/^[a-z][a-z0-9+.-]*:/i.test(href) && !href.startsWith('//') ? `<a href="${href}">${label}</a>` : `${label}（${href}）`));
+  return t.replace(/ {2}\n|\n/g, '<br>');
+}
+const FLOW_CSS_NOTE = '/* 図の書式 */';
+
+function mhHead(title, css) {
+  return ['<!DOCTYPE html>', '<html lang="ja">', '<head>', '<meta charset="utf-8">',
+    `<meta http-equiv="Content-Security-Policy" content="${EXPORT_CSP}">`,
+    '<meta name="viewport" content="width=device-width, initial-scale=1">', '<meta name="referrer" content="no-referrer">',
+    `<title>${mhEsc(title)}</title>`,
+    `<style>${HTML_STYLE}nav.toc{background:#F8F8FB;border:1px solid #ccc;padding:8px 16px}nav.toc ol{margin:4px 0}.fig{overflow-x:auto;border:1px solid #ccc;padding:8px;margin:8px 0}.fig svg{max-width:100%;height:auto}.src{color:#626264;font-size:12px}${css ? FLOW_CSS_NOTE + css : ''}</style>`,
+    '</head>'].join('\n');
+}
+
+// md → HTML。opts: { title, flowSvg(notation) → SVG の文字列（無い・空ならフロー記法をそのまま見せる）, css: 図の書式 }
+function mdToHtml(md, opts = {}) {
+  const blocks = MDBLOCKS.parse(String(md || ''));
+  const body = [];
+  const toc = [];
+  let sec = 0, flows = 0;
+  const list = (items, ordered) => `<${ordered ? 'ol' : 'ul'}>${items.map((it) => `<li>${it.check == null ? '' : it.check ? '☑ ' : '☐ '}${mhInline(it.text)}${it.children && it.children.length ? list(it.children, it.children[0].ordered) : ''}</li>`).join('')}</${ordered ? 'ol' : 'ul'}>`;
+  for (const b of blocks) {
+    if (b.type === 'heading') {
+      const lv = Math.min(4, Math.max(1, b.level));
+      if (lv === 2) { sec++; toc.push({ id: `sec-${sec}`, text: b.text }); body.push(`<h2 id="sec-${sec}">${mhInline(b.text)}</h2>`); }
+      else body.push(`<h${lv}>${mhInline(b.text)}</h${lv}>`);
+    } else if (b.type === 'para') {
+      // 出典・ページの印（<!-- … -->）は小さな注記にする
+      const m = /^<!--\s*([\s\S]*?)\s*-->$/.exec(b.text.trim());
+      body.push(m ? `<p class="src">${mhEsc(m[1])}</p>` : `<p>${mhInline(b.text)}</p>`);
+    } else if (b.type === 'table') {
+      body.push(`<table><thead><tr>${b.head.map((c) => `<th>${mhInline(c.replace(/<br>/g, '\n'))}</th>`).join('')}</tr></thead><tbody>${b.rows.map((r) => `<tr>${b.head.map((_, i) => `<td>${mhInline(String(r[i] || '').replace(/<br>/g, '\n'))}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+    } else if (b.type === 'list') body.push(list(b.items, b.items[0] && b.items[0].ordered));
+    else if (b.type === 'quote') body.push(`<blockquote>${mhInline(b.text)}</blockquote>`);
+    else if (b.type === 'hr') body.push('<hr>');
+    else if (b.type === 'code') {
+      if (b.lang === 'flow') {
+        flows++;
+        const svg = opts.flowSvg ? opts.flowSvg(b.text) : '';
+        body.push(svg ? `<div class="fig">${svg}</div>` : '');
+        // 元のフロー記法を残す（このツールで md に戻すと ```flow に戻る）
+        body.push(`<pre class="flow-src"${svg ? ' hidden' : ''}>${mhEsc(b.text)}</pre>`);
+      } else body.push(`<pre${b.lang ? ` class="${mhEsc(b.lang)}"` : ''}>${mhEsc(b.text)}</pre>`);
+    }
+  }
+  const title = opts.title || (blocks.find((b) => b.type === 'heading') || {}).text || '資料';
+  const nav = toc.length >= 2 ? `<nav class="toc"><strong>目次</strong><ol>${toc.map((t) => `<li><a href="#${t.id}">${mhInline(t.text)}</a></li>`).join('')}</ol></nav>` : '';
+  const html = [mhHead(title, opts.css || ''), '<body>', nav, ...body.filter(Boolean), '</body>', '</html>', ''].join('\n');
+  return { html, flows, sections: sec };
+}
+
+// Gemini が書いた HTML の仕上げ: script・イベント属性・外部への URL・危ないタグを外し、CSP を入れ、<pre class="flow"> を図にする
+// 戻り値 { html, removed: { scripts, handlers, urls, others }, flows }
+function finishHtml(src, opts = {}) {
+  let h = String(src || '').replace(/^﻿/, '');
+  // ```html の囲みが残っていれば外す
+  h = h.replace(/^\s*```[\w-]*\s*\n/, '').replace(/\n\s*```\s*$/, '');
+  const removed = { scripts: 0, handlers: 0, urls: 0, others: 0 };
+  h = h.replace(/<script\b[\s\S]*?(?:<\/script\s*>|$)/gi, () => { removed.scripts++; return ''; });
+  h = h.replace(/<\/?(?:iframe|object|embed|link|base|form|frame|frameset|applet)\b[^>]*>/gi, () => { removed.others++; return ''; });
+  h = h.replace(/<meta\b[^>]*http-equiv[^>]*>/gi, () => { removed.others++; return ''; });
+  // タグの中の属性だけを直す
+  h = h.replace(/<([a-zA-Z][\w-]*)(\s[^<>]*?)?(\/?)>/g, (m, tag, attrs, slash) => {
+    if (!attrs) return m;
+    let a = attrs.replace(/\s+on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, () => { removed.handlers++; return ''; });
+    a = a.replace(/\s+(href|src|srcset|action|formaction|xlink:href|poster|background)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gi, (mm, name, _v, d1, d2, d3) => {
+      const v = (d1 ?? d2 ?? d3 ?? '').trim();
+      const external = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(v) && !/^#/.test(v);
+      if (!external) return mm;
+      removed.urls++;
+      return name.toLowerCase() === 'href' ? ' href="#"' : '';
+    });
+    return `<${tag}${a}${slash}>`;
+  });
+  // フロー記法を図に（元の記法は flow-src として残す）
+  let flows = 0;
+  h = h.replace(/<pre\b[^>]*class\s*=\s*["'][^"']*\bflow\b[^"']*["'][^>]*>([\s\S]*?)<\/pre\s*>/gi, (m, inner) => {
+    const notation = mhUnesc(inner.replace(/<[^>]*>/g, ''));
+    const svg = opts.flowSvg ? opts.flowSvg(notation) : '';
+    flows++;
+    return `${svg ? `<div class="fig">${svg}</div>` : ''}<pre class="flow-src"${svg ? ' hidden' : ''}>${mhEsc(notation)}</pre>`;
+  });
+  // CSP と図の書式を head の先頭に入れる（head が無ければ作る）
+  const inject = `<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="${EXPORT_CSP}">\n<meta name="referrer" content="no-referrer">${opts.css ? `\n<style>.fig{overflow-x:auto;margin:8px 0}.fig svg{max-width:100%;height:auto}${opts.css}</style>` : ''}`;
+  if (/<head\b[^>]*>/i.test(h)) h = h.replace(/<head\b[^>]*>/i, (m) => `${m}\n${inject}`);
+  else if (/<html\b[^>]*>/i.test(h)) h = h.replace(/<html\b[^>]*>/i, (m) => `${m}\n<head>\n${inject}\n</head>`);
+  else h = `<!DOCTYPE html>\n<html lang="ja">\n<head>\n${inject}\n</head>\n<body>\n${h}\n</body>\n</html>\n`;
+  return { html: h, removed, flows };
+}
 
 
 // ---- core/table-def.js ----
@@ -10850,6 +11446,23 @@ function flowFrame(svg, cls) {
   return h('div', { class: 'stack bfl-figure-box' }, h('div', { class: 'row' }, btn, hint), wrap);
 }
 
+// フロー記法 → SVG の文字列（書き出す HTML に入れる。描けなければ ''）（P6d）
+function flowSvgString(notation) {
+  const r = flowGeometry(notation);
+  if (!r.geo) return '';
+  return new XMLSerializer().serializeToString(renderFlowSvg(r.geo));
+}
+// 図の書式（:root の色の変数と .bfl- の規則）を、この画面の CSS から集める（書き出す HTML に入れる）
+function flowCssText() {
+  const out = [];
+  for (const sh of document.styleSheets) {
+    let rules;
+    try { rules = sh.cssRules; } catch (e) { continue; }
+    for (const r of rules) if (r.selectorText && (r.selectorText === ':root' || r.selectorText.includes('bfl-'))) out.push(r.cssText);
+  }
+  return out.join('\n');
+}
+
 
 // ---- ui/store.js ----
 // 画面の状態。台帳・取り消し・書き出し状態を持ち、localStorage に「暗号化して」保存する。
@@ -11341,8 +11954,9 @@ const store = {
   exportText() {
     return JSON.stringify(this.ledger, null, 2) + '\n';
   },
+  // 既定の名前に案件名を入れない（ダウンロードの履歴に暗号化されない形で残るため。FIX-025）。案件 ID と日付だけ
   exportFilename() {
-    const name = (this.ledger.project.name || '案件').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 40);
+    const name = `anken_${this.workspace.activeId || 'project'}`;
     const d = new Date();
     const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
     return `${name}_rev${this.ledger.revision}_${ymd}.json`;
@@ -14250,6 +14864,7 @@ async function addFiles(list, app) {
       const r = await convertFile(f.name, bytes, { today });
       if (st !== convertState) return;
       Object.assign(entry, r);
+      entry.localMd = r.md || null;   // ツールで変換した md（Gemini の返事の忠実さの点検に使う）
       if (r.kind === 'pdf') entry.pages = pdfPageCount(bytes);
       if (r.kind === 'image') entry.pages = 1;
       if (r.tables && r.tables.length) entry.bundle = { table: 0, groupCol: '', format: 'md', size: 500, merge: true, ext: 'json' };
@@ -14299,35 +14914,101 @@ function bundleBox(entry, app) {
     h('button', { class: 'btn', type: 'button', 'data-fk': `b-${entry.id}-save`, onclick: () => saveBundle(entry) }, '一式を zip で保存'));
 }
 
+// Gemini で変換するときの目的（種類ごと）。md: Markdown にする、html: HTML にする（Gemini が直接書く）、flow: 画像のフローをフロー記法にする（P6d）
+const G_TARGETS = { pdf: ['md', 'html'], image: ['md', 'flow'], pptx: ['md', 'html'], html: ['md'], xlsx: ['html'] };
+const G_TARGET_LABEL = { md: 'Markdown にする', html: 'HTML にする（Gemini が書く）', flow: '画像のフロー図をフロー記法にする' };
+const G_NOTE = {
+  pdf: 'PDF はブラウザの中では文字にできません。指示文をコピーし、ファイルと一緒に Gemini に貼ってください。',
+  image: '画像はブラウザの中では文字にできません。指示文をコピーし、画像と一緒に Gemini に貼ってください。',
+  pptx: 'このブラウザでも変換しましたが、画像の中の文字や図の説明が要るときは Gemini に任せます。返事は、ツールの変換結果と照合して抜けを出します。',
+  html: 'このブラウザでも変換しましたが、画像の多い HTML は Gemini に任せます。返事は、ツールの変換結果と照合して抜けを出します。',
+  xlsx: '人が読む HTML を Gemini に書かせます（表の値はツールの変換結果と照合します）。ツールで組む HTML は、上の「HTML を保存」で作れます。',
+};
+const flowBlocks = (md) => [...String(md || '').matchAll(/```flow\n([\s\S]*?)\n```/g)].map((m) => m[1]);
+
 function geminiBox(entry, app) {
+  const targets = G_TARGETS[entry.kind] || [];
+  if (!targets.length) return null;
+  if (!targets.includes(entry.gTarget)) entry.gTarget = targets[0];
+  const target = entry.gTarget;
   const pages = h('input', { type: 'number', min: '1', value: entry.pages ? String(entry.pages) : '', class: 'num-in', 'aria-label': 'ページ数', 'data-fk': `g-${entry.id}-pages` });
   // 空欄・0・数でない値は「ページ数なし」（空欄を 1 ページとして点検しない）
   pages.addEventListener('change', () => { const n = Math.floor(Number(pages.value)); entry.pages = pages.value.trim() !== '' && n >= 1 ? n : null; });
-  const reply = h('textarea', { rows: '6', 'aria-label': 'Gemini の返事', placeholder: 'Gemini の返事（```markdown の囲みごと）を貼ります。何回かに分かれたときは、つなげて貼ってください。', 'data-fk': `g-${entry.id}-reply` });
+  const tsel = h('select', { 'aria-label': 'Gemini で何にするか', 'data-fk': `g-${entry.id}-target` }, targets.map((t) => h('option', { value: t, selected: t === target, text: G_TARGET_LABEL[t] })));
+  tsel.addEventListener('change', () => { entry.gTarget = tsel.value; entry.inspect = null; entry.fidelity = null; entry.ghtml = null; app.refresh(); });
+  const reply = h('textarea', { rows: '6', 'aria-label': 'Gemini の返事', placeholder: target === 'html' ? 'Gemini の返事（```html の囲みごと）を貼ります。' : 'Gemini の返事（囲みごと）を貼ります。何回かに分かれたときは、つなげて貼ってください。', 'data-fk': `g-${entry.id}-reply` });
   reply.value = entry.reply || '';
   reply.addEventListener('input', () => { entry.reply = reply.value; });
-  const r = entry.inspect;
-  return h('div', { class: 'stack' },
-    h('p', { class: 'small', text: 'PDF・画像はブラウザの中では文字にできません。変換の指示文をコピーし、ファイルと一緒に Gemini に貼ってください。Gemini は先に 5 つを選択肢で聞いてきます。答えると、要約せずに書き写した Markdown を返します。' }),
-    h('div', { class: 'row' },
-      h('label', { class: 'field' }, entry.kind === 'pdf' ? 'ページ数（数えた値。違えば直す）' : 'ページ数', pages),
-      h('button', { class: 'btn primary', type: 'button', 'data-fk': `g-${entry.id}-copy`, onclick: async () => {
-        const ok = await copyText(conversionPrompt({ fileName: entry.name, kind: entry.kind, pages: entry.pages }));
-        toast(ok ? '変換の指示文をコピーしました' : 'コピーできませんでした');
-      } }, '変換の指示文をコピー')),
-    h('label', { class: 'field' }, '返事を貼る', reply),
-    h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', 'data-fk': `g-${entry.id}-check`, onclick: () => {
-      if (!reply.value.trim()) { toast('返事を貼ってください'); return; }
+  const unit = entry.kind === 'pptx' ? 'スライド数' : 'ページ数';
+  const promptText = () => (target === 'flow' ? flowImagePrompt({ fileName: entry.name }) : conversionPrompt({ fileName: entry.name, kind: entry.kind, pages: entry.pages, target }));
+  const check = () => {
+    if (!reply.value.trim()) { toast('返事を貼ってください'); return; }
+    entry.fidelity = entry.localMd ? fidelityCheck(entry.localMd, reply.value) : null;
+    if (target === 'html') {
+      entry.ghtml = finishHtml(reply.value, { flowSvg: flowSvgString, css: flowCssText() });
+      entry.inspect = null;
+    } else if (target === 'flow') {
+      const m = /```flow\s*\n([\s\S]*?)\n\s*```/.exec(reply.value);
+      const notation = (m ? m[1] : reply.value.replace(/^\s*```\w*\s*$/gm, '')).trim();
+      const errs = FLOWCHART.parse(notation).errors;
+      entry.inspect = { flowErrors: errs };
+      entry.md = mdHeader(entry.name, todayStr(), 'Gemini（このツールで点検）', `フロー記法・誤り ${errs.length}`) + '```flow\n' + notation + '\n```\n';
+    } else {
       entry.inspect = inspectMarkdown(reply.value, { pages: entry.pages });
       const x = entry.inspect;
       entry.md = mdHeader(entry.name, todayStr(), 'Gemini（このツールで点検）', `ページ ${entry.pages || '?'}・見出し ${x.headings}・表 ${x.tables}`) + x.md;
-      app.refresh();
-    } }, '点検する')),
-    r ? h('ul', { class: ['small', 'cv-inspect', r.pageChecked && r.missing.length ? 'notice warn' : 'notice'] },
-      h('li', { text: !r.pageMarks ? 'ページの区切りの印がありません（印を入れない答えにした場合は点検しません）'
-        : r.pageChecked ? (r.missing.length ? `抜けているページ: ${r.missing.join('・')}（印 ${r.pageMarks} 個 / ${r.pagesExpected} ページ）` : `全 ${r.pagesExpected} ページの印がそろっています`)
-          : `ページの区切りの印 ${r.pageMarks} 個（ページ数を入れると抜けを点検します）` }),
-      h('li', { text: `見出し ${r.headings}・表 ${r.tables}・[読めない] ${r.unreadable}` })) : null);
+    }
+    app.refresh();
+  };
+  const r = entry.inspect;
+  const fi = entry.fidelity;
+  const gh = entry.ghtml;
+  return h('details', { class: 'cv-gemini stack', open: entry.kind === 'pdf' || entry.kind === 'image' },
+    h('summary', { text: 'Gemini で変換する（選択肢で確かめてから書き写させる）' }),
+    h('p', { class: 'small', text: `${G_NOTE[entry.kind] || ''} Gemini は先に、表・図・フロー図の扱いなどを選択肢で聞いてきます。番号で答えると書き写します。` }),
+    h('div', { class: 'row settings-row' },
+      h('label', { class: 'field' }, '何にするか', tsel),
+      target !== 'flow' && entry.kind !== 'html' ? h('label', { class: 'field' }, entry.kind === 'pdf' ? `${unit}（数えた値。違えば直す）` : unit, pages) : null,
+      h('button', { class: 'btn primary', type: 'button', 'data-fk': `g-${entry.id}-copy`, onclick: async () => {
+        const ok = await copyText(promptText());
+        toast(ok ? '変換の指示文をコピーしました' : 'コピーできませんでした');
+      } }, '変換の指示文をコピー')),
+    h('label', { class: 'field' }, '返事を貼る', reply),
+    h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', 'data-fk': `g-${entry.id}-check`, onclick: check }, '点検する'),
+      entry.localMd && entry.md !== entry.localMd && target === 'md' ? h('button', { class: 'btn small', type: 'button', onclick: () => { entry.md = entry.localMd; entry.inspect = null; app.refresh(); } }, 'md をツールの変換結果に戻す') : null),
+    r && r.flowErrors ? h('p', { class: ['small', r.flowErrors.length ? 'notice warn' : 'notice'], text: r.flowErrors.length ? `フロー記法の誤り ${r.flowErrors.length} 件（${r.flowErrors.slice(0, 3).map((e) => `${e.line} 行目: ${e.message}`).join(' ／ ')}）。誤りの行は図に出ません` : 'フロー記法に誤りはありません' }) : null,
+    r && !r.flowErrors ? h('ul', { class: ['small', 'cv-inspect', r.pageChecked && r.missing.length ? 'notice warn' : 'notice'] },
+      h('li', { text: !r.pageMarks ? '区切りの印がありません（印を入れない答えにした場合は点検しません）'
+        : r.pageChecked ? (r.missing.length ? `抜けている${unit === 'スライド数' ? 'スライド' : 'ページ'}: ${r.missing.join('・')}（印 ${r.pageMarks} 個 / ${r.pagesExpected}）` : `全 ${r.pagesExpected} ${unit === 'スライド数' ? 'スライド' : 'ページ'}の印がそろっています`)
+          : `区切りの印 ${r.pageMarks} 個（${unit}を入れると抜けを点検します）` }),
+      h('li', { text: `見出し ${r.headings}・表 ${r.tables}・[読めない] ${r.unreadable}・フロー図 ${flowBlocks(entry.md).length}` })) : null,
+    gh ? h('div', { class: 'notice small stack' },
+      h('p', { text: `HTML を仕上げました: フロー図 ${gh.flows} 枚を図にしました。外したもの: script ${gh.removed.scripts}・イベント属性 ${gh.removed.handlers}・外部への URL ${gh.removed.urls}・そのほか ${gh.removed.others}` }),
+      h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', 'data-fk': `g-${entry.id}-html`, onclick: () => download(baseName(entry.name) + '.html', gh.html, 'text/html;charset=utf-8') }, '仕上げた HTML を保存'))) : null,
+    fi ? h('div', { class: ['small', fi.missingCount ? 'notice warn' : 'notice'] },
+      h('p', { text: fi.missingCount ? `ツールの変換結果にあって、返事に無い語が ${fi.missingCount} 個あります（元の語 ${fi.total} 個のうち ${Math.round(fi.rate * 100)}% が返事にあります）。抜け・書き換えがないか確かめてください` : `ツールの変換結果の語（${fi.total} 個）は、すべて返事にあります` }),
+      fi.missing.length ? h('p', { class: 'cv-missing', text: fi.missing.slice(0, 40).join('、') + (fi.missingCount > 40 ? ` ほか ${fi.missingCount - 40} 個` : '') }) : null) : null);
+}
+
+// md の中のフロー図ごとに「業務フローとして台帳に足す」（案件を開いているときだけ）
+function flowToLedgerBox(entry, app) {
+  const blocks = flowBlocks(entry.md);
+  if (!blocks.length || !store.ledger || store.presentation) return null;
+  const phases = KINDS.bizflow.fields.phase.values;
+  entry.flowPhase = entry.flowPhase || 'asis';
+  const psel = h('select', { 'aria-label': '現行・導入後', 'data-fk': `f-${entry.id}-phase` }, phases.map((p) => h('option', { value: p.v, selected: p.v === entry.flowPhase, text: p.label })));
+  psel.addEventListener('change', () => { entry.flowPhase = psel.value; });
+  return h('div', { class: 'row cv-flows' }, h('span', { class: 'small', text: `フロー図 ${blocks.length} 枚を業務フローとして台帳に足す:` }), h('label', { class: 'row small' }, '区分', psel),
+    blocks.map((notation, i) => {
+      const t = /^title\s+(.+)$/m.exec(notation);
+      const title = t ? t[1].trim() : `${baseName(entry.name)} の流れ ${i + 1}`;
+      return h('button', { class: 'btn small', type: 'button', 'data-fk': `f-${entry.id}-${i}`, onclick: () => {
+        const r = store.applyLocal([{ op: 'add', tempId: 'new:cvflow', item: { kind: 'bizflow', title, phase: entry.flowPhase, notation, status: 'draft', sources: [{ type: 'other', ref: entry.name }] } }]);
+        if (!r.ok) { toast(r.errors.join(' / ')); return; }
+        const id = r.idMap.get('new:cvflow');
+        toast(`業務フロー ${id}「${title}」を足しました（取り消し可）`);
+      } }, `「${title}」を足す`);
+    }));
 }
 
 function fileCard(entry, app) {
@@ -14335,6 +15016,12 @@ function fileCard(entry, app) {
   if (entry.md) {
     actions.push(
       h('button', { class: 'btn small', type: 'button', 'data-fk': `c-${entry.id}-save`, onclick: () => download(baseName(entry.name) + '.md', entry.md, MD_TYPE) }, 'md を保存'),
+      // ツールで組む HTML（人が読む資料。フロー図は図にする）
+      h('button', { class: 'btn small', type: 'button', 'data-fk': `c-${entry.id}-html`, onclick: () => {
+        const r = mdToHtml(entry.md, { title: baseName(entry.name), flowSvg: flowSvgString, css: flowCssText() });
+        download(baseName(entry.name) + '.html', r.html, 'text/html;charset=utf-8');
+        toast(`HTML を保存しました（章 ${r.sections}・フロー図 ${r.flows}）`);
+      } }, 'HTML を保存'),
       h('button', { class: 'btn small', type: 'button', 'data-fk': `c-${entry.id}-copy`, onclick: async () => toast((await copyText(entry.md)) ? 'コピーしました' : 'コピーできませんでした') }, 'コピー'));
   }
   actions.push(h('button', { class: 'btn small', type: 'button', 'data-fk': `c-${entry.id}-remove`, onclick: () => { convertState.files = convertState.files.filter((x) => x !== entry); app.refresh(); } }, '一覧から外す'));
@@ -14346,7 +15033,8 @@ function fileCard(entry, app) {
       h('span', { class: 'small muted', text: `${sizeText(entry.size)}${entry.counts ? '・' + entry.counts : ''}${entry.md ? `・${entry.md.length.toLocaleString()} 字` : ''}` }),
       h('span', { class: 'spacer' }), actions),
     !entry.ok ? h('p', { class: 'notice error small', role: 'alert', text: entry.reason }) : null,
-    entry.kind === 'pdf' || entry.kind === 'image' ? geminiBox(entry, app) : null,
+    geminiBox(entry, app),
+    entry.md ? flowToLedgerBox(entry, app) : null,
     entry.md ? h('details', { class: 'cv-preview', open: convertState.files.length === 1 },
       h('summary', { text: `md の先頭（${Math.min(PREVIEW_LINES, lines.length)} / ${lines.length} 行）` }),
       h('pre', { class: 'cv-pre', text: lines.slice(0, PREVIEW_LINES).join('\n') })) : null,
@@ -14369,7 +15057,7 @@ function saveAll() {
 
 function renderConvert(root, app) {
   root.appendChild(h('h2', { text: '資料の変換' }));
-  root.appendChild(h('p', { class: 'muted small', text: 'NotebookLM や Gemini に渡しやすいよう、資料を Markdown にします。Excel・CSV・JSON・Word・PowerPoint・HTML はこのブラウザの中で変換し、PDF・画像は Gemini に任せます。結果は保存しません（ロックすると消えます）。社外へ持ち出さないでください。' }));
+  root.appendChild(h('p', { class: 'muted small', text: 'NotebookLM や Gemini に渡しやすいよう、資料を Markdown にします。Excel・CSV・JSON・Word・PowerPoint・HTML はこのブラウザの中で変換し、PDF・画像は Gemini に任せます。PowerPoint・Excel の図形と矢印のフロー図は、フロー記法（```flow）に起こします。「HTML を保存」で人が読む 1 枚の HTML（フロー図は図）にもできます。結果は保存しません（ロックすると消えます）。社外へ持ち出さないでください。' }));
   const input = h('input', { type: 'file', multiple: true, id: 'cv-file', 'aria-label': '変換するファイルを選ぶ' });
   input.addEventListener('change', () => { addFiles([...input.files], app); input.value = ''; });
   const zone = h('section', { class: 'card stack dropzone', id: 'cv-drop' },
@@ -14402,7 +15090,8 @@ function clearMemosState() {
 
 const memoTypes = () => KINDS.memo.fields.memoType.values;
 const memoTotal = (ledger) => ledger.items.filter((it) => it.kind === 'memo').reduce((a, it) => a + String(it.body || '').length, 0);
-const fileSafeName = (s) => String(s || '案件').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 40);
+// 書き出すファイルの名前は案件 ID と日付だけ（案件名を入れない。FIX-025）
+const memoFileBase = () => `anken_${store.workspace.activeId || 'project'}`;
 const ymd = () => todayStr().replace(/-/g, '');
 
 // メモを台帳に足す（前処理の画面からも使う）。戻り値 { ok, id? }
@@ -14520,8 +15209,8 @@ function renderMemos(root, app) {
         } }, '消す'))))))) : h('div', { class: 'empty small', text: all.length ? '条件に合うメモはありません' : 'まだメモはありません' }),
     h('div', { class: 'row' },
       h('span', { class: 'small muted', text: `${sel.length} 件選択中` }),
-      h('button', { class: 'btn', type: 'button', id: 'memo-export-json', disabled: !sel.length, onclick: () => download(`${fileSafeName(ledger.project.name)}_memo_${ymd()}.json`, exportJson(ledger, sel)) }, 'JSON で書き出す'),
-      h('button', { class: 'btn', type: 'button', id: 'memo-export-md', disabled: !sel.length, onclick: () => download(`${fileSafeName(ledger.project.name)}_memo_${ymd()}.md`, exportMd(ledger, sel), 'text/markdown;charset=utf-8') }, 'md で書き出す'),
+      h('button', { class: 'btn', type: 'button', id: 'memo-export-json', disabled: !sel.length, onclick: () => download(`${memoFileBase()}_memo_${ymd()}.json`, exportJson(ledger, sel)) }, 'JSON で書き出す'),
+      h('button', { class: 'btn', type: 'button', id: 'memo-export-md', disabled: !sel.length, onclick: () => download(`${memoFileBase()}_memo_${ymd()}.md`, exportMd(ledger, sel), 'text/markdown;charset=utf-8') }, 'md で書き出す'),
       h('button', { class: 'btn primary', type: 'button', id: 'memo-to-prompt', disabled: !sel.length, onclick: () => app.go('prompts', { purpose: 'memo', memoIds: sel.map((m) => m.id) }) }, 'メモからの取込の指示文を開く'))));
 }
 
@@ -15820,12 +16509,31 @@ function renderAll() {
   renderDetail(document.getElementById('detail'), app);
 }
 
+// 配信元で開いたときの画面: ダウンロードの案内だけ（保存の箱を読まない・台帳を作らない）
+function renderDistributionOnly() {
+  for (const id of ['tabs', 'groups', 'topbar-actions', 'topbar-status', 'project-name', 'detail']) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.hidden = true; }
+  }
+  const view = document.getElementById('view');
+  view.textContent = '';
+  view.appendChild(h('section', { class: 'card stack lock', id: 'distribution' },
+    h('h2', { text: '案件ワークベンチをダウンロードしてください' }),
+    h('p', { text: 'このページは配布のためのものです。ここでは台帳を作ったり開いたりできません。HTML をダウンロードし、自分の PC に保存したファイルをダブルクリックで開いて使ってください。' }),
+    h('div', { class: 'row' }, h('a', { class: 'btn primary', href: './index.html', download: 'anken-workbench.html', id: 'download-html' }, 'HTML をダウンロード')),
+    h('ul', { class: 'small muted' },
+      h('li', { text: 'ダウンロードした HTML は、通信なしで動きます（外部へは一切送信しません）' }),
+      h('li', { text: 'Web 上のページでは、同じサイトの別のページから保存の中身を読まれるおそれがあるため、台帳を使えないようにしています' }))));
+}
+
 function boot() {
   // 他人のページの枠の中では動かない（クリックジャッキング対策。GitHub Pages ではヘッダで防げないため）
   if (window.top !== window.self) {
     document.body.textContent = 'このツールは単独のタブで開いてください。';
     return;
   }
+  // 配信元（GitHub Pages など）では台帳を使わせない（FIX-024）。保存の箱を読む前に止める
+  if (isHostedLocation(location.protocol, location.hostname)) { renderDistributionOnly(); return; }
   store.init();
   const fromHash = location.hash.replace('#', '');
   app.view = VIEWS.some((v) => v.id === fromHash) ? fromHash : 'overview';

@@ -3,6 +3,7 @@
 // overlay（判断・データの画面）: { marks: {ID: 'ok'|'open'|'none'}, visited: [ID], taken: ['A>B'], current: ID, focus: ID（選んでいる箱）, titles: {ID: 文字}, onSelect(id) }
 
 import { FLOWCHART } from '../core/flow.js';
+import { flowGeometry } from '../core/flowsafe.js';
 import { s, h } from './dom.js';
 
 
@@ -134,4 +135,21 @@ export function flowFrame(svg, cls) {
   const check = () => { hint.hidden = !(wrap.isConnected && wrap.scrollWidth > wrap.clientWidth + 2); };
   setTimeout(check, 0);
   return h('div', { class: 'stack bfl-figure-box' }, h('div', { class: 'row' }, btn, hint), wrap);
+}
+
+// フロー記法 → SVG の文字列（書き出す HTML に入れる。描けなければ ''）（P6d）
+export function flowSvgString(notation) {
+  const r = flowGeometry(notation);
+  if (!r.geo) return '';
+  return new XMLSerializer().serializeToString(renderFlowSvg(r.geo));
+}
+// 図の書式（:root の色の変数と .bfl- の規則）を、この画面の CSS から集める（書き出す HTML に入れる）
+export function flowCssText() {
+  const out = [];
+  for (const sh of document.styleSheets) {
+    let rules;
+    try { rules = sh.cssRules; } catch (e) { continue; }
+    for (const r of rules) if (r.selectorText && (r.selectorText === ':root' || r.selectorText.includes('bfl-'))) out.push(r.cssText);
+  }
+  return out.join('\n');
 }

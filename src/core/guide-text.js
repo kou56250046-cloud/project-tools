@@ -166,7 +166,7 @@ export const SCREEN_HELP = {
   arch: { what: 'システム・連携・バッチから、データの流れの構成図を自動で描く。真ん中がこの案件、左が受信元・右が送信先。同じ相手と向きの連携は 1 本にまとめる。新規予定・廃止は名前の後ろの印（廃止は破線）', when: '連携の洗い出しのあと、顧客と全体像を合わせるとき' },
   bizflow: { what: '現行・導入後の業務フローを、フロー記法からスイムレーンの図にする。記法を直して保存（取り消し可）。誤りのある行は外して描き、誤りを一覧に出す。関連でつながる現行・導入後を並べて見比べる', when: '現行業務を聞き取ったあと、導入後の業務を顧客と合わせるとき' },
   memos: { what: 'チャット（Teams・Google Chat の貼り付け）や会議の文字起こしを、1 行 1 発言に整えて保管する。絞り込み・JSON と md の書き出し・メモからの取込の指示文。社内のものなので顧客向けの表示やカルテには出ない', when: 'チャットで決まったことを台帳に入れたいとき、やりとりを NotebookLM に渡したいとき' },
-  convert: { what: 'Excel・CSV・JSON・Word・PowerPoint・HTML を Markdown にする。大きな表は NotebookLM 用の一式（項目定義書・集計・サンプル・分けたデータ）を zip で。PDF・画像は Gemini に貼る変換の指示文と、返事の点検（抜けたページ・表・見出し）。結果は保存しない', when: 'NotebookLM や Gemini に資料を渡す前' },
+  convert: { what: 'Excel・CSV・JSON・Word・PowerPoint・HTML を Markdown にする。PowerPoint・Excel の図形と矢印のフロー図はフロー記法（```flow）に、SmartArt は箇条書きかフロー記法に起こす。Excel の非表示シート・結合セル・コメントも出す。「HTML を保存」で人が読む 1 枚の HTML（フロー図は図）に。大きな表は NotebookLM 用の一式を zip で。Gemini で変換（PDF・画像・PowerPoint・HTML → md、Excel・PowerPoint・PDF → HTML、画像のフロー図 → フロー記法）は、選択肢で確かめてから書き写させる指示文と、返事の点検（抜けたページ・ツールの変換結果との照合・HTML の script や外部 URL を外す仕上げ）。フロー図は業務フローとして台帳に足せる。結果は保存しない', when: 'NotebookLM や Gemini に資料を渡す前、資料を人が読める HTML にしたいとき、資料のフロー図を業務フローに取り込みたいとき' },
   settings: { what: '案件の作成・読み込み・切り替え・外す、この案件の設定（自分・日数・生産性など）、中身を空に戻す、合言葉を変える、書き出し、gemini-kit 用のカルテの書き出し', when: '案件を始めるとき、区切りごとの書き出し、やり直したいとき' },
   guide: { what: 'この画面。使い方の説明', when: '迷ったとき' },
 };

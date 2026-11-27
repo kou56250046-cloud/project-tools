@@ -7,6 +7,8 @@ import { safeParse } from './extract.js';
 import { zipEntries, zipText, resolvePart, relsPathOf, relsMap, xmlUnescape, xmlAttrs } from './zip.js';
 import { XLSX } from './xlsx.js';
 import { TABLEPREP } from './tableprep.js';
+import { shapesToFlow } from './shapeflow.js';
+import { smartArtToMd } from './smartart.js';
 
 export const CONVERT_MAX_BYTES = 30 * 1024 * 1024;
 export const CONVERT_METHOD = '案件ワークベンチ（ブラウザの中で変換）';
@@ -118,16 +120,90 @@ function find(n, name) {
 const attr = (n, a) => (n && n.attrs[a] !== undefined ? n.attrs[a] : null);
 
 // ======== Excel・CSV・JSON ========
+// シートごとの細部（P6d）: 非表示・結合セル・セルのコメント・図形（drawing）。名前 → { hidden, merges, comments, geo, shapeTexts }
+const EMU_COL = 609600, EMU_ROW = 190500;   // 図形に位置が無いときの、セル 1 つの大きさの目安（EMU）
+function xlsxGeo(tree) {
+  const geo = { shapes: [], links: [] };
+  const texts = [];
+  const walk = (n) => {
+    for (const c of kids(n)) {
+      if (c.name === 'xdr:sp') {
+        const id = attr(find(c, 'xdr:cNvPr'), 'id');
+        const t = kids(find(c, 'xdr:txBody'), 'a:p').map(aParaText).filter((x) => x).join(' ');
+        if (t) texts.push({ id, text: t });
+        const b = pptBox(c, PPT_TF0);
+        if (b) geo.shapes.push({ id, text: t, geom: attr(find(c, 'a:prstGeom'), 'prst') || '', x: b.x, y: b.y, w: b.w, h: b.h });
+      } else if (c.name === 'xdr:cxnSp') {
+        const b = pptBox(c, PPT_TF0);
+        const nv = find(c, 'xdr:cNvCxnSpPr');
+        const ln = find(c, 'a:ln');
+        if (b) {
+          const sx = b.flipH ? b.x + b.w : b.x, ex = b.flipH ? b.x : b.x + b.w;
+          const sy = b.flipV ? b.y + b.h : b.y, ey = b.flipV ? b.y : b.y + b.h;
+          geo.links.push({ from: attr(kid(nv, 'a:stCxn'), 'id'), to: attr(kid(nv, 'a:endCxn'), 'id'), x1: sx, y1: sy, x2: ex, y2: ey, head: arrowOn(ln, 'a:headEnd'), tail: arrowOn(ln, 'a:tailEnd') });
+        }
+      } else if (c.name === 'xdr:grpSp' || /Anchor$/.test(c.name) || c.name === 'mc:AlternateContent' || c.name === 'mc:Choice') walk(c);
+    }
+  };
+  walk(find(tree, 'xdr:wsDr') || tree);
+  return { geo, texts };
+}
+async function xlsxExtras(bytes) {
+  const out = new Map();
+  let zip;
+  try { zip = zipEntries(bytes); } catch (e) { return out; }
+  const wbXml = await zipText(zip, 'xl/workbook.xml');
+  if (!wbXml) return out;
+  const rels = relsMap(await zipText(zip, 'xl/_rels/workbook.xml.rels'));
+  for (const sh of kids(find(parseXml(wbXml), 'sheets'), 'sheet')) {
+    const name = attr(sh, 'name');
+    const r = rels.get(attr(sh, 'r:id'));
+    const info = { hidden: /hidden/i.test(attr(sh, 'state') || ''), merges: [], comments: [], geo: null, shapeTexts: [] };
+    out.set(name, info);
+    if (!r) continue;
+    const part = resolvePart('xl/workbook.xml', r.target);
+    const xml = await zipText(zip, part);
+    if (xml) for (const m of xml.matchAll(/<mergeCell\b[^>]*\bref="([^"]+)"/g)) info.merges.push(m[1]);
+    const srels = relsMap(await zipText(zip, relsPathOf(part)));
+    for (const x of srels.values()) {
+      if (/\/comments$/.test(x.type)) {
+        const cx = await zipText(zip, resolvePart(part, x.target));
+        if (cx) for (const c of kids(find(parseXml(cx), 'commentList'), 'comment')) {
+          const t = [];
+          const w = (n) => { for (const k of n.children) { if (typeof k === 'string') continue; if (k.name === 't') t.push(k.children.filter((y) => typeof y === 'string').join('')); else w(k); } };
+          w(c);
+          const text = t.join('').replace(/\s+/g, ' ').trim();
+          if (text) info.comments.push({ ref: attr(c, 'ref'), text });
+        }
+      } else if (/\/drawing$/.test(x.type)) {
+        const dx = await zipText(zip, resolvePart(part, x.target));
+        if (dx) { const g = xlsxGeo(parseXml(dx)); info.geo = g.geo; info.shapeTexts = g.texts; }
+      }
+    }
+  }
+  return out;
+}
 async function xlsxToMd(bytes) {
   const sheets = await XLSX.sheets(bytes);
+  const extras = await xlsxExtras(bytes);
   const out = [];
-  let rows = 0;
+  let rows = 0, flows = 0, hiddenN = 0;
   for (const s of sheets) {
-    out.push(`## ${s.name}`, '');
+    const ex = extras.get(s.name) || { hidden: false, merges: [], comments: [], geo: null, shapeTexts: [] };
+    if (ex.hidden) hiddenN++;
+    out.push(`## ${s.name}${ex.hidden ? '（非表示）' : ''}`, '');
     out.push(s.rows.length ? mdTable(s.rows) : '（空のシート）', '');
+    // 結合セル（左上のセルだけに値があり、ほかは空）
+    if (ex.merges.length) out.push(`結合したセル: ${ex.merges.join('、')}（値は左上のセルにあります）`, '');
+    if (ex.comments.length) out.push(...ex.comments.map((c) => `- コメント ${c.ref}: ${c.text}`), '');
+    // 図形: 矢印でつながっていればフロー記法、ほかの図形の文字は「図形の文字」
+    const fl = ex.geo ? shapesToFlow({ ...ex.geo, title: s.name }) : { ok: false, used: new Set() };
+    if (fl.ok) { out.push('```flow', fl.notation, '```', ''); flows++; }
+    const rest = ex.shapeTexts.filter((t) => !(t.id != null && fl.used.has(String(t.id))));
+    if (rest.length) out.push(...rest.map((t) => `- 図形の文字: ${t.text}`), '');
     rows += Math.max(0, s.rows.length - 1);
   }
-  return { body: tidy(out), counts: `シート ${sheets.length}・行 ${rows}`, tables: sheets.filter((s) => s.rows.length).map((s) => ({ label: s.name, rows: s.rows })) };
+  return { body: tidy(out), counts: `シート ${sheets.length}${hiddenN ? `（うち非表示 ${hiddenN}）` : ''}・行 ${rows}${flows ? `・フロー ${flows}` : ''}`, tables: sheets.filter((s) => s.rows.length).map((s) => ({ label: s.name, rows: s.rows })) };
 }
 function delimitedToMd(text, delim) {
   const rows = parseDelimited(text, delim);
@@ -229,6 +305,8 @@ function docxRunText(node, ctx, boxes) {
       case 'w:txbxContent': boxes.push(...kids(c).filter((x) => x.name === 'w:p' || x.name === 'w:tbl')); break;
       case 'mc:Fallback': case 'w:instrText': case 'w:delText': case 'w:pPr': case 'w:rPr': break;
       case 'w:drawing': case 'w:pict': {
+        const rel = find(c, 'dgm:relIds');
+        if (rel && ctx.smartArts) { ctx.smartArts.push(attr(rel, 'r:dm')); s += `\u0000SA${ctx.smartArts.length - 1}\u0000`; break; }
         const inner = docxRunText(c, ctx, boxes);
         s += find(c, 'w:txbxContent') ? inner : '[図]';
         break;
@@ -267,6 +345,7 @@ async function docxToMd(zip) {
   const ctx = {
     styles: docxStyles(await zipText(zip, 'word/styles.xml')),
     nums: docxNumbering(await zipText(zip, 'word/numbering.xml')),
+    smartArts: [],
   };
   const body = find(parseXml(await zipText(zip, 'word/document.xml')), 'w:body');
   const out = [];
@@ -298,7 +377,21 @@ async function docxToMd(zip) {
   };
   for (const n of kids(body)) block(n);
   endList();
-  return { body: tidy(out), counts: `見出し ${headings}・表 ${tables}・段落 ${paras}` };
+  // SmartArt の印を、データの部品から作った md に置き換える
+  let smartArts = 0;
+  if (ctx.smartArts.length) {
+    const rels = relsMap(await zipText(zip, 'word/_rels/document.xml.rels'));
+    const mds = [];
+    for (const rid of ctx.smartArts) {
+      const t = rels.get(rid);
+      const xml = t ? await zipText(zip, resolvePart('word/document.xml', t.target)) : null;
+      const md = xml ? smartArtToMd(parseXml(xml)) : '';
+      if (md) smartArts++;
+      mds.push(md || '[図]');
+    }
+    for (let i = 0; i < out.length; i++) out[i] = String(out[i]).replace(/\u0000SA(\d+)\u0000/g, (_, k) => `\n${mds[+k]}\n`);
+  }
+  return { body: tidy(out), counts: `見出し ${headings}・表 ${tables}・段落 ${paras}${smartArts ? `・SmartArt ${smartArts}` : ''}` };
 }
 
 // ======== PowerPoint（.pptx） ========
@@ -328,25 +421,65 @@ function pptTableRows(tbl) {
   }
   return rows;
 }
-// 図形の木をたどって、タイトル・本文の行・表を集める
-function pptShapes(tree, acc) {
+// 図形の位置（a:xfrm の off・ext）をグループの座標変換（chOff・chExt → off・ext）に通す（P6d）
+const xfrmOf = (n) => {
+  const x = find(kid(n, 'p:spPr') || kid(n, 'p:grpSpPr') || n, 'a:xfrm');
+  if (!x) return null;
+  const v = (name, a, b) => { const e = kid(x, name); return e ? [+(attr(e, a) || 0), +(attr(e, b) || 0)] : null; };
+  return { off: v('a:off', 'x', 'y'), ext: v('a:ext', 'cx', 'cy'), chOff: v('a:chOff', 'x', 'y'), chExt: v('a:chExt', 'cx', 'cy'), flipH: attr(x, 'flipH') === '1', flipV: attr(x, 'flipV') === '1' };
+};
+const PPT_TF0 = (x, y) => [x, y];
+function pptGroupTf(g, tf) {
+  const f = xfrmOf(g);
+  if (!f || !f.off || !f.ext || !f.chOff || !f.chExt || !f.chExt[0] || !f.chExt[1]) return tf;
+  const sx = f.ext[0] / f.chExt[0], sy = f.ext[1] / f.chExt[1];
+  return (x, y) => tf(f.off[0] + (x - f.chOff[0]) * sx, f.off[1] + (y - f.chOff[1]) * sy);
+}
+function pptBox(n, tf) {
+  const f = xfrmOf(n);
+  if (!f || !f.off || !f.ext) return null;
+  const [x1, y1] = tf(f.off[0], f.off[1]);
+  const [x2, y2] = tf(f.off[0] + f.ext[0], f.off[1] + f.ext[1]);
+  return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1), x1, y1, x2, y2, flipH: f.flipH, flipV: f.flipV };
+}
+const pptGeom = (n) => attr(find(kid(n, 'p:spPr'), 'a:prstGeom'), 'prst') || '';
+const arrowOn = (ln, end) => { const e = kid(ln, end); return !!e && (attr(e, 'type') || 'none') !== 'none'; };
+// 図形の木をたどって、タイトル・本文の行・表を集める。あわせて図形と線（コネクタ）の位置を geo に集める（フロー記法を起こすため）
+function pptShapes(tree, acc, tf = PPT_TF0) {
   for (const n of kids(tree)) {
     if (n.name === 'p:sp') {
       const t = phType(n);
       const paras = kids(kid(n, 'p:txBody'), 'a:p');
       if (t === 'title' || t === 'ctrTitle') { const s = paras.map(aParaText).filter((x) => x).join(' '); if (s && !acc.title) acc.title = s; continue; }
+      const id = attr(find(n, 'p:cNvPr'), 'id');
+      const texts = [];
       for (const p of paras) {
         const s = aParaText(p);
         if (!s) continue;
+        texts.push(s);
         const lvl = +(attr(kid(p, 'a:pPr'), 'lvl') || 0);
-        acc.lines.push(`${'  '.repeat(lvl)}- ${s}`);
+        acc.lines.push({ id, text: `${'  '.repeat(lvl)}- ${s}` });
       }
-    } else if (n.name === 'p:grpSp') pptShapes(n, acc);
+      const b = pptBox(n, tf);
+      if (b && !t) acc.geo.shapes.push({ id, text: texts.join(' '), geom: pptGeom(n), x: b.x, y: b.y, w: b.w, h: b.h });
+    } else if (n.name === 'p:cxnSp') {
+      const b = pptBox(n, tf);
+      const nv = find(n, 'p:cNvCxnSpPr');
+      const ln = find(kid(n, 'p:spPr'), 'a:ln');
+      if (b) {
+        // 線の始点・終点（反転の印で入れ替える）
+        const sx = b.flipH ? b.x + b.w : b.x, ex = b.flipH ? b.x : b.x + b.w;
+        const sy = b.flipV ? b.y + b.h : b.y, ey = b.flipV ? b.y : b.y + b.h;
+        acc.geo.links.push({ from: attr(kid(nv, 'a:stCxn'), 'id'), to: attr(kid(nv, 'a:endCxn'), 'id'), x1: sx, y1: sy, x2: ex, y2: ey, head: arrowOn(ln, 'a:headEnd'), tail: arrowOn(ln, 'a:tailEnd') });
+      }
+    } else if (n.name === 'p:grpSp') pptShapes(n, acc, pptGroupTf(n, tf));
     else if (n.name === 'p:graphicFrame') {
       const tbl = find(n, 'a:tbl');
-      if (tbl) { acc.blocks.push(mdTable(pptTableRows(tbl))); acc.tables++; } else acc.lines.push('- [図]');
-    } else if (n.name === 'p:pic') acc.lines.push('- [図]');
-    else if (n.name === 'mc:AlternateContent') pptShapes(kid(n, 'mc:Choice') || { children: [] }, acc);
+      if (tbl) { acc.blocks.push(mdTable(pptTableRows(tbl))); acc.tables++; }
+      else if (find(n, 'dgm:relIds')) acc.smartArt.push(attr(find(n, 'dgm:relIds'), 'r:dm'));
+      else acc.lines.push({ id: null, text: '- [図]' });
+    } else if (n.name === 'p:pic') acc.lines.push({ id: null, text: '- [図]' });
+    else if (n.name === 'mc:AlternateContent') pptShapes(kid(n, 'mc:Choice') || { children: [] }, acc, tf);
   }
 }
 async function pptxToMd(zip) {
@@ -354,7 +487,7 @@ async function pptxToMd(zip) {
   const rels = relsMap(await zipText(zip, 'ppt/_rels/presentation.xml.rels'));
   const ids = kids(find(pres, 'p:sldIdLst'), 'p:sldId');
   const out = [];
-  let hidden = 0, tables = 0, n = 0;
+  let hidden = 0, tables = 0, n = 0, flows = 0, smartArts = 0;
   for (const sid of ids) {
     const r = rels.get(attr(sid, 'r:id'));
     if (!r) continue;
@@ -365,12 +498,26 @@ async function pptxToMd(zip) {
     const sld = find(parseXml(xml), 'p:sld');
     const isHidden = attr(sld, 'show') === '0';
     if (isHidden) hidden++;
-    const acc = { title: '', lines: [], blocks: [], tables: 0 };
+    const acc = { title: '', lines: [], blocks: [], tables: 0, geo: { shapes: [], links: [] }, smartArt: [] };
     pptShapes(find(sld, 'p:spTree'), acc);
     tables += acc.tables;
     out.push(`## スライド ${n}: ${acc.title || '（タイトルなし）'}${isHidden ? '（非表示）' : ''}`, '');
-    if (acc.lines.length) out.push(...acc.lines, '');
+    // 図形が矢印でつながっていれば、フロー記法にする（フローに使った図形の文字は箇条書きに重ねない）
+    const fl = shapesToFlow({ ...acc.geo, title: acc.title });
+    const lines = fl.ok ? acc.lines.filter((l) => !(l.id != null && fl.used.has(String(l.id)))) : acc.lines;
+    if (lines.length) out.push(...lines.map((l) => l.text), '');
+    if (fl.ok) { out.push('```flow', fl.notation, '```', ''); flows++; }
     for (const b of acc.blocks) out.push(b, '');
+    // SmartArt（データの部品を引いて、字下げの箇条書きかフロー記法にする）
+    if (acc.smartArt.length) {
+      const srels0 = relsMap(await zipText(zip, relsPathOf(part)));
+      for (const rid of acc.smartArt) {
+        const t = srels0.get(rid);
+        const dxml = t ? await zipText(zip, resolvePart(part, t.target)) : null;
+        const sa = dxml ? smartArtToMd(parseXml(dxml)) : '';
+        if (sa) { out.push(sa, ''); smartArts++; }
+      }
+    }
     // ノート: スライドの rels から notesSlide を引き、placeholder が body の図形だけ読む
     const srels = relsMap(await zipText(zip, relsPathOf(part)));
     for (const x of srels.values()) {
@@ -385,7 +532,7 @@ async function pptxToMd(zip) {
       if (notes.length) out.push(`> ノート: ${notes[0]}`, ...notes.slice(1).map((s) => `> ${s}`), '');
     }
   }
-  return { body: tidy(out), counts: `スライド ${n}（うち非表示 ${hidden}）・表 ${tables}` };
+  return { body: tidy(out), counts: `スライド ${n}（うち非表示 ${hidden}）・表 ${tables}${flows ? `・フロー ${flows}` : ''}${smartArts ? `・SmartArt ${smartArts}` : ''}` };
 }
 
 // ======== HTML ========
@@ -504,8 +651,23 @@ export function htmlToMd(html) {
       const c = close.exec(html);
       const raw = html.slice(re.lastIndex, c ? c.index : html.length).replace(/<[^>]*>/g, '');
       re.lastIndex = c ? close.lastIndex : html.length;
+      // フロー記法（このツールが作った HTML の flow-src、Gemini の HTML の flow）と mermaid は、言語名つきのコードに戻す（P6d）
+      const cls = String(a.class || '').split(/\s+/);
+      const lang = cls.includes('flow-src') || cls.includes('flow') ? 'flow' : cls.includes('mermaid') ? 'mermaid' : '';
       if (inCell()) curTable().cell.text += htmlUnescape(raw).replace(/\r?\n/g, '<br>');
-      else { closeP(); flush(); out.push('```', htmlUnescape(raw).replace(/^\n/, '').replace(/\s+$/, ''), '```', ''); }
+      else { closeP(); flush(); out.push('```' + lang, htmlUnescape(raw).replace(/^\n/, '').replace(/\s+$/, ''), '```', ''); }
+      continue;
+    }
+    // SVG の図は、中の文字だけを拾う（図の構造は再現しない）。このツールが作ったフローの図は flow-src の側から戻すので読み飛ばす
+    if (tag === 'svg' && !m[4]) {
+      const close = /<\/\s*svg\s*>/ig;
+      close.lastIndex = re.lastIndex;
+      const c = close.exec(html);
+      const inner = html.slice(re.lastIndex, c ? c.index : html.length);
+      re.lastIndex = c ? close.lastIndex : html.length;
+      if (/\bbfl-svg\b/.test(String(a.class || ''))) continue;
+      const words = [...inner.matchAll(/<(?:text|tspan)\b[^>]*>([^<]*)/gi)].map((x) => htmlUnescape(x[1]).trim()).filter(Boolean);
+      if (words.length) text(`[図の文字: ${words.join(' ／ ')}]`);
       continue;
     }
     if (tag === 'br') { brk(); continue; }

@@ -132,6 +132,66 @@ export function makePptx() {
   ]);
 }
 
+// ---- pptx: 図形と矢印のフロー（レーン・分岐とラベル・グループ・接続の無い線・逆向きの矢じり）と SmartArt（P6d） ----
+const shp = (id, text, prst, x, y, w, h) => `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="s${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/></a:xfrm><a:prstGeom prst="${prst}"/></p:spPr>${text ? `<p:txBody><a:p><a:r><a:t>${text}</a:t></a:r></a:p></p:txBody>` : ''}</p:sp>`;
+const cxn = (id, st, en, x, y, w, h, { head = false, tail = true, flipH = false, flipV = false } = {}) => `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="${id}" name="c${id}"/><p:cNvCxnSpPr>${st != null ? `<a:stCxn id="${st}" idx="0"/>` : ''}${en != null ? `<a:endCxn id="${en}" idx="0"/>` : ''}</p:cNvCxnSpPr><p:nvPr/></p:nvCxnSpPr><p:spPr><a:xfrm${flipH ? ' flipH="1"' : ''}${flipV ? ' flipV="1"' : ''}><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/></a:xfrm><a:prstGeom prst="straightConnector1"/><a:ln>${head ? '<a:headEnd type="triangle"/>' : ''}${tail ? '<a:tailEnd type="triangle"/>' : ''}</a:ln></p:spPr></p:cxnSp>`;
+export function makeFlowPptx() {
+  // レーン（横長）: 営業 y=0〜1000、経理 y=1000〜2000
+  const lanes = shp(2, '営業', 'rect', 0, 0, 6000, 1000) + shp(3, '経理', 'rect', 0, 1000, 6000, 1000);
+  const nodes = shp(10, '受付', 'flowChartTerminator', 500, 300, 800, 400)
+    + shp(11, '内容確認', 'rect', 1800, 300, 800, 400)
+    + shp(12, '金額は10万以上か', 'diamond', 3100, 200, 1000, 600)
+    // グループの中（子の座標は 0〜100 を 4600〜5400 に写す）
+    + `<p:grpSp><p:nvGrpSpPr><p:cNvPr id="20" name="g"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="4600" y="1300"/><a:ext cx="800" cy="400"/><a:chOff x="0" y="0"/><a:chExt cx="100" cy="50"/></a:xfrm></p:grpSpPr>${shp(13, '部長承認', 'rect', 0, 0, 100, 50)}</p:grpSp>`
+    + shp(14, '完了', 'ellipse', 3100, 1300, 800, 400)
+    + shp(30, 'はい', 'rect', 4250, 700, 300, 200) + shp(31, 'いいえ', 'rect', 3350, 900, 300, 200);
+  const links = cxn(40, 10, 11, 1300, 500, 500, 0)
+    + cxn(41, null, null, 2600, 500, 500, 0)                 // 接続の印が無い線（端点の近さで決める）
+    + cxn(42, 12, 13, 4100, 500, 900, 800)
+    + cxn(43, 12, 14, 3600, 800, 0, 500)
+    + cxn(44, 14, 13, 3900, 1500, 700, 0, { head: true, tail: false });   // 完了 → 部長承認に引いた線で、矢じりは始点側（部長承認 → 完了）
+  const flow = `<?xml version="1.0" encoding="UTF-8"?><p:sld ${P}><p:cSld><p:spTree>${sp('title', [['承認の流れ']])}${lanes}${nodes}${links}${shp(50, '補足のメモ', 'rect', 100, 2200, 1500, 300)}</p:spTree></p:cSld></p:sld>`;
+  const DG = 'xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';
+  const pt = (id, text) => `<dgm:pt modelId="${id}"><dgm:t><a:p><a:r><a:t>${text}</a:t></a:r></a:p></dgm:t></dgm:pt>`;
+  const cx = (src, dst, ord) => `<dgm:cxn modelId="c${src}${dst}" srcId="${src}" destId="${dst}" srcOrd="${ord}"/>`;
+  const data = (lo, pts, cxns) => `<?xml version="1.0" encoding="UTF-8"?><dgm:dataModel ${DG}><dgm:ptLst><dgm:pt modelId="0" type="doc"><dgm:prSet loTypeId="${lo}"/></dgm:pt>${pts}<dgm:pt modelId="t1" type="parTrans"/></dgm:ptLst><dgm:cxnLst>${cxns}</dgm:cxnLst></dgm:dataModel>`;
+  const proc = data('urn:microsoft.com/office/officeart/2005/8/layout/process1', pt('p1', '申請') + pt('p2', '審査') + pt('p3', '支払'), cx('0', 'p2', 1) + cx('0', 'p1', 0) + cx('0', 'p3', 2));
+  const tree = data('urn:microsoft.com/office/officeart/2005/8/layout/hierarchy1', pt('h1', '本部') + pt('h2', '営業部') + pt('h3', '一課'), cx('0', 'h1', 0) + cx('h1', 'h2', 0) + cx('h2', 'h3', 0));
+  const gf = (rid) => `<p:graphicFrame><a:graphic><a:graphicData><dgm:relIds xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" r:dm="${rid}" r:lo="x" r:qs="y" r:cs="z"/></a:graphicData></a:graphic></p:graphicFrame>`;
+  const sa = `<?xml version="1.0" encoding="UTF-8"?><p:sld ${P}><p:cSld><p:spTree>${sp('title', [['SmartArt']])}${gf('rIdD1')}${gf('rIdD2')}</p:spTree></p:cSld></p:sld>`;
+  return makeZip([
+    { name: '[Content_Types].xml', data: '<?xml version="1.0"?><Types/>' },
+    { name: 'ppt/presentation.xml', data: `<?xml version="1.0" encoding="UTF-8"?><p:presentation ${P}><p:sldIdLst><p:sldId id="256" r:id="rId1"/><p:sldId id="257" r:id="rId2"/></p:sldIdLst></p:presentation>` },
+    { name: 'ppt/_rels/presentation.xml.rels', data: '<?xml version="1.0"?><Relationships><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide2.xml"/></Relationships>' },
+    { name: 'ppt/slides/slide1.xml', data: flow },
+    { name: 'ppt/slides/slide2.xml', data: sa },
+    { name: 'ppt/slides/_rels/slide2.xml.rels', data: '<?xml version="1.0"?><Relationships><Relationship Id="rIdD1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData" Target="../diagrams/data1.xml"/><Relationship Id="rIdD2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData" Target="../diagrams/data2.xml"/></Relationships>' },
+    { name: 'ppt/diagrams/data1.xml', data: proc },
+    { name: 'ppt/diagrams/data2.xml', data: tree },
+  ]);
+}
+
+// ---- xlsx: 図形のフロー（drawing）・テキストボックス・非表示シート・結合セル・コメント（P6d） ----
+export function makeFlowXlsx() {
+  const XD = 'xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';
+  const anchor = (inner) => `<xdr:twoCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>1</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>${inner}<xdr:clientData/></xdr:twoCellAnchor>`;
+  const xsp = (id, text, prst, x, y, w, h) => anchor(`<xdr:sp><xdr:nvSpPr><xdr:cNvPr id="${id}" name="s${id}"/><xdr:cNvSpPr/></xdr:nvSpPr><xdr:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/></a:xfrm><a:prstGeom prst="${prst}"/></xdr:spPr><xdr:txBody><a:p><a:r><a:t>${text}</a:t></a:r></a:p></xdr:txBody></xdr:sp>`);
+  const xcx = (id, st, en, x, y, w, h) => anchor(`<xdr:cxnSp><xdr:nvCxnSpPr><xdr:cNvPr id="${id}" name="c${id}"/><xdr:cNvCxnSpPr><a:stCxn id="${st}" idx="0"/><a:endCxn id="${en}" idx="0"/></xdr:cNvCxnSpPr></xdr:nvCxnSpPr><xdr:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/></a:xfrm><a:prstGeom prst="straightConnector1"/><a:ln><a:tailEnd type="triangle"/></a:ln></xdr:spPr></xdr:cxnSp>`);
+  const drawing = `<?xml version="1.0" encoding="UTF-8"?><xdr:wsDr ${XD}>${xsp(2, '受付', 'flowChartTerminator', 0, 0, 100, 50)}${xsp(3, '入力', 'rect', 200, 0, 100, 50)}${xsp(4, '登録', 'can', 400, 0, 100, 50)}${xcx(5, 2, 3, 100, 25, 100, 0)}${xcx(6, 3, 4, 300, 25, 100, 0)}${xsp(7, '担当者が確認すること', 'rect', 0, 300, 300, 50)}</xdr:wsDr>`;
+  const sheet1 = `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>区分</t></is></c><c r="B1" t="inlineStr"><is><t>金額</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>結合した見出し</t></is></c><c r="C2" t="inlineStr"><is><t>右</t></is></c></row></sheetData><mergeCells count="1"><mergeCell ref="A2:B2"/></mergeCells><drawing r:id="rIdD"/></worksheet>`;
+  const sheet2 = '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>隠し</t></is></c></row></sheetData></worksheet>';
+  const comments = '<?xml version="1.0" encoding="UTF-8"?><comments xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><authors><author>a</author></authors><commentList><comment ref="B1" authorId="0"><text><r><t>税抜で入れる</t></r></text></comment></commentList></comments>';
+  return makeZip([
+    { name: 'xl/workbook.xml', data: '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="申請" sheetId="1" r:id="rId1"/><sheet name="作業用" sheetId="2" state="hidden" r:id="rId2"/></sheets></workbook>' },
+    { name: 'xl/_rels/workbook.xml.rels', data: '<?xml version="1.0"?><Relationships><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/></Relationships>' },
+    { name: 'xl/worksheets/sheet1.xml', data: sheet1 },
+    { name: 'xl/worksheets/sheet2.xml', data: sheet2 },
+    { name: 'xl/worksheets/_rels/sheet1.xml.rels', data: '<?xml version="1.0"?><Relationships><Relationship Id="rIdD" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/><Relationship Id="rIdC" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments1.xml"/></Relationships>' },
+    { name: 'xl/drawings/drawing1.xml', data: drawing },
+    { name: 'xl/comments1.xml', data: comments },
+  ]);
+}
+
 // 古い Office（CFB）の先頭
 export const CFB_HEAD = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0, 0, 0, 0]);
 
