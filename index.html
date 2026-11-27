@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-F4wgRpP7uyKWK5yt9HwYxLURko7Z4dZR7QOI2wcLQ2o='; style-src 'sha256-rfdP8fjihAyz4T+6T+8cmJCL8daFfXKHNaQuF3ZzzmQ='; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8wz2K+gf022F0ULJ3r3leEL+Orh8v0iRYRiGVrNvKGY='; style-src 'sha256-NTM20exg7xnpdsftQaJVafA/eg2e6VGEc0zJaXqXrnw='; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:,">
@@ -437,7 +437,7 @@ span.over { color: var(--high); font-weight: 600; }
 .guide-toc { position: sticky; top: 0; display: flex; flex-direction: column; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; }
 .toc-item { text-align: left; border: 0; background: none; padding: 6px 8px; border-radius: 6px; cursor: pointer; color: var(--ink); }
 .toc-item:hover { background: var(--accent-soft); color: var(--accent); }
-.guide-body { display: flex; flex-direction: column; gap: 32px; max-width: 980px; }
+.guide-body { display: flex; flex-direction: column; gap: 32px; min-width: 0; }
 .guide-chapter > h2 { font-size: 19px; border-left: 4px solid var(--accent); padding-left: 10px; margin-bottom: 10px; }
 .guide-chapter h3 { font-size: 15px; }
 .guide-lead { font-size: 15px; line-height: 1.8; }
@@ -474,7 +474,7 @@ span.over { color: var(--high); font-weight: 600; }
 .fl-legend { list-style: none; padding: 0; margin: 0 0 8px; display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 12.5px; align-items: center; }
 .fl-now { border-left: 4px solid var(--accent); }
 .fl-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
-.fl-svg { display: block; max-width: none; font-family: var(--font); }
+.fl-svg { display: block; width: 100%; min-width: 760px; height: auto; font-family: var(--font); }
 .fl-loop { fill: var(--hover); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 2 5; }
 .fl-loop.is-now { stroke-width: 3; stroke-dasharray: 6 4; }
 .fl-loop-label { font-size: 15px; font-weight: 700; fill: var(--accent); }
@@ -583,62 +583,62 @@ tr.kt-purpose td, tr.kt-goal td { background: var(--surface); }
 .raci-btn.role-I { background: var(--low-soft); color: var(--low); }
 .raci-btn.is-derived { border-style: dashed; font-weight: 400; }
 /* ---- 業務フロー・判断の図（P7c。src/ui/flowsvg.js） ---- */
-.fl-svg { display: block; font-family: var(--font); }
-.fl-bg { fill: #fff; }
-.fl-title { font-size: 16px; font-weight: 700; fill: var(--accent-strong); }
-.fl-lane { stroke: var(--line); stroke-width: 1; }
-.fl-lane.is-a { fill: var(--lane-a); }
-.fl-lane.is-b { fill: var(--lane-b); }
-.fl-lane-head { fill: var(--lane-head); stroke: var(--line); stroke-width: 1; }
-.fl-lane-bar { fill: var(--accent); }
-.fl-lane-name { font-size: 13px; font-weight: 700; fill: var(--ink); text-anchor: middle; }
-.fl-edge-under { fill: none; stroke: #fff; stroke-width: 5; stroke-linejoin: round; }
-.fl-edge { fill: none; stroke: var(--edge); stroke-width: 1.5; }
-.fl-edge.is-dashed { stroke-dasharray: 5 4; }
-.fl-edge.tone-pos, .fl-edge.tone-neg { stroke-width: 1.8; }
-.fl-arrowhead { fill: var(--edge); }
-.fl-edge.tone-pos, .fl-edge-label.tone-pos { stroke: var(--fl-branch-yes); }
-.fl-edge.tone-neg, .fl-edge-label.tone-neg { stroke: var(--fl-branch-no); }
-.fl-arrowhead.tone-pos { fill: var(--fl-branch-yes); }
-.fl-arrowhead.tone-neg { fill: var(--fl-branch-no); }
-.fl-edge-label { font-weight: 700; fill: var(--ink-2); stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
-.fl-edge-label.tone-pos { fill: var(--fl-branch-yes); stroke: #fff; }
-.fl-edge-label.tone-neg { fill: var(--fl-branch-no); stroke: #fff; }
-.fl-node { fill: #fff; stroke: var(--edge); }
-.fl-node.type-start, .fl-node.type-data, .fl-node.type-doc { fill: var(--lane-head); }
-.fl-node.type-end { fill: var(--lane-head); stroke: var(--accent-strong); }
-.fl-node.type-decision { fill: var(--mid-soft); stroke: var(--gold); }
-.fl-node.role-ai, .fl-sub-line.role-ai, .fl-legend-box.role-ai { stroke: var(--role-ai); }
-.fl-node.role-rule, .fl-sub-line.role-rule, .fl-legend-box.role-rule { stroke: var(--role-rule); }
-.fl-node.role-human, .fl-sub-line.role-human, .fl-legend-box.role-human { stroke: var(--role-human); }
-.fl-node.role-ext, .fl-sub-line.role-ext, .fl-legend-box.role-ext { stroke: var(--role-ext); }
-.fl-node.role-ai, .fl-node.role-rule, .fl-node.role-human, .fl-node.role-ext { fill: #fff; }
-.fl-sub-line { stroke: var(--edge); stroke-width: 1.2; }
-.fl-node-text { fill: var(--ink); text-anchor: middle; }
-.fl-node-text.is-bold { font-weight: 700; }
-.fl-note-no { font-size: 10px; font-weight: 700; fill: var(--mid); text-anchor: end; }
-.fl-role-label { font-size: 10px; font-weight: 700; stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
-.fl-role-label.role-ai, .fl-legend-role.role-ai { fill: var(--role-ai); }
-.fl-role-label.role-rule, .fl-legend-role.role-rule { fill: var(--role-rule); }
-.fl-role-label.role-human, .fl-legend-role.role-human { fill: var(--role-human); }
-.fl-role-label.role-ext, .fl-legend-role.role-ext { fill: var(--role-ext); }
-.fl-legend { font-size: 12px; fill: var(--ink); }
-.fl-legend-box { fill: #fff; stroke-width: 1.5; }
-.fl-legend-role { font-size: 12px; font-weight: 700; }
-.fl-taken { fill: none; stroke: var(--bar); stroke-width: 9; stroke-linejoin: round; stroke-linecap: round; }
-.fl-mark-frame { fill: none; stroke-width: 2.6; stroke-dasharray: 6 3; }
-.fl-mark-frame.mark-open { stroke: var(--mid); }
-.fl-mark-frame.mark-none { stroke: var(--high); }
-.fl-current { fill: none; stroke: var(--accent); stroke-width: 4.5; }
-.fl-visited { fill: none; stroke: var(--accent); stroke-width: 2.2; }
-.fl-mark { stroke: #fff; stroke-width: 2; }
-.fl-mark.mark-ok { fill: var(--ok); }
-.fl-mark.mark-open { fill: var(--mid); }
-.fl-mark.mark-none { fill: var(--high); }
-.fl-mark-sym { font-size: 13px; font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; }
-.fl-hit { fill: transparent; stroke: none; cursor: pointer; outline: none; }
-.fl-hit:focus-visible { stroke: var(--gold); stroke-width: 3; }
-.fl-hit.is-focus { stroke: var(--gold); stroke-width: 2.4; }
+.bfl-svg { display: block; font-family: var(--font); }
+.bfl-bg { fill: #fff; }
+.bfl-title { font-size: 16px; font-weight: 700; fill: var(--accent-strong); }
+.bfl-lane { stroke: var(--line); stroke-width: 1; }
+.bfl-lane.is-a { fill: var(--lane-a); }
+.bfl-lane.is-b { fill: var(--lane-b); }
+.bfl-lane-head { fill: var(--lane-head); stroke: var(--line); stroke-width: 1; }
+.bfl-lane-bar { fill: var(--accent); }
+.bfl-lane-name { font-size: 13px; font-weight: 700; fill: var(--ink); text-anchor: middle; }
+.bfl-edge-under { fill: none; stroke: #fff; stroke-width: 5; stroke-linejoin: round; }
+.bfl-edge { fill: none; stroke: var(--edge); stroke-width: 1.5; }
+.bfl-edge.is-dashed { stroke-dasharray: 5 4; }
+.bfl-edge.tone-pos, .bfl-edge.tone-neg { stroke-width: 1.8; }
+.bfl-arrowhead { fill: var(--edge); }
+.bfl-edge.tone-pos, .bfl-edge-label.tone-pos { stroke: var(--fl-branch-yes); }
+.bfl-edge.tone-neg, .bfl-edge-label.tone-neg { stroke: var(--fl-branch-no); }
+.bfl-arrowhead.tone-pos { fill: var(--fl-branch-yes); }
+.bfl-arrowhead.tone-neg { fill: var(--fl-branch-no); }
+.bfl-edge-label { font-weight: 700; fill: var(--ink-2); stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
+.bfl-edge-label.tone-pos { fill: var(--fl-branch-yes); stroke: #fff; }
+.bfl-edge-label.tone-neg { fill: var(--fl-branch-no); stroke: #fff; }
+.bfl-node { fill: #fff; stroke: var(--edge); }
+.bfl-node.type-start, .bfl-node.type-data, .bfl-node.type-doc { fill: var(--lane-head); }
+.bfl-node.type-end { fill: var(--lane-head); stroke: var(--accent-strong); }
+.bfl-node.type-decision { fill: var(--mid-soft); stroke: var(--gold); }
+.bfl-node.role-ai, .bfl-sub-line.role-ai, .bfl-legend-box.role-ai { stroke: var(--role-ai); }
+.bfl-node.role-rule, .bfl-sub-line.role-rule, .bfl-legend-box.role-rule { stroke: var(--role-rule); }
+.bfl-node.role-human, .bfl-sub-line.role-human, .bfl-legend-box.role-human { stroke: var(--role-human); }
+.bfl-node.role-ext, .bfl-sub-line.role-ext, .bfl-legend-box.role-ext { stroke: var(--role-ext); }
+.bfl-node.role-ai, .bfl-node.role-rule, .bfl-node.role-human, .bfl-node.role-ext { fill: #fff; }
+.bfl-sub-line { stroke: var(--edge); stroke-width: 1.2; }
+.bfl-node-text { fill: var(--ink); text-anchor: middle; }
+.bfl-node-text.is-bold { font-weight: 700; }
+.bfl-note-no { font-size: 10px; font-weight: 700; fill: var(--mid); text-anchor: end; }
+.bfl-role-label { font-size: 10px; font-weight: 700; stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
+.bfl-role-label.role-ai, .bfl-legend-role.role-ai { fill: var(--role-ai); }
+.bfl-role-label.role-rule, .bfl-legend-role.role-rule { fill: var(--role-rule); }
+.bfl-role-label.role-human, .bfl-legend-role.role-human { fill: var(--role-human); }
+.bfl-role-label.role-ext, .bfl-legend-role.role-ext { fill: var(--role-ext); }
+.bfl-legend { font-size: 12px; fill: var(--ink); }
+.bfl-legend-box { fill: #fff; stroke-width: 1.5; }
+.bfl-legend-role { font-size: 12px; font-weight: 700; }
+.bfl-taken { fill: none; stroke: var(--bar); stroke-width: 9; stroke-linejoin: round; stroke-linecap: round; }
+.bfl-mark-frame { fill: none; stroke-width: 2.6; stroke-dasharray: 6 3; }
+.bfl-mark-frame.mark-open { stroke: var(--mid); }
+.bfl-mark-frame.mark-none { stroke: var(--high); }
+.bfl-current { fill: none; stroke: var(--accent); stroke-width: 4.5; }
+.bfl-visited { fill: none; stroke: var(--accent); stroke-width: 2.2; }
+.bfl-mark { stroke: #fff; stroke-width: 2; }
+.bfl-mark.mark-ok { fill: var(--ok); }
+.bfl-mark.mark-open { fill: var(--mid); }
+.bfl-mark.mark-none { fill: var(--high); }
+.bfl-mark-sym { font-size: 13px; font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; }
+.bfl-hit { fill: transparent; stroke: none; cursor: pointer; outline: none; }
+.bfl-hit:focus-visible { stroke: var(--gold); stroke-width: 3; }
+.bfl-hit.is-focus { stroke: var(--gold); stroke-width: 2.4; }
 /* ---- 業務フローの画面（P7c） ---- */
 .bf-layout { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .bf-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -10640,81 +10640,81 @@ function renderFlowSvg(geo, overlay) {
   const taken = new Set((ov && ov.taken) || []);
   const { ROLES, MARK, LANE_BAR, nodeLineW, roleLabel, roleLabelPos, textW } = FLOWCHART;
   const uid = `fl${++flSeq}`;
-  const svg = s('svg', { class: 'fl-svg', viewBox: `0 0 ${geo.width} ${geo.height}`, width: geo.width, height: geo.height, role: ov ? 'group' : 'img', 'aria-label': geo.title || '業務フロー' });
+  const svg = s('svg', { class: 'bfl-svg', viewBox: `0 0 ${geo.width} ${geo.height}`, width: geo.width, height: geo.height, role: ov ? 'group' : 'img', 'aria-label': geo.title || '業務フロー' });
   const tones = ['plain', 'tone-pos', 'tone-neg'];
-  svg.appendChild(s('defs', null, tones.map((t) => s('marker', { id: `${uid}-${t}`, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 8, markerHeight: 8, orient: 'auto-start-reverse' }, s('path', { class: ['fl-arrowhead', t !== 'plain' && t], d: 'M0,1 L10,5 L0,9 z' })))));
-  svg.appendChild(s('rect', { class: 'fl-bg', x: 0, y: 0, width: geo.width, height: geo.height }));
-  if (geo.title) svg.appendChild(s('text', { class: 'fl-title', x: geo.left, y: geo.titleY }, geo.title));
+  svg.appendChild(s('defs', null, tones.map((t) => s('marker', { id: `${uid}-${t}`, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 8, markerHeight: 8, orient: 'auto-start-reverse' }, s('path', { class: ['bfl-arrowhead', t !== 'plain' && t], d: 'M0,1 L10,5 L0,9 z' })))));
+  svg.appendChild(s('rect', { class: 'bfl-bg', x: 0, y: 0, width: geo.width, height: geo.height }));
+  if (geo.title) svg.appendChild(s('text', { class: 'bfl-title', x: geo.left, y: geo.titleY }, geo.title));
   geo.lanes.forEach((ln, i) => {
     const alt = i % 2 ? 'is-b' : 'is-a';
-    svg.appendChild(s('rect', { class: ['fl-lane', alt], x: geo.left, y: ln.y, width: geo.right - geo.left, height: ln.h }));
-    svg.appendChild(s('rect', { class: 'fl-lane-head', x: geo.left, y: ln.y, width: geo.laneHeaderW, height: ln.h }));
-    svg.appendChild(s('rect', { class: 'fl-lane-bar', x: geo.left, y: ln.y, width: LANE_BAR, height: ln.h }));
+    svg.appendChild(s('rect', { class: ['bfl-lane', alt], x: geo.left, y: ln.y, width: geo.right - geo.left, height: ln.h }));
+    svg.appendChild(s('rect', { class: 'bfl-lane-head', x: geo.left, y: ln.y, width: geo.laneHeaderW, height: ln.h }));
+    svg.appendChild(s('rect', { class: 'bfl-lane-bar', x: geo.left, y: ln.y, width: LANE_BAR, height: ln.h }));
     const ty = ln.y + ln.h / 2 - ((ln.lines.length - 1) * 17) / 2 + 5;
-    ln.lines.forEach((l, k) => svg.appendChild(s('text', { class: 'fl-lane-name', x: geo.left + (geo.laneHeaderW + LANE_BAR) / 2, y: ty + k * 17 }, l)));
+    ln.lines.forEach((l, k) => svg.appendChild(s('text', { class: 'bfl-lane-name', x: geo.left + (geo.laneHeaderW + LANE_BAR) / 2, y: ty + k * 17 }, l)));
   });
   // 通った線は下に太い淡い線を敷く。線は白い縁取りの上に描き、分岐の色の線を灰色の線より後に描く
-  if (ov) for (const e of geo.edges) if (taken.has(`${e.from}>${e.to}`)) svg.appendChild(s('path', { class: 'fl-taken', d: flPath(e.points) }));
+  if (ov) for (const e of geo.edges) if (taken.has(`${e.from}>${e.to}`)) svg.appendChild(s('path', { class: 'bfl-taken', d: flPath(e.points) }));
   const order = geo.edges.map((e, i) => i).sort((a, b) => (flTone(geo.edges[a]) ? 1 : 0) - (flTone(geo.edges[b]) ? 1 : 0) || a - b);
   for (const i of order) {
     const e = geo.edges[i];
     const t = flTone(e);
     const d = flPath(e.points);
-    svg.appendChild(s('path', { class: 'fl-edge-under', d }));
-    svg.appendChild(s('path', { class: ['fl-edge', t, e.dashed && 'is-dashed'], d, 'marker-end': `url(#${uid}-${t || 'plain'})` }));
+    svg.appendChild(s('path', { class: 'bfl-edge-under', d }));
+    svg.appendChild(s('path', { class: ['bfl-edge', t, e.dashed && 'is-dashed'], d, 'marker-end': `url(#${uid}-${t || 'plain'})` }));
   }
   for (const n of geo.nodes) {
     const role = n.role && ROLES[n.role] ? n.role : null;
-    const cls = ['fl-node', `type-${n.type}`, role && `role-${role}`];
+    const cls = ['bfl-node', `type-${n.type}`, role && `role-${role}`];
     svg.appendChild(flShape(n, { class: cls, 'stroke-width': nodeLineW(n) * 1.2 }));
-    if (n.type === 'sub') svg.appendChild(s('path', { class: ['fl-sub-line', role && `role-${role}`], d: `M${n.x + 9},${n.y} V${n.y + n.h} M${n.x + n.w - 9},${n.y} V${n.y + n.h}` }));
+    if (n.type === 'sub') svg.appendChild(s('path', { class: ['bfl-sub-line', role && `role-${role}`], d: `M${n.x + 9},${n.y} V${n.y + n.h} M${n.x + n.w - 9},${n.y} V${n.y + n.h}` }));
     const lh = geo.lineH;
     const ty = n.cy - ((n.lines.length - 1) * lh) / 2 + geo.fontSize * 0.36 - (n.type === 'doc' ? 4 : 0);
-    n.lines.forEach((l, k) => svg.appendChild(s('text', { class: ['fl-node-text', n.type === 'decision' && 'is-bold'], x: n.cx, y: ty + k * lh, 'font-size': geo.fontSize }, l)));
+    n.lines.forEach((l, k) => svg.appendChild(s('text', { class: ['bfl-node-text', n.type === 'decision' && 'is-bold'], x: n.cx, y: ty + k * lh, 'font-size': geo.fontSize }, l)));
     if (ov) {
       const mk = marks[n.id];
-      if (MARK[mk] && mk !== 'ok') svg.appendChild(flShape(n, { class: ['fl-mark-frame', `mark-${mk}`] }));
-      if (ov.current === n.id) svg.appendChild(flShape(n, { class: 'fl-current' }));
-      else if (visited.has(n.id)) svg.appendChild(flShape(n, { class: 'fl-visited' }));
+      if (MARK[mk] && mk !== 'ok') svg.appendChild(flShape(n, { class: ['bfl-mark-frame', `mark-${mk}`] }));
+      if (ov.current === n.id) svg.appendChild(flShape(n, { class: 'bfl-current' }));
+      else if (visited.has(n.id)) svg.appendChild(flShape(n, { class: 'bfl-visited' }));
     }
-    if (n.notes.length) svg.appendChild(s('text', { class: 'fl-note-no', x: n.x + n.w - (ov && MARK[marks[n.id]] ? 22 : 0), y: n.y - 3 }, n.notes.map((x) => '※' + x).join(' ')));
+    if (n.notes.length) svg.appendChild(s('text', { class: 'bfl-note-no', x: n.x + n.w - (ov && MARK[marks[n.id]] ? 22 : 0), y: n.y - 3 }, n.notes.map((x) => '※' + x).join(' ')));
     const rl = roleLabel(n);
     if (rl) {
       const p = roleLabelPos(n);
-      svg.appendChild(s('text', { class: ['fl-role-label', `role-${n.role}`], x: p.x, y: p.y }, rl));
+      svg.appendChild(s('text', { class: ['bfl-role-label', `role-${n.role}`], x: p.x, y: p.y }, rl));
     }
   }
   for (const e of geo.edges) {
     if (!e.label || !e.labelPos) continue;
-    svg.appendChild(s('text', { class: ['fl-edge-label', flTone(e)], x: e.labelPos.x, y: e.labelPos.y, 'text-anchor': e.labelPos.anchor, 'font-size': geo.labelSize }, e.label));
+    svg.appendChild(s('text', { class: ['bfl-edge-label', flTone(e)], x: e.labelPos.x, y: e.labelPos.y, 'text-anchor': e.labelPos.anchor, 'font-size': geo.labelSize }, e.label));
   }
   if (geo.roles && geo.roles.length) {
     const yy = geo.roleY;
     let lx = geo.left;
-    svg.appendChild(s('text', { class: 'fl-legend', x: lx, y: yy + 11 }, '区分：'));
+    svg.appendChild(s('text', { class: 'bfl-legend', x: lx, y: yy + 11 }, '区分：'));
     lx += textW('区分：', 12) + 4;
     for (const r of geo.roles) {
-      svg.appendChild(s('rect', { class: ['fl-legend-box', `role-${r.key}`], x: lx, y: yy, width: 14, height: 14, rx: 2 }));
-      svg.appendChild(s('text', { class: ['fl-legend-role', `role-${r.key}`], x: lx + 19, y: yy + 11 }, r.name));
+      svg.appendChild(s('rect', { class: ['bfl-legend-box', `role-${r.key}`], x: lx, y: yy, width: 14, height: 14, rx: 2 }));
+      svg.appendChild(s('text', { class: ['bfl-legend-role', `role-${r.key}`], x: lx + 19, y: yy + 11 }, r.name));
       lx += 19 + textW(r.name, 12) + 18;
     }
   }
   let ly = geo.legendY;
-  for (const nt of geo.notes) for (const l of nt.text) { ly += 17; svg.appendChild(s('text', { class: 'fl-legend', x: geo.left, y: ly }, l)); }
+  for (const nt of geo.notes) for (const l of nt.text) { ly += 17; svg.appendChild(s('text', { class: 'bfl-legend', x: geo.left, y: ly }, l)); }
   if (ov) {
     // 状態の印（色だけに頼らず記号でも区別する）
     for (const n of geo.nodes) {
       const mk = MARK[marks[n.id]];
       if (!mk) continue;
       const cx = n.type === 'decision' ? n.x + n.w * 0.75 + 4 : n.x + n.w - 6, cy = n.type === 'decision' ? n.y + n.h * 0.25 - 4 : n.y + 2;
-      svg.appendChild(s('circle', { class: ['fl-mark', `mark-${marks[n.id]}`], cx, cy, r: 9 }));
-      svg.appendChild(s('text', { class: 'fl-mark-sym', x: cx, y: cy + 4.5 }, mk.sym));
+      svg.appendChild(s('circle', { class: ['bfl-mark', `mark-${marks[n.id]}`], cx, cy, r: 9 }));
+      svg.appendChild(s('text', { class: 'bfl-mark-sym', x: cx, y: cy + 4.5 }, mk.sym));
     }
     // 当たり判定は箱と同じ形。どの箱にも Tab で止まり、Enter・Space で選ぶ
     for (const n of geo.nodes) {
       const t = (ov.titles && ov.titles[n.id]) || n.lines.join('');
       const mk = MARK[marks[n.id]];
-      const el = flShape(n, { class: ['fl-hit', ov.focus === n.id && 'is-focus'], 'data-node': n.id, tabindex: 0, role: 'button', 'aria-pressed': ov.focus ? String(ov.focus === n.id) : null, 'aria-label': `${n.id} ${t}${mk ? '（' + mk.word + '）' : ''}` });
+      const el = flShape(n, { class: ['bfl-hit', ov.focus === n.id && 'is-focus'], 'data-node': n.id, tabindex: 0, role: 'button', 'aria-pressed': ov.focus ? String(ov.focus === n.id) : null, 'aria-label': `${n.id} ${t}${mk ? '（' + mk.word + '）' : ''}` });
       el.appendChild(s('title', null, `${n.id} ${t}${mk ? '：' + mk.word : ''}`));
       const pick = () => { if (ov.onSelect) ov.onSelect(n.id); };
       el.addEventListener('click', pick);

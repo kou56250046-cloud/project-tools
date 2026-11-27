@@ -427,7 +427,7 @@ span.over { color: var(--high); font-weight: 600; }
 .guide-toc { position: sticky; top: 0; display: flex; flex-direction: column; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; }
 .toc-item { text-align: left; border: 0; background: none; padding: 6px 8px; border-radius: 6px; cursor: pointer; color: var(--ink); }
 .toc-item:hover { background: var(--accent-soft); color: var(--accent); }
-.guide-body { display: flex; flex-direction: column; gap: 32px; max-width: 980px; }
+.guide-body { display: flex; flex-direction: column; gap: 32px; min-width: 0; }
 .guide-chapter > h2 { font-size: 19px; border-left: 4px solid var(--accent); padding-left: 10px; margin-bottom: 10px; }
 .guide-chapter h3 { font-size: 15px; }
 .guide-lead { font-size: 15px; line-height: 1.8; }
@@ -464,7 +464,7 @@ span.over { color: var(--high); font-weight: 600; }
 .fl-legend { list-style: none; padding: 0; margin: 0 0 8px; display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 12.5px; align-items: center; }
 .fl-now { border-left: 4px solid var(--accent); }
 .fl-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
-.fl-svg { display: block; max-width: none; font-family: var(--font); }
+.fl-svg { display: block; width: 100%; min-width: 760px; height: auto; font-family: var(--font); }
 .fl-loop { fill: var(--hover); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 2 5; }
 .fl-loop.is-now { stroke-width: 3; stroke-dasharray: 6 4; }
 .fl-loop-label { font-size: 15px; font-weight: 700; fill: var(--accent); }
@@ -573,62 +573,62 @@ tr.kt-purpose td, tr.kt-goal td { background: var(--surface); }
 .raci-btn.role-I { background: var(--low-soft); color: var(--low); }
 .raci-btn.is-derived { border-style: dashed; font-weight: 400; }
 /* ---- 業務フロー・判断の図（P7c。src/ui/flowsvg.js） ---- */
-.fl-svg { display: block; font-family: var(--font); }
-.fl-bg { fill: #fff; }
-.fl-title { font-size: 16px; font-weight: 700; fill: var(--accent-strong); }
-.fl-lane { stroke: var(--line); stroke-width: 1; }
-.fl-lane.is-a { fill: var(--lane-a); }
-.fl-lane.is-b { fill: var(--lane-b); }
-.fl-lane-head { fill: var(--lane-head); stroke: var(--line); stroke-width: 1; }
-.fl-lane-bar { fill: var(--accent); }
-.fl-lane-name { font-size: 13px; font-weight: 700; fill: var(--ink); text-anchor: middle; }
-.fl-edge-under { fill: none; stroke: #fff; stroke-width: 5; stroke-linejoin: round; }
-.fl-edge { fill: none; stroke: var(--edge); stroke-width: 1.5; }
-.fl-edge.is-dashed { stroke-dasharray: 5 4; }
-.fl-edge.tone-pos, .fl-edge.tone-neg { stroke-width: 1.8; }
-.fl-arrowhead { fill: var(--edge); }
-.fl-edge.tone-pos, .fl-edge-label.tone-pos { stroke: var(--fl-branch-yes); }
-.fl-edge.tone-neg, .fl-edge-label.tone-neg { stroke: var(--fl-branch-no); }
-.fl-arrowhead.tone-pos { fill: var(--fl-branch-yes); }
-.fl-arrowhead.tone-neg { fill: var(--fl-branch-no); }
-.fl-edge-label { font-weight: 700; fill: var(--ink-2); stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
-.fl-edge-label.tone-pos { fill: var(--fl-branch-yes); stroke: #fff; }
-.fl-edge-label.tone-neg { fill: var(--fl-branch-no); stroke: #fff; }
-.fl-node { fill: #fff; stroke: var(--edge); }
-.fl-node.type-start, .fl-node.type-data, .fl-node.type-doc { fill: var(--lane-head); }
-.fl-node.type-end { fill: var(--lane-head); stroke: var(--accent-strong); }
-.fl-node.type-decision { fill: var(--mid-soft); stroke: var(--gold); }
-.fl-node.role-ai, .fl-sub-line.role-ai, .fl-legend-box.role-ai { stroke: var(--role-ai); }
-.fl-node.role-rule, .fl-sub-line.role-rule, .fl-legend-box.role-rule { stroke: var(--role-rule); }
-.fl-node.role-human, .fl-sub-line.role-human, .fl-legend-box.role-human { stroke: var(--role-human); }
-.fl-node.role-ext, .fl-sub-line.role-ext, .fl-legend-box.role-ext { stroke: var(--role-ext); }
-.fl-node.role-ai, .fl-node.role-rule, .fl-node.role-human, .fl-node.role-ext { fill: #fff; }
-.fl-sub-line { stroke: var(--edge); stroke-width: 1.2; }
-.fl-node-text { fill: var(--ink); text-anchor: middle; }
-.fl-node-text.is-bold { font-weight: 700; }
-.fl-note-no { font-size: 10px; font-weight: 700; fill: var(--mid); text-anchor: end; }
-.fl-role-label { font-size: 10px; font-weight: 700; stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
-.fl-role-label.role-ai, .fl-legend-role.role-ai { fill: var(--role-ai); }
-.fl-role-label.role-rule, .fl-legend-role.role-rule { fill: var(--role-rule); }
-.fl-role-label.role-human, .fl-legend-role.role-human { fill: var(--role-human); }
-.fl-role-label.role-ext, .fl-legend-role.role-ext { fill: var(--role-ext); }
-.fl-legend { font-size: 12px; fill: var(--ink); }
-.fl-legend-box { fill: #fff; stroke-width: 1.5; }
-.fl-legend-role { font-size: 12px; font-weight: 700; }
-.fl-taken { fill: none; stroke: var(--bar); stroke-width: 9; stroke-linejoin: round; stroke-linecap: round; }
-.fl-mark-frame { fill: none; stroke-width: 2.6; stroke-dasharray: 6 3; }
-.fl-mark-frame.mark-open { stroke: var(--mid); }
-.fl-mark-frame.mark-none { stroke: var(--high); }
-.fl-current { fill: none; stroke: var(--accent); stroke-width: 4.5; }
-.fl-visited { fill: none; stroke: var(--accent); stroke-width: 2.2; }
-.fl-mark { stroke: #fff; stroke-width: 2; }
-.fl-mark.mark-ok { fill: var(--ok); }
-.fl-mark.mark-open { fill: var(--mid); }
-.fl-mark.mark-none { fill: var(--high); }
-.fl-mark-sym { font-size: 13px; font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; }
-.fl-hit { fill: transparent; stroke: none; cursor: pointer; outline: none; }
-.fl-hit:focus-visible { stroke: var(--gold); stroke-width: 3; }
-.fl-hit.is-focus { stroke: var(--gold); stroke-width: 2.4; }
+.bfl-svg { display: block; font-family: var(--font); }
+.bfl-bg { fill: #fff; }
+.bfl-title { font-size: 16px; font-weight: 700; fill: var(--accent-strong); }
+.bfl-lane { stroke: var(--line); stroke-width: 1; }
+.bfl-lane.is-a { fill: var(--lane-a); }
+.bfl-lane.is-b { fill: var(--lane-b); }
+.bfl-lane-head { fill: var(--lane-head); stroke: var(--line); stroke-width: 1; }
+.bfl-lane-bar { fill: var(--accent); }
+.bfl-lane-name { font-size: 13px; font-weight: 700; fill: var(--ink); text-anchor: middle; }
+.bfl-edge-under { fill: none; stroke: #fff; stroke-width: 5; stroke-linejoin: round; }
+.bfl-edge { fill: none; stroke: var(--edge); stroke-width: 1.5; }
+.bfl-edge.is-dashed { stroke-dasharray: 5 4; }
+.bfl-edge.tone-pos, .bfl-edge.tone-neg { stroke-width: 1.8; }
+.bfl-arrowhead { fill: var(--edge); }
+.bfl-edge.tone-pos, .bfl-edge-label.tone-pos { stroke: var(--fl-branch-yes); }
+.bfl-edge.tone-neg, .bfl-edge-label.tone-neg { stroke: var(--fl-branch-no); }
+.bfl-arrowhead.tone-pos { fill: var(--fl-branch-yes); }
+.bfl-arrowhead.tone-neg { fill: var(--fl-branch-no); }
+.bfl-edge-label { font-weight: 700; fill: var(--ink-2); stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
+.bfl-edge-label.tone-pos { fill: var(--fl-branch-yes); stroke: #fff; }
+.bfl-edge-label.tone-neg { fill: var(--fl-branch-no); stroke: #fff; }
+.bfl-node { fill: #fff; stroke: var(--edge); }
+.bfl-node.type-start, .bfl-node.type-data, .bfl-node.type-doc { fill: var(--lane-head); }
+.bfl-node.type-end { fill: var(--lane-head); stroke: var(--accent-strong); }
+.bfl-node.type-decision { fill: var(--mid-soft); stroke: var(--gold); }
+.bfl-node.role-ai, .bfl-sub-line.role-ai, .bfl-legend-box.role-ai { stroke: var(--role-ai); }
+.bfl-node.role-rule, .bfl-sub-line.role-rule, .bfl-legend-box.role-rule { stroke: var(--role-rule); }
+.bfl-node.role-human, .bfl-sub-line.role-human, .bfl-legend-box.role-human { stroke: var(--role-human); }
+.bfl-node.role-ext, .bfl-sub-line.role-ext, .bfl-legend-box.role-ext { stroke: var(--role-ext); }
+.bfl-node.role-ai, .bfl-node.role-rule, .bfl-node.role-human, .bfl-node.role-ext { fill: #fff; }
+.bfl-sub-line { stroke: var(--edge); stroke-width: 1.2; }
+.bfl-node-text { fill: var(--ink); text-anchor: middle; }
+.bfl-node-text.is-bold { font-weight: 700; }
+.bfl-note-no { font-size: 10px; font-weight: 700; fill: var(--mid); text-anchor: end; }
+.bfl-role-label { font-size: 10px; font-weight: 700; stroke: #fff; stroke-width: 3; paint-order: stroke; stroke-linejoin: round; }
+.bfl-role-label.role-ai, .bfl-legend-role.role-ai { fill: var(--role-ai); }
+.bfl-role-label.role-rule, .bfl-legend-role.role-rule { fill: var(--role-rule); }
+.bfl-role-label.role-human, .bfl-legend-role.role-human { fill: var(--role-human); }
+.bfl-role-label.role-ext, .bfl-legend-role.role-ext { fill: var(--role-ext); }
+.bfl-legend { font-size: 12px; fill: var(--ink); }
+.bfl-legend-box { fill: #fff; stroke-width: 1.5; }
+.bfl-legend-role { font-size: 12px; font-weight: 700; }
+.bfl-taken { fill: none; stroke: var(--bar); stroke-width: 9; stroke-linejoin: round; stroke-linecap: round; }
+.bfl-mark-frame { fill: none; stroke-width: 2.6; stroke-dasharray: 6 3; }
+.bfl-mark-frame.mark-open { stroke: var(--mid); }
+.bfl-mark-frame.mark-none { stroke: var(--high); }
+.bfl-current { fill: none; stroke: var(--accent); stroke-width: 4.5; }
+.bfl-visited { fill: none; stroke: var(--accent); stroke-width: 2.2; }
+.bfl-mark { stroke: #fff; stroke-width: 2; }
+.bfl-mark.mark-ok { fill: var(--ok); }
+.bfl-mark.mark-open { fill: var(--mid); }
+.bfl-mark.mark-none { fill: var(--high); }
+.bfl-mark-sym { font-size: 13px; font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; }
+.bfl-hit { fill: transparent; stroke: none; cursor: pointer; outline: none; }
+.bfl-hit:focus-visible { stroke: var(--gold); stroke-width: 3; }
+.bfl-hit.is-focus { stroke: var(--gold); stroke-width: 2.4; }
 /* ---- 業務フローの画面（P7c） ---- */
 .bf-layout { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .bf-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
