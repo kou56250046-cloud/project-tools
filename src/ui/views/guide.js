@@ -85,8 +85,11 @@ function flowDiagram(st) {
     s('path', { class: 'fl-arrowhead', d: 'M0,0L10,5L0,10Z' }))));
   // 繰り返しの枠
   svg.appendChild(s('rect', { class: ['fl-loop', st && st.loopActive && 'is-now'], x: LOOP_BOX.x, y: LOOP_BOX.y, width: LOOP_BOX.w, height: LOOP_BOX.h, rx: '18' }));
-  svg.appendChild(s('text', { class: 'fl-loop-label', x: '400', y: '58' }, FLOW_TEXT.loopLabel));
-  svg.appendChild(s('text', { class: 'fl-loop-sub', x: '600', y: '58' }, FLOW_TEXT.loopSub));
+  // 見出し（青）と補足（灰）は 1 つの行の中で続けて置く。位置を別々に決めると、文字の長さしだいで重なる
+  // 線（点検 → 文書づくり）が横切るので、線を描いたあとに、枠の地の色で縁取って重ねる（下の「線」の後で足す）
+  const loopText = s('text', { class: 'fl-loop-text', x: '400', y: '58' },
+    s('tspan', { class: 'fl-loop-label' }, FLOW_TEXT.loopLabel),
+    s('tspan', { class: 'fl-loop-sub', dx: '16' }, FLOW_TEXT.loopSub));
   // 線
   for (const e of FLOW_EDGES) {
     const p = EDGE_PATHS[e.from + '>' + e.to];
@@ -101,6 +104,7 @@ function flowDiagram(st) {
       svg.appendChild(g);
     }
   }
+  svg.appendChild(loopText);
   // 箱（FLOW_STEPS の順に足す。Tab で回る順になる）
   for (const step of FLOW_STEPS) {
     const [x, y] = POS[step.id];

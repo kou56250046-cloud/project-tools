@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5nkrpq2SbKd7D7HzICR1mltRYTsUZdkoVaeBBLticOM='; style-src 'sha256-sTz08zn7I8jUqWwyDTge/V+NaG6rekyRRlgFOl5AVSk='; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wiMAqIDX8xC0LWjoX2acCXatfwEZAjMBz6PNZobiTYI='; style-src 'sha256-DWkWRoxVHS+zz36MAirRdBOqsl5VuCf5PBDAoajWsWM='; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:,">
@@ -472,11 +472,12 @@ span.over { color: var(--high); font-weight: 600; }
 .fl-legend { list-style: none; padding: 0; margin: 0 0 8px; display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 12.5px; align-items: center; }
 .fl-now { border-left: 4px solid var(--accent); }
 .fl-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
-.fl-svg { display: block; width: 100%; min-width: 760px; height: auto; font-family: var(--font); }
+.fl-svg { display: block; width: 100%; max-width: 1040px; min-width: 760px; height: auto; font-family: var(--font); }
 .fl-loop { fill: var(--hover); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 2 5; }
 .fl-loop.is-now { stroke-width: 3; stroke-dasharray: 6 4; }
 .fl-loop-label { font-size: 15px; font-weight: 700; fill: var(--accent); }
 .fl-loop-sub { font-size: 12.5px; fill: var(--ink-2); }
+.fl-loop-text { paint-order: stroke; stroke: var(--hover); stroke-width: 8px; stroke-linejoin: round; }
 .fl-edge { fill: none; stroke: var(--edge); stroke-width: 1.6; }
 .fl-back { stroke-dasharray: 5 4; }
 .fl-arrowhead { fill: var(--edge); }
@@ -16118,8 +16119,11 @@ function flowDiagram(st) {
     s('path', { class: 'fl-arrowhead', d: 'M0,0L10,5L0,10Z' }))));
   // 繰り返しの枠
   svg.appendChild(s('rect', { class: ['fl-loop', st && st.loopActive && 'is-now'], x: LOOP_BOX.x, y: LOOP_BOX.y, width: LOOP_BOX.w, height: LOOP_BOX.h, rx: '18' }));
-  svg.appendChild(s('text', { class: 'fl-loop-label', x: '400', y: '58' }, FLOW_TEXT.loopLabel));
-  svg.appendChild(s('text', { class: 'fl-loop-sub', x: '600', y: '58' }, FLOW_TEXT.loopSub));
+  // 見出し（青）と補足（灰）は 1 つの行の中で続けて置く。位置を別々に決めると、文字の長さしだいで重なる
+  // 線（点検 → 文書づくり）が横切るので、線を描いたあとに、枠の地の色で縁取って重ねる（下の「線」の後で足す）
+  const loopText = s('text', { class: 'fl-loop-text', x: '400', y: '58' },
+    s('tspan', { class: 'fl-loop-label' }, FLOW_TEXT.loopLabel),
+    s('tspan', { class: 'fl-loop-sub', dx: '16' }, FLOW_TEXT.loopSub));
   // 線
   for (const e of FLOW_EDGES) {
     const p = EDGE_PATHS[e.from + '>' + e.to];
@@ -16134,6 +16138,7 @@ function flowDiagram(st) {
       svg.appendChild(g);
     }
   }
+  svg.appendChild(loopText);
   // 箱（FLOW_STEPS の順に足す。Tab で回る順になる）
   for (const step of FLOW_STEPS) {
     const [x, y] = POS[step.id];
